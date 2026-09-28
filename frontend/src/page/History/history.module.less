@@ -1,0 +1,59 @@
+@import "@/theme/theme.less";
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.tableCard {
+  :global(.ant-table-thead > tr > th) {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    color: #9ba7ae;
+    background: #f8faf9;
+  }
+}
+
+.subtle {
+  color: #8b99a2;
+  font-size: 11px;
+  font-weight: 400;
+  margin-left: 10px;
+}
+
+.muted {
+  color: #a0acb3;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.object {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.objectIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #eef6f1;
+  color: #6e9b86;
+  display: grid;
+  place-items: center;
+}
+
+.footnote {
+  font-size: 12px;
+  color: #8a9ba4;
+  margin: 0;
+}
+
+@media @mobile {
+  .subtle {
+    display: block;
+    margin: 4px 0 0;
+  }
+}
