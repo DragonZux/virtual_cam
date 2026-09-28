@@ -1,0 +1,211 @@
+@import "@/theme/theme.less";
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.column {
+  display: grid;
+  gap: 20px;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  svg {
+    color: #8e9ca4;
+  }
+}
+
+/* ===== Chọn vật thể ===== */
+.summary {
+  font-size: 12px;
+  color: #8b99a2;
+}
+
+.targetToolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.groups {
+  max-height: 560px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.group + .group {
+  margin-top: 14px;
+}
+
+.group h3 {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #98a3ab;
+  margin: 0 0 8px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  margin: 0 !important;
+  padding: 4px 10px !important;
+  border: 1px solid @border !important;
+  border-radius: 20px !important;
+  font-size: 12px;
+  color: #5d6f79;
+
+  &:global(.ant-tag-checkable-checked) {
+    border-color: @primary !important;
+    color: #fff;
+  }
+}
+
+.noMatch {
+  color: #99a5ad;
+  font-size: 13px;
+  padding: 16px 0;
+}
+
+.hint {
+  font-size: 12px;
+  color: #8a9ba4;
+  margin: 14px 0 0;
+}
+
+/* ===== Thanh trượt / công tắc ===== */
+.field + .field {
+  margin-top: 18px;
+}
+
+.fieldHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+
+  strong {
+    color: @primary;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.help {
+  font-size: 12px;
+  color: #8a9ba4;
+  line-height: 1.6;
+}
+
+.serverDefault {
+  display: block;
+  color: #a2adb3;
+}
+
+.switchRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  font-size: 13px;
+  cursor: pointer;
+
+  & + & {
+    border-top: 1px solid #f1f4f5;
+  }
+}
+
+.mirror {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.voiceActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ===== Thiết bị khác ===== */
+.share p {
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+.shareUrl {
+  display: block;
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 15px;
+  background: @primary-soft;
+  color: @primary !important;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  word-break: break-all;
+}
+
+.otherUrls {
+  font-size: 11px;
+  color: #98a3ab;
+  margin-bottom: 8px;
+  word-break: break-all;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #8a9ba4;
+}
+
+@media (max-width: 1280px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .grid > :first-child {
+    grid-row: span 2;
+  }
+}
+
+@media @tablet {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .grid > :first-child {
+    grid-row: auto;
+  }
+  .groups {
+    max-height: none;
+  }
+}
