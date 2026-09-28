@@ -1,0 +1,12 @@
+node_modules/
+dist/
+__pycache__/
+.pytest_cache/
+.cam/
+.env
+backend/data/*
+!backend/data/.gitkeep
+frontend/tsconfig.tsbuildinfo
+# Model tải về (setup.bat / ultralytics)
+*.pt
+*.task
