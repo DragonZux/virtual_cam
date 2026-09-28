@@ -6,6 +6,10 @@
     "color": "Màu laser",
     "red": "Laser đỏ",
     "green": "Laser xanh lá",
+    "redModelReady": "Laser đỏ: mô hình AI đã sẵn sàng",
+    "redModelLoading": "Đang kiểm tra mô hình laser đỏ…",
+    "modelUnavailable": "Mô hình laser đỏ chưa sẵn sàng. Kiểm tra model trên máy chủ; bạn vẫn có thể dùng chỉ tay hoặc laser xanh.",
+    "greenMethod": "Laser xanh: nhận diện theo màu và độ sáng",
     "caption": "Chiếu chấm laser lên vật thể trong khung hình và giữ yên để chọn",
     "status": "Điểm laser",
     "idle": "Đang chờ",
@@ -20,7 +24,7 @@
     "brightness": "Ngưỡng sáng của laser",
     "brightnessHelp": "Giảm nếu chấm laser mờ; tăng nếu nhận nhầm điểm sáng. Chọn đúng màu laser. Đèn LED hoặc phản xạ cùng màu vẫn có thể gây nhầm.",
     "guideTitle": "Chọn bằng laser",
-    "guideText": "Chọn Laser phía trên camera, chọn đỏ hoặc xanh lá, rồi chiếu lên vật thể. Camera phải thấy cả vật thể và chấm sáng. Giữ yên để xác nhận tên. Chỉ nhận diện các loại vật thể đã bật trong Cài đặt; không phải mọi đồ vật đều được model hỗ trợ. Nếu không thấy chấm, đưa vật thể gần camera hơn hoặc chỉnh ngưỡng sáng. Chấm trắng mất hết màu, nền quá sáng, đèn LED và phản xạ có thể làm nhận diện sai; khi có nhiều điểm sáng tương tự, hệ thống có thể không chọn."
+    "guideText": "Chọn Laser phía trên camera, chọn đỏ hoặc xanh lá, rồi chiếu lên vật thể. Laser đỏ dùng mô hình AI; laser xanh dùng màu và độ sáng, có thể chỉnh ngưỡng sáng trong Cài đặt. Camera phải thấy cả vật thể và chấm sáng. Giữ yên để xác nhận tên. Chỉ nhận diện các loại vật thể đã bật và được model đồ vật hỗ trợ. Nếu không thấy chấm, đưa vật thể gần camera hơn. Đèn LED và phản xạ vẫn có thể gây nhận nhầm."
   },
   "app": {
     "title": "Virtual Cam",

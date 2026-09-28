@@ -152,6 +152,7 @@ def test_startup_loads_enabled_models_and_remembers_disabled_ones(detector, tmp_
 
 
 def test_frame_runs_only_models_having_the_chosen_classes(detector):
+    detector._laser = SimpleNamespace(detect=lambda frame, hint: None)
     builtin, extra = FakeYolo(), FakeYolo()
     detector.models[0].model = builtin
     detector.models.append(type(detector.models[0])(id="d.pt", builtin=False, names=dict(DRONE_NAMES), model=extra))
@@ -167,6 +168,7 @@ def test_frame_runs_only_models_having_the_chosen_classes(detector):
 
 def test_classes_merge_across_models_ignoring_case(detector):
     """COCO "laptop" và Open Images "Laptop" là một vật thể; "Person" cũng bị loại như "person"."""
+    detector._laser = SimpleNamespace(detect=lambda frame, hint: None)
     builtin, extra = FakeYolo(), FakeYolo()
     detector.models[0].model = builtin
     oiv = {0: "Laptop", 1: "Drone", 2: "Person"}

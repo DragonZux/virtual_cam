@@ -6,6 +6,10 @@
     "color": "Laser colour",
     "red": "Red laser",
     "green": "Green laser",
+    "redModelReady": "Red laser: AI model ready",
+    "redModelLoading": "Checking the red laser model…",
+    "modelUnavailable": "Red laser model unavailable. Check the model on the server; hand pointing and green laser are still available.",
+    "greenMethod": "Green laser: colour and brightness detection",
     "caption": "Shine the laser spot onto an object in view and hold to select",
     "status": "Laser spot",
     "idle": "Waiting",
@@ -20,7 +24,7 @@
     "brightness": "Laser brightness threshold",
     "brightnessHelp": "Lower for dim spots; increase to reduce false detections. Select the correct laser colour. Similar LEDs or reflections can still cause false detections.",
     "guideTitle": "Select with a laser",
-    "guideText": "Choose Laser above the camera, select red or green, and point at an object. Both the object and the spot must be visible to the camera. Hold to confirm its name. Only enabled object types supported by the model can be recognised. If the spot is missing, bring the object closer or adjust brightness. White spots with no colour, bright backgrounds, LEDs and reflections can cause errors; multiple similar spots may result in no selection."
+    "guideText": "Choose Laser above the camera, select red or green, and point at an object. Red laser uses a trained AI model; green laser uses colour and brightness, adjustable in Settings. Both the object and the spot must be visible. Hold to confirm its name. Only enabled object types supported by the object model can be recognised. If the spot is missing, bring the object closer. LEDs and reflections can still cause false detections."
   },
   "app": {
     "title": "Virtual Cam",

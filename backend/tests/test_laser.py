@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 import pytest
 
-from models import LaserColor
+from models import LaserColor, LaserSpot
 from services.detector import Detector
 from services.laser import detect_laser
 from services.pointing import object_at_laser
@@ -162,6 +162,8 @@ def test_api_runs_laser_without_hand_and_keeps_mask_indices(client, detector, mo
     raw = model_result()
     monkeypatch.setattr(detector.models[0], "model", SimpleNamespace(predict=lambda *a, **kw: [raw]))
     monkeypatch.setattr(detector, "_run_models", Detector._run_models.__get__(detector))
+    predictions = iter([LaserSpot(point=[320, 240], color=LaserColor.red, score=0.79), None])
+    monkeypatch.setattr(detector, "_laser", SimpleNamespace(detect=lambda frame, hint: next(predictions)))
 
     def no_hand(*args):
         pytest.fail("Laser mode must not run MediaPipe")

@@ -10,6 +10,13 @@ mediapipe
 ultralytics>=8.4.162   # YOLO26 + tham so quantize (thay half)
 pillow
 
+# Xuat model laser ADVR mot lan (scripts/prepare_laser_model.py).
+# Suy luan laser chi dung torch; cac thu vien nay phuc vu ma YOLOv5 v7.0 khi xuat.
+ipython>=8.32,<9
+seaborn>=0.13,<0.14
+pandas>=2,<3
+setuptools<81            # YOLOv5 v7.0 can pkg_resources
+
 # --- Web API ---
 fastapi>=0.115
 # Khong dung uvicorn[standard]: bo watchfiles (chi cho --reload) va websockets (app khong co WebSocket)

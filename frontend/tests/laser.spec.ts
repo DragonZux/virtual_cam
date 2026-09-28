@@ -7,6 +7,7 @@ test("laser mode sends settings, confirms without a hand, survives reload and sw
   let withSpot = true;
   await page.route("**/api/vision/status", (route) => route.fulfill({ json: {
     phase: "ready", error: null, device: "Test", model: "test", image_size: 640,
+    laser_model: "laser-advr-yolov5l6.torchscript", laser_error: null,
     classes: ["mouse"], defaults: { targets: ["mouse"], confidence: 0.8, tolerance: 30 }, share_urls: [],
   } }));
   await page.route("**/api/vision/frame?*", async (route) => {
@@ -23,6 +24,7 @@ test("laser mode sends settings, confirms without a hand, survives reload and sw
   });
   await page.goto("/");
   await page.getByText("Laser", { exact: true }).click();
+  await expect(page.getByText("Laser đỏ: mô hình AI đã sẵn sàng", { exact: true })).toBeVisible();
   await page.getByText("Laser đỏ", { exact: true }).click();
   await page.getByText("Laser xanh lá", { exact: true }).click();
   await page.getByRole("button", { name: "Bật camera của tôi", exact: true }).click();
@@ -46,11 +48,16 @@ test("laser mode sends settings, confirms without a hand, survives reload and sw
   await expect.poll(() => requests.at(-1)?.get("pointer_mode")).toBe("hand");
   await expect(page.getByRole("combobox", { name: "Màu laser" })).toHaveCount(0);
   await page.locator('a[href="/settings"]').first().click();
-  await page.getByText("Laser", { exact: true }).click();
+  await expect(page.getByRole("button", { name: "Khôi phục mặc định", exact: true })).toBeVisible();
+  await page.getByText("Laser", { exact: true }).filter({ visible: true }).click();
   const brightness = page.getByRole("slider").first();
   await brightness.focus();
   await brightness.press("ArrowRight");
   await expect.poll(() => requests.at(-1)?.get("laser_brightness")).toBe("205");
+  await page.getByText("Laser xanh lá", { exact: true }).filter({ visible: true }).click();
+  await page.getByTitle("Laser đỏ", { exact: true }).click();
+  await expect(page.getByText("Ngưỡng sáng của laser", { exact: true })).toHaveCount(0);
+  await expect.poll(() => requests.at(-1)?.get("laser_color")).toBe("red");
   const beforeReset = requests.length;
   await page.getByRole("button", { name: "Khôi phục mặc định", exact: true }).click();
   await page.getByRole("button", { name: "Đồng ý", exact: true }).click();

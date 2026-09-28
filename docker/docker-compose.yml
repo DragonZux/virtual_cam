@@ -19,6 +19,9 @@ services:
       PUBLIC_URLS: ${LAN_IP:+https://${LAN_IP}:${LAN_HTTPS_PORT:-8033}}
       # Cạnh ảnh đưa vào YOLO (640 chính xác nhất; 480 / 320 nhanh hơn)
       IMAGE_SIZE: ${IMAGE_SIZE:-640}
+      LASER_MODEL: ${LASER_MODEL:-laser-advr-yolov5l6.torchscript}
+      LASER_IMAGE_SIZE: ${LASER_IMAGE_SIZE:-1280}
+      LASER_CONFIDENCE: ${LASER_CONFIDENCE:-0.55}
       # Model YOLO (file trong models/, dùng chung với desktop/finger_select.py)
       YOLO_MODEL: ${YOLO_MODEL:-yolo26m-seg.pt}
       # Ảnh / video tải lên lưu vào thư mục của máy host (start.ps1 đặt UPLOAD_HOST_DIR = Documents\virtual_cam)

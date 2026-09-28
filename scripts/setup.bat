@@ -74,6 +74,10 @@ if exist "%MODEL_FILE%" (
 )
 
 echo.
+echo Preparing the trained red laser model...
+"%VENV_PYTHON%" scripts\prepare_laser_model.py
+if errorlevel 1 goto :failed
+
 echo [5/5] Building the web interface...
 where npm >nul 2>&1
 if errorlevel 1 (

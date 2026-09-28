@@ -1,6 +1,6 @@
 # Virtual Cam
 
-Chỉ ngón trỏ hoặc chiếu chấm laser vào vật thể trước camera → web hiện tên vật thể (YOLO26 segmentation). Chế độ Chỉ tay dùng MediaPipe Hand Landmarker; chế độ Laser dùng OpenCV tìm điểm sáng đỏ/xanh lá. Mỗi người dùng camera trên thiết bị của chính mình; máy chủ (GPU) nhận diện chung cho mọi trình duyệt.
+Chỉ ngón trỏ hoặc chiếu chấm laser vào vật thể trước camera → web hiện tên vật thể (YOLO26 segmentation). Chỉ tay dùng MediaPipe; laser đỏ dùng model ADVR YOLOv5l6 đã huấn luyện chuyên chấm laser; laser xanh dùng OpenCV. Mỗi người dùng camera trên thiết bị của chính mình; máy chủ nhận diện chung cho mọi trình duyệt.
 
 ## Chọn vật thể bằng laser
 
@@ -8,17 +8,23 @@ Chỉ ngón trỏ hoặc chiếu chấm laser vào vật thể trước camera �
 2. Chọn **Laser đỏ** hoặc **Laser xanh lá** đúng với bút đang dùng, bật camera.
 3. Trong Cài đặt, bật các loại vật thể cần nhận diện. Mặc định chỉ có laptop, mouse, keyboard; muốn chọn cốc/chai… cần bật thêm.
 4. Chiếu chấm laser lên vật thể để camera nhìn thấy cả vật thể lẫn chấm sáng. Giữ yên theo thời gian xác nhận; tên, viền vật thể, lịch sử và đọc tên hoạt động như chế độ chỉ tay.
-5. Nếu chưa thấy điểm, thử đưa vật thể gần camera hơn hoặc chỉnh **Ngưỡng sáng của laser**. Chọn **Chỉ tay** để quay lại cách cũ.
+5. Nếu chưa thấy điểm, thử đưa vật thể gần camera hơn. **Ngưỡng sáng của laser** chỉ áp dụng cho laser xanh. Chọn **Chỉ tay** để quay lại cách cũ.
 
-Không cần tải model laser riêng. `backend/services/laser.py` lọc màu HSV, độ sáng, tương phản cục bộ và hình dạng điểm; `services/pointing.py` đối chiếu điểm với mask YOLO, ưu tiên vật nhỏ chứa điểm khi mask chồng nhau. Sai số mép laser chỉ 4px ở khung cạnh dài 640px (tăng theo độ phân giải), độc lập vùng chấp nhận ngón tay. Khi có nhiều điểm sáng tương tự, bộ dò trả về không có laser. Backend không giữ trạng thái laser giữa các trình duyệt.
+Chuẩn bị model laser đỏ một lần: cài `requirements.txt`, chạy `python scripts/prepare_laser_model.py` (hoặc `scripts/setup.bat`). Script tải trọng số đã fine-tune, kiểm tra checksum và xuất `models/laser-advr-yolov5l6.torchscript` (~305 MB). Không cần huấn luyện lại, không nạp file này qua mục model đồ vật ở Cài đặt. Docker dùng cùng thư mục `models/` được mount vào `/models`.
+
+`backend/services/laser_model.py` chạy YOLOv5l6 trên GPU nếu có, hoặc CPU; nạp một lần ở luồng khởi động, kích thước đầu vào mặc định 1280 và confidence 0.55. Cấu hình `LASER_MODEL`, `LASER_IMAGE_SIZE`, `LASER_CONFIDENCE` độc lập với YOLO đồ vật. Không có model hoặc model hỏng thì API báo 503 cho laser đỏ, không âm thầm quay về dò màu; chỉ tay và laser xanh vẫn hoạt động. `/api/vision/status` trả `laser_model` và `laser_error`, giao diện hiển thị tình trạng sẵn sàng.
+
+`services/pointing.py` đối chiếu tọa độ laser với mask YOLO, ưu tiên vật nhỏ chứa điểm khi mask chồng nhau. Sai số mép laser là 4px ở khung cạnh dài 640px (tăng theo độ phân giải), độc lập vùng chấp nhận ngón tay. Backend không giữ trạng thái laser giữa các trình duyệt; `laser_hint` chỉ ưu tiên một chấm thực sự được phát hiện ở khung hiện tại.
+
+Laser xanh vẫn dùng `backend/services/laser.py`: lọc HSV, độ sáng, tương phản và hình dạng; lõi trắng cần quầng xanh rõ. Thanh ngưỡng sáng chỉ điều chỉnh nhánh này. Model ADVR được huấn luyện cho laser đỏ, chưa dùng để suy luận laser xanh.
 
 Laser gửi JPEG cạnh dài tối đa 1280px, chất lượng 0.94 để giữ chấm nhỏ; chỉ tay giữ 640px/0.82. Chế độ laser bỏ qua suy luận MediaPipe cho từng khung, vẫn dùng YOLO hiện tại. Chuyển chế độ/màu/ngưỡng sáng sẽ huỷ khung đang chờ và đặt lại xác nhận. Cài đặt lưu riêng trên trình duyệt.
 
-Giới hạn: đây là bộ dò thị giác theo màu/độ sáng, không phải mô hình học máy chuyên nhận diện laser. Đèn LED, phản xạ cùng màu, nền sáng hoặc chấm trắng mất hết màu có thể gây nhầm/bỏ sót. Chỉ gọi tên các lớp YOLO hỗ trợ và đang bật; không nhận diện mọi vật phẩm hay tên sản phẩm cụ thể. Các test ảnh tổng hợp/JPEG không thay thế thử nghiệm với camera và laser thật.
+Giới hạn: model đỏ vẫn có thể nhận nhầm LED/phản sáng. Trên ba ảnh thử, bản YOLOv5l6 ở 1280 chọn đúng chấm laser cả ba, nhưng trên bàn phím LED có confidence gần chấm thật (0.754 so với 0.787); đây không phải phép đo độ chính xác tổng quát. CPU chạy model lớn chậm hơn đáng kể. Chỉ gọi tên các lớp model đồ vật hỗ trợ và đang bật; tìm thấy laser trên tủ không đồng nghĩa model đồ vật nhận ra loại tủ đó.
 
-Tham khảo: [Laser-Dot-Detector](https://github.com/YuxueYang1204/Laser-Dot-Detector) có bộ dò với OpenCV/PyTorch/scikit-learn và checkpoint; [python-laser-tracker](https://github.com/bradmontgomery/python-laser-tracker) minh hoạ lọc HSV (mã Python 2 cũ). Bản web dùng bộ dò OpenCV riêng, không nạp checkpoint từ các kho này. Dự án cũng đã có `desktop/segment.py` thử laser đỏ trên desktop Linux; tính năng ở đây tích hợp vào web React/FastAPI dùng chung với chỉ tay.
+Nguồn: [Davide Torielli / IIT — trọng số ADVR trên Zenodo](https://zenodo.org/records/10471835), CC BY 4.0; [mã nguồn nhóm tác giả](https://github.com/ADVRHumanoids/nn_laser_spot_tracking). Trọng số gốc `yolov5l6_e200_b8_tvt302010_laser_v5.pt`, MD5 `21b8e90b7707cb91054547c6558301e3`. Chuyển định dạng dùng [YOLOv5 v7.0](https://github.com/ultralytics/yolov5/tree/v7.0), GPL-3.0. TorchScript tránh xung đột package `models` của YOLOv5 cũ với backend; không cần ROS hoặc runtime YOLOv5 trong ứng dụng.
 
-API `POST /api/vision/frame` thêm query `pointer_mode=hand|laser` (mặc định `hand`), `laser_color=red|green` (mặc định `red`), `laser_brightness=160..250` (mặc định `200`). Response thêm `pointer_mode` và `laser: {point: [x,y], color, score} | null`; `score` là điểm xếp hạng, không phải xác suất. `tip` chỉ dành cho ngón tay; trong chế độ laser, `hand_detected=false`, `landmarks=[]`, `tip=null`.
+API `POST /api/vision/frame` thêm query `pointer_mode=hand|laser` (mặc định `hand`), `laser_color=red|green` (mặc định `red`), `laser_brightness=160..250` (mặc định `200`, chỉ cho xanh), `laser_hint=x,y`. Response có `laser: {point: [x,y], color, score} | null`; `score` là confidence của model đỏ hoặc điểm màu/độ sáng của nhánh xanh, không phải xác suất hiệu chuẩn. `tip` chỉ dành cho ngón tay; trong chế độ laser, `hand_detected=false`, `landmarks=[]`, `tip=null`.
 
 ## Thử bằng ảnh / video
 
@@ -138,7 +144,11 @@ Video hiển thị trực tiếp theo tốc độ camera. `useOverlay` vẽ bàn
 
 Backend giữ nguyên model, kích thước suy luận YOLO và độ chính xác tính toán. Chỉ chuyển bounding box về CPU một lần; mask chỉ lấy đường viền khi có điểm chỉ (ngón trỏ hoặc laser) ở gần vật thể, kể cả sai số mép tương ứng. Luật chọn bằng ngón tay được giữ nguyên; laser ưu tiên mask nhỏ nhất chứa điểm.
 
+Laser đỏ suy luận toàn khung, ưu tiên ứng viên đủ confidence gần `laser_hint`; nếu không có thì lấy ứng viên cao điểm nhất toàn khung. Laser xanh dò vùng nhỏ quanh gợi ý rồi quét lại toàn khung khi cần. Backend không lưu vị trí của trình duyệt trước. Model laser đỏ và YOLO vật thể dùng GPU lần lượt dưới cùng khóa để hạn chế bộ nhớ và tránh chồng suy luận.
+
 Kiểm tra trình duyệt dùng camera giả lập, không mở webcam thật: `cd frontend && npm test` (Windows dùng Chrome đã cài; Linux cần `npx playwright install chromium`). Đo luồng camera với máy chủ đang chạy: `node scripts/benchmark-camera.mjs http://127.0.0.1:8032`. Chạy phép đo riêng, tránh cùng lúc chạy test model/build để số đo CPU/GPU không bị nhiễu.
+
+Đo riêng bộ lọc OpenCV cũ từ thư mục gốc: `.cam\Scripts\python.exe scripts\benchmark_laser.py` (thêm `--baseline <đường-dẫn-laser.py-cũ>` để so sánh). Script này không đo model AI laser đỏ. Phép đo dùng ảnh tổng hợp không thay thế kiểm tra video/camera thật.
 
 Khung hình camera chỉ dùng để nhận diện rồi bỏ — không lưu ảnh/video; chỉ file người dùng chủ động tải lên ở thẻ Ảnh / video thử mới được lưu vào `UPLOAD_DIR`. Cài đặt nằm trong `localStorage`, lịch sử chỉ trong tab (tải lại trang là mất).
 

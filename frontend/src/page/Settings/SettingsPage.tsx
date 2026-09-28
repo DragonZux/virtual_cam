@@ -90,7 +90,7 @@ export const SettingsPage = () => {
         <div className={styles.column}>
           <Card title={<CardTitle icon={<SlidersHorizontal size={17} />}>{t("settings.detection.title")}</CardTitle>}>
             <PointerControls />
-            {prefs.pointerMode === "laser" && (
+            {prefs.pointerMode === "laser" && prefs.laserColor === "green" && (
               <RangeField label={t("pointer.brightness")} value={String(prefs.laserBrightness)} help={t("pointer.brightnessHelp")}>
                 <Slider {...LASER_BRIGHTNESS_RANGE} value={prefs.laserBrightness}
                   onChange={(laserBrightness: number) => update({ laserBrightness })} />
