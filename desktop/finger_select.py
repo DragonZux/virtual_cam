@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 import cv2
 import mediapipe as mp
@@ -13,11 +14,14 @@ CAMERA_WIDTH = 1280
 CAMERA_HEIGHT = 720
 CAMERA_FPS = 45
 
+# Model nằm trong thư mục models/ của dự án
+MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
+
 # YOLO segmentation
-YOLO_MODEL = "yolo26l-seg.pt"
+YOLO_MODEL = str(MODEL_DIR / "yolo26l-seg.pt")
 
 # MediaPipe hand model
-HAND_MODEL = "hand_landmarker.task"
+HAND_MODEL = str(MODEL_DIR / "hand_landmarker.task")
 
 # Detection
 CONF = 0.8

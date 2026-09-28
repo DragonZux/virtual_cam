@@ -1,5 +1,5 @@
 # Desktop app (finger_select.py); pip resolves compatible Windows packages.
-# Web backend dependencies: backend/requirements.txt (setup.bat installs both).
+# Web backend dependencies: backend/requirements.txt (scripts/setup.bat installs both).
 # CUDA/Linux packages from requirements.txt are intentionally omitted.
 numpy
 opencv-contrib-python

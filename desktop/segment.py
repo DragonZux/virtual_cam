@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import time
+from pathlib import Path
 from ultralytics import YOLO
 
 
@@ -10,7 +11,8 @@ from ultralytics import YOLO
 
 CAMERA = "/dev/video2"
 
-MODEL_PATH = "yolo26l-seg.pt"
+# Model nằm trong thư mục models/ của dự án
+MODEL_PATH = str(Path(__file__).resolve().parent.parent / "models" / "yolo26l-seg.pt")
 
 CONF = 0.25
 IMG_SIZE = 960
