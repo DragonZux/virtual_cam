@@ -15,6 +15,9 @@
 
 .column {
   display: grid;
+  // Track tự co theo cột ngoài; mặc định `auto` giữ min-content của thẻ nên thẻ tràn sang cột bên cạnh ở ~1440px
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 20px;
 }
 
