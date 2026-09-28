@@ -7,17 +7,23 @@ const status = {
   defaults: { targets: ["laptop"], confidence: 0.8, tolerance: 30 }, share_urls: [],
 };
 
-async function prepare(page: Page, delayMs = 50, processingMs: number | ((index: number) => number) = 30) {
+async function prepare(page: Page, delayMs = 50, processingMs: number | ((index: number) => number) = 30, serial = false) {
   let requests = 0;
   let pending = 0;
   let maximum = 0;
+  let availableAt = 0;
+  const roundTrips: number[] = [];
   await page.route("**/api/vision/status", (route) => route.fulfill({ json: status }));
   await page.route("**/api/vision/frame?*", async (route) => {
     requests += 1;
     pending += 1;
     maximum = Math.max(maximum, pending);
     const index = requests;
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    const started = Date.now();
+    const finished = (serial ? Math.max(started, availableAt) : started) + delayMs;
+    availableAt = finished;
+    await new Promise((resolve) => setTimeout(resolve, finished - started));
+    roundTrips.push(Date.now() - started);
     pending -= 1;
     await route.fulfill({ json: {
       hand_detected: true,
@@ -29,7 +35,7 @@ async function prepare(page: Page, delayMs = 50, processingMs: number | ((index:
   });
   await page.goto("/");
   await page.getByRole("button", { name: /Bật camera|Start camera/ }).click();
-  return { requests: () => requests, maximum: () => maximum };
+  return { requests: () => requests, maximum: () => maximum, roundTrips };
 }
 
 test("new frames continue with bounded requests; pause/resume cancels the old run", async ({ page }) => {
@@ -107,6 +113,16 @@ test("a slow first CUDA result does not throttle later fast frames", async ({ pa
   const before = stats.requests();
   await page.waitForTimeout(2000);
   expect(stats.requests() - before).toBeGreaterThan(24);
+});
+
+test("slow serial inference keeps frames fresh instead of filling the server queue", async ({ page }) => {
+  const stats = await prepare(page, 600, 600, true);
+  await expect.poll(() => stats.roundTrips.length, { timeout: 12000 }).toBeGreaterThanOrEqual(8);
+  const recent = stats.roundTrips.slice(-4).sort((a, b) => a - b);
+  // Inference itself takes 600 ms. A second queued frame would make this
+  // approach 1200 ms, with no increase in recognition throughput.
+  expect(recent[2]).toBeLessThan(900);
+  expect(stats.maximum()).toBeLessThanOrEqual(2);
 });
 
 test("mirror changes restart capture and snapshots keep the camera resolution", async ({ page }) => {
