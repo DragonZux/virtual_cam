@@ -17,6 +17,9 @@ services:
       IMAGE_SIZE: ${IMAGE_SIZE:-640}
       # Model YOLO (file ở thư mục gốc, dùng chung với finger_select.py)
       YOLO_MODEL: ${YOLO_MODEL:-yolo26m-seg.pt}
+      # Ảnh / video tải lên lưu vào thư mục của máy host (start.ps1 đặt UPLOAD_HOST_DIR = Documents\virtual_cam)
+      UPLOAD_DIR: /data/uploads
+      UPLOAD_DIR_DISPLAY: ${UPLOAD_HOST_DIR:-./uploads}
     ports:
       # Chỉ IPv4: cổng IPv6 của Docker Desktop chậm hơn ~30 ms mỗi request (trình duyệt tự dùng 127.0.0.1)
       - "0.0.0.0:${WEB_PORT:-8032}:8030"
@@ -26,6 +29,7 @@ services:
       - ./hand_landmarker.task:/models/hand_landmarker.task:ro
       - ./${YOLO_MODEL:-yolo26m-seg.pt}:/models/${YOLO_MODEL:-yolo26m-seg.pt}:ro
       - certs:/app/data/certs
+      - ${UPLOAD_HOST_DIR:-./uploads}:/data/uploads
     deploy:
       resources:
         reservations:

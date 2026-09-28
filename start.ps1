@@ -278,6 +278,12 @@ if ($ports[0] -ne $webPort -or $ports[1] -ne $lanPort) {
 Set-EnvValue 'WEB_PORT' $ports[0]
 Set-EnvValue 'LAN_HTTPS_PORT' $ports[1]
 Info "Ports: $($ports[0]) (this computer), $($ports[1]) (HTTPS for phones)"
+# Images / videos uploaded on the Overview page are saved straight into this folder of the host (mounted into the container).
+$uploadDir = Get-EnvValue 'UPLOAD_HOST_DIR'
+if (-not $uploadDir) { $uploadDir = Join-Path $env:USERPROFILE 'Documents\virtual_cam' }
+New-Item -ItemType Directory -Force -Path $uploadDir | Out-Null
+Set-EnvValue 'UPLOAD_HOST_DIR' $uploadDir
+Info "Uploads: $uploadDir"
 
 Step 'Choosing how to run YOLO: NVIDIA GPU or CPU'
 $mode = 'cpu'

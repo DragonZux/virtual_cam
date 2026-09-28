@@ -5,6 +5,8 @@ __pycache__/
 .cam/
 .env
 backend/data/*
+# Ảnh / video tải lên khi chạy Docker không đặt UPLOAD_HOST_DIR
+/uploads/
 !backend/data/.gitkeep
 frontend/tsconfig.tsbuildinfo
 # Model tải về (setup.bat / ultralytics)
