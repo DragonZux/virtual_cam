@@ -1,0 +1,133 @@
+# Virtual Cam
+
+Chỉ ngón trỏ hoặc chiếu chấm laser vào vật thể trước camera → web hiện tên vật thể (YOLO26 segmentation). Chế độ Chỉ tay dùng MediaPipe Hand Landmarker; chế độ Laser dùng OpenCV tìm điểm sáng đỏ/xanh lá. Mỗi người dùng camera trên thiết bị của chính mình; máy chủ (GPU) nhận diện chung cho mọi trình duyệt.
+
+## Chọn vật thể bằng laser
+
+1. Mở web, chọn **Laser** phía trên khung camera (hoặc trong Cài đặt → Nhận diện).
+2. Chọn **Laser đỏ** hoặc **Laser xanh lá** đúng với bút đang dùng, bật camera.
+3. Trong Cài đặt, bật các loại vật thể cần nhận diện. Mặc định chỉ có laptop, mouse, keyboard; muốn chọn cốc/chai… cần bật thêm.
+4. Chiếu chấm laser lên vật thể để camera nhìn thấy cả vật thể lẫn chấm sáng. Giữ yên theo thời gian xác nhận; tên, viền vật thể, lịch sử và đọc tên hoạt động như chế độ chỉ tay.
+5. Nếu chưa thấy điểm, thử đưa vật thể gần camera hơn hoặc chỉnh **Ngưỡng sáng của laser**. Chọn **Chỉ tay** để quay lại cách cũ.
+
+Không cần tải model laser riêng. `backend/services/laser.py` lọc màu HSV, độ sáng, tương phản cục bộ và hình dạng điểm; `services/pointing.py` đối chiếu điểm với mask YOLO, ưu tiên vật nhỏ chứa điểm khi mask chồng nhau. Sai số mép laser chỉ 4px ở khung cạnh dài 640px (tăng theo độ phân giải), độc lập vùng chấp nhận ngón tay. Khi có nhiều điểm sáng tương tự, bộ dò trả về không có laser. Backend không giữ trạng thái laser giữa các trình duyệt.
+
+Laser gửi JPEG cạnh dài tối đa 1280px, chất lượng 0.94 để giữ chấm nhỏ; chỉ tay giữ 640px/0.82. Chế độ laser bỏ qua suy luận MediaPipe cho từng khung, vẫn dùng YOLO hiện tại. Chuyển chế độ/màu/ngưỡng sáng sẽ huỷ khung đang chờ và đặt lại xác nhận. Cài đặt lưu riêng trên trình duyệt.
+
+Giới hạn: đây là bộ dò thị giác theo màu/độ sáng, không phải mô hình học máy chuyên nhận diện laser. Đèn LED, phản xạ cùng màu, nền sáng hoặc chấm trắng mất hết màu có thể gây nhầm/bỏ sót. Chỉ gọi tên các lớp YOLO hỗ trợ và đang bật; không nhận diện mọi vật phẩm hay tên sản phẩm cụ thể. Các test ảnh tổng hợp/JPEG không thay thế thử nghiệm với camera và laser thật.
+
+Tham khảo: [Laser-Dot-Detector](https://github.com/YuxueYang1204/Laser-Dot-Detector) có bộ dò với OpenCV/PyTorch/scikit-learn và checkpoint; [python-laser-tracker](https://github.com/bradmontgomery/python-laser-tracker) minh hoạ lọc HSV (mã Python 2 cũ). Bản web dùng bộ dò OpenCV riêng, không nạp checkpoint từ các kho này. Dự án cũng đã có `segment.py` thử laser đỏ trên desktop Linux; tính năng ở đây tích hợp vào web React/FastAPI dùng chung với chỉ tay.
+
+API `POST /api/vision/frame` thêm query `pointer_mode=hand|laser` (mặc định `hand`), `laser_color=red|green` (mặc định `red`), `laser_brightness=160..250` (mặc định `200`). Response thêm `pointer_mode` và `laser: {point: [x,y], color, score} | null`; `score` là điểm xếp hạng, không phải xác suất. `tip` chỉ dành cho ngón tay; trong chế độ laser, `hand_detected=false`, `landmarks=[]`, `tip=null`.
+
+```
+virtual_cam/
+├── backend/            FastAPI: nhận khung JPEG → bàn tay + vật thể được chỉ (YOLO GPU + MediaPipe CPU chạy song song)
+├── frontend/           React 19 + TypeScript + Vite + Ant Design + Redux Toolkit / redux-observable
+├── finger_select.py    Bản desktop (cửa sổ OpenCV, Logitech C930e /dev/video3 trên Linux, bắt buộc GPU) — độc lập với web
+├── hand_landmarker.task, yolo26*-seg.pt   Model (web mặc định yolo26m-seg.pt, finger_select.py dùng yolo26l-seg.pt; start_docker.bat tự tải)
+├── Dockerfile, docker-compose.yml   Một container: web + API + GPU (docker-compose.cpu.yml cho máy không GPU)
+├── start_docker.bat / start.ps1   Build + chạy Docker tự theo máy
+├── run_web.bat         Chạy web trên Windows không cần Docker
+└── setup.bat           Tạo môi trường Python .cam + build giao diện
+```
+
+## Tính năng
+
+- **Tổng quan**: camera trực tiếp với khung xương bàn tay, vòng “giữ để xác nhận” quanh đầu ngón trỏ, viền vật thể đang chọn và khung các vật thể khác; FPS, trạng thái bàn tay, số vật thể, số lượt chọn; chụp ảnh khung hình, toàn màn hình, phím tắt (Space tạm dừng, S chụp ảnh, F toàn màn hình). Tab bị ẩn thì tự ngừng gửi khung.
+- **Lịch sử**: thống kê phiên (tổng lượt, vật thể chọn nhiều nhất, độ tin cậy trung bình, thời gian phiên), bảng lượt chọn, xuất CSV mở được bằng Excel.
+- **Cài đặt** (lưu trên từng trình duyệt): chọn vật thể trong 79 lớp COCO (tìm không dấu), ngưỡng tin cậy, vùng chấp nhận quanh đầu ngón tay, thời gian giữ để xác nhận, lớp hiển thị, chế độ gương, đọc tên vật thể bằng giọng nói, địa chỉ cho điện thoại.
+- **Hướng dẫn**, giao diện **tiếng Việt / English**, dùng được trên điện thoại (HTTPS trong mạng LAN).
+
+## Chạy bằng Docker (một container, tự chọn GPU / CPU theo máy)
+
+Bấm đúp **`start_docker.bat`** (hoặc `powershell -ExecutionPolicy Bypass -File .\start.ps1`). Script tự:
+
+1. Bật Docker Desktop nếu chưa chạy; tải `hand_landmarker.task` / model YOLO trong `YOLO_MODEL` (mặc định `yolo26m-seg.pt`) nếu thiếu.
+2. Lấy IP LAN (cho điện thoại) và chọn cổng trống (mặc định 8032/8033, trùng thì lấy cặp khác) → ghi `.env`.
+3. Dò GPU: có NVIDIA + Docker dùng được GPU → PyTorch CUDA (`cu128`…), không thì CPU (`docker-compose.cpu.yml`, ảnh YOLO 480px).
+4. Kiểm dung lượng ổ chứa dữ liệu Docker (build đầy đủ bản GPU cần ~20 GB, chỉ đổi code ~3 GB) và RAM trống trước khi build.
+5. Build, chạy, chờ bộ nhận diện sẵn sàng, in địa chỉ và mở trình duyệt.
+
+Tham số: `-Cpu` (ép CPU), `-PublicHost 192.168.1.10`, `-ImageSize 480`, `-Force` (bỏ qua kiểm tra dung lượng / RAM), `-NoBrowser`. Chạy lại bao nhiêu lần cũng được (sau khi sửa code chỉ build lại phần code, vài phút). Sau khi script đã ghi `.env`, lệnh tay `docker compose up -d --build` / `docker compose down` / `docker compose logs -f` cũng dùng đúng chế độ đó.
+
+| Địa chỉ | Dùng cho |
+|---|---|
+| http://localhost:8032 | Máy chạy Docker |
+| https://`LAN_IP`:8033 | Điện thoại / máy khác cùng Wi-Fi (chứng chỉ tự ký: chọn *Nâng cao → Tiếp tục*) |
+| http://localhost:8032/docs | Tài liệu API (Swagger) |
+
+Một image duy nhất (`Dockerfile` ở thư mục gốc): bước 1 build giao diện React bằng Node, bước 2 là Python + PyTorch CUDA (`cu128`) + FastAPI; `backend/serve.py` phục vụ cả web lẫn API và cổng HTTPS cho điện thoại. `docker-compose.yml` xin GPU NVIDIA (cần NVIDIA driver + Docker Desktop có WSL2 GPU); máy không có GPU dùng thêm `docker-compose.cpu.yml` (script tự chọn). Model mount từ thư mục gốc (`hand_landmarker.task` và model trong `YOLO_MODEL` của `.env`).
+
+Image ~12 GB (thư viện CUDA): trước khi build xem ổ chứa dữ liệu Docker (máy này là `G:\DockerDesktopWSL`) còn ≥ 20 GB và đóng bớt ứng dụng nặng. Dockerfile dùng cache mount cho pip nên build lại sau khi hỏng không phải tải lại wheel.
+
+## Chạy trực tiếp trên Windows (không Docker)
+
+```bat
+setup.bat              :: tạo .cam, cài thư viện (CUDA nếu có GPU), tải model, build giao diện
+run_web.bat            :: http://localhost:8030 — tự mở trình duyệt
+run_web.bat --lan      :: thêm https://<IP LAN>:8031 cho điện thoại (chứng chỉ tự ký trong backend/data/certs)
+```
+
+Lần đầu mở cổng LAN, Windows Firewall hỏi quyền cho Python — chọn *Allow* cho mạng Private.
+
+## Phát triển
+
+```bash
+cd backend
+..\.cam\Scripts\python.exe -m uvicorn main:app --reload --port 8030    # http://localhost:8030/docs
+
+cd frontend
+npm install
+npm run dev                  # http://localhost:5180 (proxy /api → :8030)
+```
+
+Sau khi sửa frontend, chạy `npm run build` để `run_web.bat` / backend phục vụ bản mới (Docker: `docker compose up -d --build`).
+
+## Cổng
+
+| Cổng | Dùng cho |
+|---|---|
+| 8030 / 8031 | `run_web.bat` (HTTP / HTTPS LAN) |
+| 8032 / 8033 | Docker (HTTP / HTTPS LAN, map vào 8030 / 8031 trong container) |
+| 5180 | Vite dev |
+
+Đã chọn để không trùng các dự án khác trên máy (8000, 8010, 8020, 8080, 8090, 8443, 8888, 3000–3333, 5173, 27017…). Đổi được qua `.env` (Docker: `WEB_PORT`, `LAN_HTTPS_PORT`; backend: `PORT`, `LAN_PORT`).
+
+## Kiểm thử
+
+```bash
+cd backend && ..\.cam\Scripts\python.exe -m pytest        # API, chọn vật thể, chứng chỉ, phục vụ SPA (không cần model)
+cd backend && ..\.cam\Scripts\python.exe -m pytest -m model   # chạy YOLO + MediaPipe thật (~20 giây)
+cd frontend && npm run lint && npm test && npm run build
+```
+
+## Kiến trúc & quy ước
+
+Backend: `main.py` → `routers/vision.py` (HTTP: `GET /api/vision/status`, `POST /api/vision/frame` nhận ảnh JPEG thô + `targets` / `conf` / `tolerance`) → `services/detector.py` (một model dùng chung, khoá một khung một lúc, bàn tay chạy CPU song song YOLO trên GPU) → `services/pointing.py` (cùng luật với `find_object_at_point` của `finger_select.py`: bỏ vật mà đầu ngón trỏ nằm ngoài mép quá `tolerance`, còn lại chọn vật đầu ngón tay nằm sâu bên trong nhất, bằng nhau thì vật nhỏ hơn). Schema ở `models.py`, cấu hình `core/config.py` (pydantic-settings, `.env`). `serve.py` chạy HTTP + HTTPS LAN trong một tiến trình và phục vụ luôn `frontend/dist`.
+
+Frontend: `Services/VisionService.ts` (RxJS ajax qua `HttpClient`, không axios/fetch) → `store/<feature>/{Slice,Epics,Selector}` (`vision`, `history`, `setting`) → `page/<Feature>`. Component không gọi API trực tiếp; mọi text qua `t()` (vi/en trong `translations/`); style bằng `.module.less`, import qua `@/`.
+
+Luồng khung hình: `useFrameLoop` chụp khi camera có khung mới (`requestVideoFrameCallback`, có dự phòng cho trình duyệt cũ), thu xuống cạnh dài tối đa 640px (chỉ tay) hoặc 1280px (laser) và nén JPEG → `analyzeFrameRequest` → epic gọi API → `advanceTracking` (giữ để xác nhận, giữ tên thêm 500 ms) → `addSelection`. Tối đa hai request đang chờ, nhịp gửi theo thời gian xử lý máy chủ; bỏ phản hồi cũ, thử lại có khoảng nghỉ khi máy chủ bận. Tạm dừng, đổi camera/chế độ gương/chế độ chỉ/màu hoặc ngưỡng laser, mất kết nối hoặc ẩn tab sẽ huỷ vòng gửi và bỏ cả JPEG chưa nén xong của vòng cũ.
+
+Video hiển thị trực tiếp theo tốc độ camera. `useOverlay` vẽ bàn tay và vòng tiến độ theo nhịp màn hình, nội suy ngắn giữa các kết quả; viền/nhãn vật thể ở canvas riêng, chỉ vẽ lại khi thay đổi. Nội suy chỉ tác động hình hiển thị, không đổi quyết định chọn vật thể; kết quả quá cũ tự ẩn. Chụp ảnh ghép video và hai lớp vẽ đang thấy, cạnh dài tối đa 1280px. FPS trên bảng là tốc độ **nhận diện**, không phải FPS video.
+
+Backend giữ nguyên model, kích thước suy luận YOLO và độ chính xác tính toán. Chỉ chuyển bounding box về CPU một lần; mask chỉ lấy đường viền khi có điểm chỉ (ngón trỏ hoặc laser) ở gần vật thể, kể cả sai số mép tương ứng. Luật chọn bằng ngón tay được giữ nguyên; laser ưu tiên mask nhỏ nhất chứa điểm.
+
+Kiểm tra trình duyệt dùng camera giả lập, không mở webcam thật: `cd frontend && npm test` (Windows dùng Chrome đã cài; Linux cần `npx playwright install chromium`). Đo luồng camera với máy chủ đang chạy: `node scripts/benchmark-camera.mjs http://127.0.0.1:8032`. Chạy phép đo riêng, tránh cùng lúc chạy test model/build để số đo CPU/GPU không bị nhiễu.
+
+Khung hình chỉ dùng để nhận diện rồi bỏ — không lưu ảnh/video. Cài đặt nằm trong `localStorage`, lịch sử chỉ trong tab (tải lại trang là mất).
+
+## Đồng bộ với finger_select.py
+
+Web không import `finger_select.py`; các giá trị tương ứng nằm ở:
+
+| `finger_select.py` | Web |
+|---|---|
+| `YOLO_MODEL`, `IMG_SIZE` | `YOLO_MODEL`, `IMAGE_SIZE` trong `.env` (backend: `core/config.py`) |
+| `CONF`, `FINGER_TOLERANCE_PX`, `TARGET_NAMES` | `DEFAULT_CONFIDENCE`, `DEFAULT_TOLERANCE_PX`, `DEFAULT_TARGETS` (mỗi trình duyệt chỉnh lại được ở Cài đặt) |
+| `find_object_at_point`, `get_index_tip` | `backend/services/pointing.py` |
+| `HOLD_TIME` | `HOLD_MS` trong `frontend/src/common/constants.ts` |
+| `draw_hand`, viền, tên vật thể | `frontend/src/utils/overlay.ts` (vẽ trên trình duyệt) |
+
+Khác biệt cố ý: MediaPipe ở web chạy chế độ IMAGE (không tracking) vì một máy chủ phục vụ nhiều trình duyệt cùng lúc; camera là của từng trình duyệt thay cho `CAMERA`.
