@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
 from core.logging import logger
 from core.spa import mount_frontend
-from routers import media, vision
+from routers import media, models, vision
 from services.detector import Detector
 
 # CSP cho trang React (không áp cho /api, /docs): antd chèn <style> lúc chạy nên style cần 'unsafe-inline'
@@ -63,6 +63,7 @@ async def security_headers(request: Request, call_next):
 API_PREFIX = "/api"
 app.include_router(vision.router, prefix=API_PREFIX)
 app.include_router(media.router, prefix=API_PREFIX)
+app.include_router(models.router, prefix=API_PREFIX)
 
 
 @app.get("/api", tags=["Health"])

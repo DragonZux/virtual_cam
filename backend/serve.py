@@ -39,6 +39,8 @@ def build_configs(args: argparse.Namespace) -> list[uvicorn.Config]:
     # Mỗi khung hình là một request → tắt access log cho khỏi ngập console
     common = dict(app=app, log_level=settings.LOG_LEVEL.lower(), access_log=False)
     configs = [uvicorn.Config(host=args.host, port=args.port, **common)]
+    # Cổng HTTP của chính máy: chỉ request tới cổng này được quản lý mô hình (MODEL_ADMIN=local)
+    app.state.admin_port = args.port
     if args.lan:
         # Trong Docker, IP thật của máy host đến từ PUBLIC_URLS (LAN_IP trong .env) → ghi vào chứng chỉ
         public_hosts = [urlsplit(url).hostname for url in settings.public_urls]
