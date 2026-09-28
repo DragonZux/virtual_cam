@@ -22,7 +22,8 @@ services:
       UPLOAD_DIR_DISPLAY: ${UPLOAD_HOST_DIR:-./uploads}
     ports:
       # Chỉ IPv4: cổng IPv6 của Docker Desktop chậm hơn ~30 ms mỗi request (trình duyệt tự dùng 127.0.0.1)
-      - "0.0.0.0:${WEB_PORT:-8032}:8030"
+      # HTTP chỉ cho chính máy này: cổng này được quản lý mô hình (MODEL_ADMIN=local); máy khác dùng HTTPS bên dưới
+      - "127.0.0.1:${WEB_PORT:-8032}:8030"
       - "0.0.0.0:${LAN_HTTPS_PORT:-8033}:8031"
     volumes:
       # Model dùng chung với bản chạy trên máy (setup.bat tải hand_landmarker.task)
