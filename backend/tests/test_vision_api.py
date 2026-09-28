@@ -76,7 +76,7 @@ def test_frame_rejects_oversized_body(client):
 def test_frame_uses_server_defaults_when_browser_sends_none(client, fake_models):
     assert post_frame(client).status_code == 200
     options = fake_models.calls[-1]
-    assert options.class_ids == [63, 64, 66]
+    assert options.targets == ("laptop", "mouse", "keyboard")
     assert options.confidence == settings.DEFAULT_CONFIDENCE
     assert options.tolerance == settings.DEFAULT_TOLERANCE_PX
 
@@ -84,7 +84,7 @@ def test_frame_uses_server_defaults_when_browser_sends_none(client, fake_models)
 def test_frame_applies_browser_options(client, fake_models):
     assert post_frame(client, params={"targets": "cup,laptop,cup", "conf": 0.5, "tolerance": 0}).status_code == 200
     options = fake_models.calls[-1]
-    assert (options.class_ids, options.confidence, options.tolerance) == ([41, 63], 0.5, 0)
+    assert (options.targets, options.confidence, options.tolerance) == (("cup", "laptop"), 0.5, 0)
 
 
 def test_frame_selects_object_under_fingertip(client, fake_models):

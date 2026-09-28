@@ -90,7 +90,7 @@ def test_laser_selects_small_containing_object_and_never_distant_background():
 
 def test_api_runs_laser_without_hand_and_keeps_mask_indices(client, detector, monkeypatch):
     raw = model_result()
-    monkeypatch.setattr(detector, "_model", SimpleNamespace(predict=lambda *a, **kw: [raw]))
+    monkeypatch.setattr(detector.models[0], "model", SimpleNamespace(predict=lambda *a, **kw: [raw]))
     monkeypatch.setattr(detector, "_run_models", Detector._run_models.__get__(detector))
 
     def no_hand(*args):

@@ -36,6 +36,34 @@ class DetectionDefaults(BaseModel):
     tolerance: int
 
 
+class ModelTask(str, Enum):
+    segment = "segment"
+    detect = "detect"
+
+
+class ModelInfo(BaseModel):
+    """Một mô hình YOLO: mô hình mặc định (YOLO_MODEL) hoặc file .pt tải thêm ở Cài đặt."""
+
+    id: str = Field(description="Tên file .pt")
+    builtin: bool = Field(description="Mô hình mặc định của máy chủ (không xoá được)")
+    enabled: bool
+    task: ModelTask = Field(description="segment: có viền vật thể; detect: chỉ có khung, viền lấy theo khung")
+    classes: list[str] = Field(default_factory=list, description="Lớp nhận diện được (không có 'person')")
+    size: int = Field(0, description="Dung lượng file (byte)")
+    error: str | None = Field(None, description="Lý do không nạp được")
+
+
+class ModelList(BaseModel):
+    can_manage: bool = Field(description="Trình duyệt này được tải / bật tắt / xoá mô hình (MODEL_ADMIN)")
+    folder: str = Field(description="Thư mục lưu mô hình tải thêm")
+    max_bytes: int
+    items: list[ModelInfo]
+
+
+class ModelUpdate(BaseModel):
+    enabled: bool
+
+
 class StatusOut(BaseModel):
     phase: DetectorPhase
     error: str | None = Field(None, description="Lý do bộ nhận diện không khởi động được")
@@ -45,6 +73,7 @@ class StatusOut(BaseModel):
     classes: list[str] = Field(default_factory=list, description="Lớp chọn làm mục tiêu được (không có 'person')")
     defaults: DetectionDefaults
     share_urls: list[str] = Field(default_factory=list, description="Địa chỉ HTTPS cho thiết bị khác (serve.py --lan)")
+    models: list[ModelInfo] = Field(default_factory=list, description="Các mô hình YOLO; classes là hợp của mô hình đang bật")
 
 
 class Point(BaseModel):

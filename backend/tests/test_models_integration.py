@@ -29,11 +29,7 @@ def test_real_models_analyze_frame():
         frame = cv2.imread(str(Path(ultralytics.__file__).parent / "assets" / "bus.jpg"))
         assert frame is not None
         frame = cv2.resize(frame, (480, 640))
-        raw = detector._model.predict(
-            frame, classes=[detector.classes["bus"]], conf=0.3,
-            imgsz=settings.IMAGE_SIZE, device=0 if detector._gpu else "cpu",
-            quantize=16 if detector._gpu else 32, verbose=False,
-        )[0]
+        raw = detector._predict(detector.models[0], frame, ["bus"], 0.3)
         assert raw.masks is not None
         all_polygons = raw.cpu().masks.xy
         for x, y in [(240, 320), (470, 630), (40, 400)]:
