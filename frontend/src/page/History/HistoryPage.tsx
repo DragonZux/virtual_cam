@@ -43,7 +43,7 @@ export const HistoryPage = () => {
             value={stats.total}
             hint={t("history.totalNote")}
             icon={<Hash size={18} />}
-            tone="mint"
+            tone="brand"
           />
         </Col>
         <Col xs={12} lg={6}>
@@ -53,7 +53,7 @@ export const HistoryPage = () => {
             value={stats.topName ? objectLabel(t, stats.topName) : "—"}
             hint={stats.topName ? t("history.topCount", { count: stats.topCount }) : " "}
             icon={<Trophy size={18} />}
-            tone="amber"
+            tone="dark"
           />
         </Col>
         <Col xs={12} lg={6}>

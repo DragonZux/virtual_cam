@@ -6,6 +6,7 @@ import { ObjectIcon } from "@/components";
 import { useAppSelector } from "@/store/hooks";
 import { getPreferences } from "@/store/setting";
 import { getTracking } from "@/store/vision";
+import { BRAND } from "@/theme/antdTheme";
 import { objectLabel } from "@/utils/format";
 import styles from "./live.module.less";
 
@@ -37,7 +38,7 @@ export const SelectionCard = () => {
           <span>{t("selection.confidence")}</span>
           <strong>{held ? `${confidence}%` : "—"}</strong>
         </div>
-        <Progress percent={confidence} showInfo={false} size="small" strokeColor="#3ba78a" />
+        <Progress percent={confidence} showInfo={false} size="small" strokeColor={BRAND.primary} />
       </div>
     </Card>
   );

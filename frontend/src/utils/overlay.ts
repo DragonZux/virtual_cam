@@ -1,5 +1,6 @@
 import { HAND_CONNECTIONS } from "@/common/constants";
 import type { FrameResult, Point, SelectedObject } from "@/common/types";
+import { BRAND } from "@/theme/antdTheme";
 
 export interface OverlayOptions {
   showHand: boolean;
@@ -13,15 +14,15 @@ export interface OverlayOptions {
 }
 
 const COLORS = {
-  hand: "#64e0b0",
-  joint: "#f4fffa",
+  hand: "#ffa45c",
+  joint: "#fff7f0",
   ring: "rgba(255, 255, 255, 0.35)",
   pending: "#ffd166",
-  selected: "#47d69b",
-  selectedFill: "rgba(71, 214, 155, 0.2)",
-  box: "rgba(236, 244, 241, 0.8)",
-  chip: "rgba(16, 36, 34, 0.82)",
-  chipText: "#f3f8f6",
+  selected: BRAND.primary,
+  selectedFill: "rgba(251, 128, 32, 0.2)",
+  box: "rgba(242, 242, 242, 0.8)",
+  chip: "rgba(51, 51, 51, 0.85)",
+  chipText: "#ffffff",
 };
 
 type Ctx = CanvasRenderingContext2D;

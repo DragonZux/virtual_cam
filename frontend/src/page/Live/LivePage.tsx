@@ -37,7 +37,7 @@ export const LivePage = ({ visible }: Props) => {
             suffix="FPS"
             hint={t("metrics.fpsNote")}
             icon={<Activity size={18} />}
-            tone="mint"
+            tone="brand"
           />
         </Col>
         <Col xs={12} lg={6}>
@@ -56,7 +56,7 @@ export const LivePage = ({ visible }: Props) => {
             value={cameraOn && result ? result.detections.length : "—"}
             hint={t("metrics.objectsNote")}
             icon={<Target size={18} />}
-            tone="amber"
+            tone="dark"
           />
         </Col>
         <Col xs={12} lg={6}>

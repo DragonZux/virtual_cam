@@ -3,7 +3,7 @@
 .card {
   height: 100%;
   border-color: @border;
-  box-shadow: 0 3px 7px rgba(34, 58, 58, 0.02);
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.03);
 
   :global(.ant-card-body) {
     padding: 18px 18px 16px;
@@ -22,7 +22,7 @@
 
 .title {
   font-size: 12px;
-  color: #7f8e98;
+  color: @muted;
 }
 
 .value {
@@ -37,7 +37,7 @@
     font-size: 11px;
     margin-left: 7px;
     font-weight: 500;
-    color: #8d9aa2;
+    color: @muted;
     letter-spacing: 0;
   }
 }
@@ -51,7 +51,7 @@
 .hint {
   display: block;
   font-size: 11px;
-  color: #95a1a8;
+  color: @muted-light;
 }
 
 .icon {
@@ -63,17 +63,17 @@
   flex-shrink: 0;
 }
 
-.mint {
-  background: #eaf6ef;
-  color: #38947b;
+.brand {
+  background: @primary-soft;
+  color: @primary;
 }
 .blue {
   background: #eef3fd;
   color: #6a8fcb;
 }
-.amber {
-  background: #fff6e8;
-  color: #c69b51;
+.dark {
+  background: @fill;
+  color: @text-2;
 }
 .purple {
   background: #f3f0fc;

@@ -32,7 +32,7 @@
   font-size: 14px;
 
   svg {
-    color: #8e9ca4;
+    color: @muted;
   }
 }
 
@@ -49,14 +49,14 @@
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  background: @stage radial-gradient(ellipse at 50% 40%, #233c3b, transparent 75%);
+  background: @stage radial-gradient(ellipse at 50% 40%, @stage-glow, transparent 75%);
 
   &:fullscreen {
     border-radius: 0;
     width: 100vw;
     height: 100vh;
     aspect-ratio: auto;
-    background: #101b1c;
+    background: @stage-deep;
   }
 }
 
@@ -96,7 +96,7 @@
   padding: 36px;
   text-align: center;
   color: @stage-ink;
-  background: rgba(20, 37, 38, 0.93);
+  background: fade(@stage, 93%);
 
   strong {
     font-weight: 500;
@@ -106,7 +106,7 @@
     max-width: 380px;
     font-size: 13px;
     line-height: 1.8;
-    color: #92aaa5;
+    color: @muted-light;
     margin: 10px 0 18px;
   }
 }
@@ -116,10 +116,10 @@
   place-items: center;
   width: 64px;
   height: 64px;
-  border: 1px solid #47625f;
+  border: 1px solid @text-2;
   border-radius: 20px;
   margin-bottom: 22px;
-  color: #8eafa6;
+  color: @muted-light;
 }
 
 .badges {
@@ -135,10 +135,10 @@
 
 .liveBadge,
 .resolutionBadge {
-  background: rgba(16, 36, 34, 0.74);
+  background: fade(@stage, 74%);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.13);
-  color: #f3f8f6;
+  color: @fill-soft;
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 1px;
@@ -151,21 +151,21 @@
 
 .resolutionBadge {
   letter-spacing: 0.4px;
-  color: #c1cfcb;
+  color: @border-strong;
 }
 
 .badgeDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #7e9891;
+  background: @muted;
   display: inline-block;
   flex-shrink: 0;
 }
 
 .isLive .badgeDot,
 .dotLive {
-  background: #5cedab;
+  background: @success;
 }
 
 .caption {
@@ -176,9 +176,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #e4efeb;
+  color: @stage-ink;
   font-size: 11px;
-  background: rgba(16, 36, 34, 0.73);
+  background: fade(@stage, 73%);
   padding: 8px 11px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
@@ -188,7 +188,7 @@
 .frameCorner {
   width: 11px;
   height: 11px;
-  border: 1px solid #8cb8a4;
+  border: 1px solid @primary;
   border-radius: 3px;
 }
 
@@ -205,7 +205,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #8e9ca4;
+  color: @muted;
   font-size: 12px;
 }
 
@@ -216,7 +216,7 @@
   flex-wrap: wrap;
 
   :global(.ant-btn) {
-    color: #6f818a;
+    color: @text-3;
   }
 }
 
@@ -224,7 +224,7 @@
 .tinyLabel {
   font-size: 9px;
   letter-spacing: 0.7px;
-  color: #9ba7ac;
+  color: @muted-light;
 }
 
 .selectionBody {
@@ -240,7 +240,7 @@
   p {
     font-size: 12px;
     line-height: 1.7;
-    color: #929fa7;
+    color: @muted;
     min-height: 40px;
     margin: 8px 0 20px;
   }
@@ -251,15 +251,15 @@
   width: 66px;
   height: 66px;
   border-radius: 20px;
-  background: #eff6f2;
-  color: #76a494;
+  background: @primary-soft;
+  color: @primary;
   display: grid;
   place-items: center;
-  border: 1px solid #e3eee7;
+  border: 1px solid @primary-soft-strong;
 }
 
 .kicker {
-  color: #8da598;
+  color: @muted;
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 1.3px;
@@ -269,7 +269,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  color: #8d9ba3;
+  color: @muted;
 
   strong {
     color: @primary;
@@ -278,11 +278,11 @@
 }
 
 .hasSelection {
-  border-color: #a4d4c2 !important;
+  border-color: @primary-border !important;
 
   .selectedIcon {
     color: @primary;
-    background: #dcf2e6;
+    background: @primary-soft-strong;
   }
   .kicker {
     color: @primary;
@@ -292,8 +292,8 @@
 /* ===== Nhóm vật thể ===== */
 .countBadge {
   font-size: 10px;
-  color: #8f9ba1;
-  background: #f1f4f5;
+  color: @muted;
+  background: @fill;
   padding: 3px 7px;
   border-radius: 5px;
 }
@@ -309,13 +309,13 @@
   gap: 10px;
   padding: 10px 2px;
   font-size: 12px;
-  color: #71828d;
+  color: @text-3;
 
   & + & {
-    border-top: 1px solid #f1f4f5;
+    border-top: 1px solid @fill;
   }
   svg {
-    color: #9aa7ad;
+    color: @muted-light;
     flex-shrink: 0;
   }
 }
@@ -323,7 +323,7 @@
 .targetCount {
   margin-left: auto;
   font-size: 11px;
-  color: #a6b1b6;
+  color: @muted-light;
   white-space: nowrap;
 }
 
@@ -345,7 +345,7 @@
 /* ===== Lựa chọn gần đây ===== */
 .softLabel {
   font-size: 11px;
-  color: #9ca7ac;
+  color: @muted-light;
   font-weight: 400;
   margin-left: 8px;
 }
@@ -364,7 +364,7 @@
   padding: 12px 4px;
 
   & + & {
-    border-top: 1px solid #f1f4f5;
+    border-top: 1px solid @fill;
   }
 }
 
@@ -372,8 +372,8 @@
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: #eef6f1;
-  color: #6e9b86;
+  background: @primary-soft;
+  color: @primary;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -390,20 +390,20 @@
 
 .eventSub {
   font-size: 11px;
-  color: #9ca8ae;
+  color: @muted-light;
   margin-top: 2px;
 }
 
 .eventTime {
   margin-left: auto;
-  color: #8d9da5;
+  color: @muted;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
 .eventConfidence {
   color: @primary;
-  background: #eef7f1;
+  background: @primary-soft;
   border-radius: 6px;
   padding: 4px 8px;
   font-size: 12px;
@@ -415,7 +415,7 @@
   gap: 12px;
   align-items: center;
   justify-content: center;
-  color: #99a5ad;
+  color: @muted-light;
   font-size: 13px;
   padding: 26px 16px;
   text-align: center;

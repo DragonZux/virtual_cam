@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import styles from "./statCard.module.less";
 
-export type StatTone = "mint" | "blue" | "amber" | "purple";
+export type StatTone = "brand" | "blue" | "dark" | "purple";
 
 interface Props {
   title: ReactNode;

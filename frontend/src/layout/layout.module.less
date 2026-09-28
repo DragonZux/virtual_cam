@@ -67,7 +67,7 @@
   font-size: 9px;
   font-weight: 650;
   letter-spacing: 1.3px;
-  color: #98a3ab;
+  color: @muted-light;
   margin: 0 12px 14px;
 }
 
@@ -75,7 +75,7 @@
   border-inline-end: none !important;
 
   :global(.ant-menu-item) {
-    color: #77848d;
+    color: @text-3;
     font-size: 13px;
   }
   :global(.ant-menu-item-selected) {
@@ -93,7 +93,7 @@
     font-weight: 600;
   }
   p {
-    color: #8a969d;
+    color: @muted;
     font-size: 12px;
     line-height: 1.8;
     margin: 8px 0 18px;
@@ -102,13 +102,13 @@
 
 .localTag {
   font-size: 10px;
-  color: #8d99a1;
+  color: @muted;
   display: flex;
   align-items: center;
   gap: 7px;
 
   .dot {
-    background: #65b49b;
+    background: @success;
   }
 }
 
@@ -116,7 +116,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #a1aeb4;
+  background: @muted-light;
   display: inline-block;
   flex-shrink: 0;
 }
@@ -137,7 +137,7 @@
 
 .breadcrumb {
   font-size: 12px;
-  color: #8c979e;
+  color: @muted;
   display: flex;
   gap: 14px;
   white-space: nowrap;
@@ -145,10 +145,10 @@
 
   strong {
     font-weight: 500;
-    color: #475861;
+    color: @text-2;
   }
   span {
-    color: #cad0d3;
+    color: @border-strong;
   }
 }
 
@@ -160,7 +160,7 @@
 
 .date {
   font-size: 11px;
-  color: #89959e;
+  color: @muted;
 }
 
 .avatar {
@@ -168,9 +168,9 @@
   height: 31px;
   display: grid;
   place-items: center;
-  background: #e8eeeb;
+  background: @fill;
   border: 3px solid #fff;
-  outline: 1px solid #e4eae7;
+  outline: 1px solid @border;
   border-radius: 50%;
   font-size: 11px;
   color: @primary;
@@ -199,7 +199,7 @@
   }
   p {
     font-size: 13px;
-    color: #88959e;
+    color: @muted;
     margin: 0;
     line-height: 1.7;
   }
@@ -217,30 +217,30 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #dfe8e4;
+  border: 1px solid @border;
   background: #fff;
   padding: 8px 13px;
   border-radius: 30px;
   font-size: 12px;
   white-space: nowrap;
-  color: #71837a;
+  color: @text-3;
 }
 
 .live {
-  background: #edf8f2;
-  color: @primary;
-  border-color: #daeee1;
+  background: @success-soft;
+  color: @success;
+  border-color: @success-border;
 
   .dot {
-    background: #27a67b;
-    box-shadow: 0 0 0 3px #dbf2e6;
+    background: @success;
+    box-shadow: 0 0 0 3px @success-border;
   }
 }
 
 .error {
   color: @danger;
-  background: #fff5f4;
-  border-color: #f1d9d6;
+  background: @danger-soft;
+  border-color: @danger-border;
 
   .dot {
     background: @danger;
@@ -248,7 +248,7 @@
 }
 
 .neutral {
-  color: #71837a;
+  color: @text-3;
 }
 
 .hidden {
@@ -260,7 +260,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  color: #97a3ab;
+  color: @muted-light;
   font-size: 11px;
   margin-top: 22px;
 }
@@ -273,7 +273,7 @@
   .dot {
     width: 5px;
     height: 5px;
-    background: #87b69f;
+    background: @success;
   }
 }
 
@@ -336,7 +336,7 @@
       justify-content: center;
       gap: 4px;
       border-radius: 9px;
-      color: #77848d;
+      color: @text-3;
       font-size: 10px;
       text-decoration: none;
       text-align: center;
