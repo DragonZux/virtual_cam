@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     # Một khung xử lý tại một thời điểm; trình duyệt khác chờ tối đa bấy nhiêu giây rồi nhận 429
     BUSY_WAIT_SECONDS: float = 0.5
 
+    # Ảnh / video tải lên để thử nhận diện — mặc định Documentsirtual_cam của người chạy máy chủ.
+    # Docker mount thư mục của máy host vào đây; UPLOAD_DIR_DISPLAY là đường dẫn phía host để hiện trên giao diện.
+    UPLOAD_DIR: Path = Path.home() / "Documents" / "virtual_cam"
+    UPLOAD_DIR_DISPLAY: str = ""
+    MAX_UPLOAD_MB: int = Field(500, ge=1)
+
     # Bản build React (npm run build) — backend phục vụ luôn để chạy một cổng; không có thì chỉ chạy API
     FRONTEND_DIST: Path = PROJECT_ROOT / "frontend" / "dist"
 
@@ -62,6 +68,14 @@ class Settings(BaseSettings):
     @property
     def default_targets(self) -> list[str]:
         return [name.strip() for name in self.DEFAULT_TARGETS.split(",") if name.strip()]
+
+    @property
+    def max_upload_bytes(self) -> int:
+        return self.MAX_UPLOAD_MB * 1024 * 1024
+
+    @property
+    def upload_dir_label(self) -> str:
+        return self.UPLOAD_DIR_DISPLAY or str(self.UPLOAD_DIR)
 
     @property
     def yolo_model_path(self) -> Path:

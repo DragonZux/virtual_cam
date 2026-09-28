@@ -80,3 +80,23 @@ class FrameResult(BaseModel):
     detections: list[Detection]
     processing_ms: int
     resolution: FrameSize
+
+
+class MediaKind(str, Enum):
+    image = "image"
+    video = "video"
+
+
+class MediaItem(BaseModel):
+    """Một ảnh / video đã tải lên thư mục UPLOAD_DIR."""
+
+    name: str = Field(description="Tên file trong thư mục lưu (dùng cho GET /media/{name})")
+    kind: MediaKind
+    size: int = Field(description="Dung lượng (byte)")
+    modified: int = Field(description="Thời điểm lưu (epoch ms)")
+
+
+class MediaList(BaseModel):
+    folder: str = Field(description="Thư mục lưu trên máy chủ (đường dẫn phía host khi chạy Docker)")
+    max_bytes: int = Field(description="Dung lượng tối đa mỗi file")
+    items: list[MediaItem]
