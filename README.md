@@ -28,6 +28,19 @@ File tải lên được **lưu thẳng vào `C:\Users\<tên>\Documents\virtual_
 
 Video nên là MP4 (H.264) hoặc WEBM để trình duyệt phát được. API: `GET /api/media` (danh sách, thư mục lưu), `POST /api/media?name=<tên file>` (body là file thô), `GET /api/media/<tên>` (phát lại, hỗ trợ tua).
 
+## Thêm mô hình nhận diện
+
+Cài đặt → **Mô hình nhận diện**: kéo thả file YOLO `.pt` của Ultralytics (mô hình phân đoạn *segment* hoặc phát hiện vật thể *detect*, vd. tự huấn luyện hoặc `yolov8n-oiv7.pt` 600 lớp Open Images). Máy chủ nạp thử, rồi **mọi mô hình đang bật cùng chạy trên mỗi khung**:
+
+- Danh sách vật thể ở Cài đặt / Tổng quan tự cập nhật thành hợp các lớp của các mô hình đang bật (lớp mới nằm ở nhóm "Khác"). Cùng tên lớp — không phân biệt hoa / thường, vd. `laptop` (COCO) và `Laptop` (Open Images) — là một vật thể; hai mô hình cùng thấy một vật thì giữ kết quả tin cậy hơn.
+- Mô hình *detect* không có viền mask: viền vật thể lấy theo khung, luật chọn bằng ngón tay / laser giữ nguyên.
+- Bật / tắt từng mô hình (tắt thì giải phóng GPU, vẫn giữ file; luôn còn ít nhất một mô hình bật), xoá mô hình tải thêm. Trạng thái nhớ trong `models.json`; file `.pt` chép tay vào thư mục cũng được nhận ở lần khởi động sau.
+- File lưu ở `C:\Users\<tên>\Documents\virtual_cam\models` (`CUSTOM_MODEL_DIR`, tối đa `MAX_MODEL_MB` = 500 MB). Mỗi mô hình bật thêm làm mỗi khung chậm thêm.
+
+**An toàn:** file `.pt` là pickle — nạp nó là chạy được mã tuỳ ý trên máy chủ. Vì vậy chỉ **chính máy chạy máy chủ** (mở bằng `http://localhost`) mới thêm / bật tắt / xoá được mô hình (`MODEL_ADMIN=local`); điện thoại / máy khác qua cổng HTTPS LAN chỉ xem. Docker map cổng HTTP về `127.0.0.1` vì lý do này. Chỉ tải lên mô hình từ nguồn tin cậy.
+
+API: `GET /api/models`, `POST /api/models?name=<file>.pt` (body là file thô), `PATCH /api/models/<id>` (`{"enabled": true|false}`), `DELETE /api/models/<id>`; `GET /api/vision/status` có thêm `models`.
+
 ```
 virtual_cam/
 ├── backend/            FastAPI: nhận khung JPEG → bàn tay + vật thể được chỉ (YOLO GPU + MediaPipe CPU chạy song song)
@@ -112,7 +125,7 @@ cd frontend && npm run lint && npm test && npm run build
 
 ## Kiến trúc & quy ước
 
-Backend: `main.py` → `routers/vision.py` (HTTP: `GET /api/vision/status`, `POST /api/vision/frame` nhận ảnh JPEG thô + `targets` / `conf` / `tolerance`) → `services/detector.py` (một model dùng chung, khoá một khung một lúc, bàn tay chạy CPU song song YOLO trên GPU) → `services/pointing.py` (cùng luật với `find_object_at_point` của `finger_select.py`: bỏ vật mà đầu ngón trỏ nằm ngoài mép quá `tolerance`, còn lại chọn vật đầu ngón tay nằm sâu bên trong nhất, bằng nhau thì vật nhỏ hơn). `routers/media.py` + `services/media.py` lưu / liệt kê / phát lại ảnh, video thử trong `UPLOAD_DIR`. Schema ở `models.py`, cấu hình `core/config.py` (pydantic-settings, `.env`). `serve.py` chạy HTTP + HTTPS LAN trong một tiến trình và phục vụ luôn `frontend/dist`.
+Backend: `main.py` → `routers/vision.py` (HTTP: `GET /api/vision/status`, `POST /api/vision/frame` nhận ảnh JPEG thô + `targets` / `conf` / `tolerance`) → `services/detector.py` (một model dùng chung, khoá một khung một lúc, bàn tay chạy CPU song song YOLO trên GPU) → `services/pointing.py` (cùng luật với `find_object_at_point` của `finger_select.py`: bỏ vật mà đầu ngón trỏ nằm ngoài mép quá `tolerance`, còn lại chọn vật đầu ngón tay nằm sâu bên trong nhất, bằng nhau thì vật nhỏ hơn). `routers/models.py` + `services/model_store.py` quản lý mô hình tải thêm (Detector giữ danh sách mô hình, chạy lần lượt trên GPU rồi gộp kết quả). `routers/media.py` + `services/media.py` lưu / liệt kê / phát lại ảnh, video thử trong `UPLOAD_DIR`. Schema ở `models.py`, cấu hình `core/config.py` (pydantic-settings, `.env`). `serve.py` chạy HTTP + HTTPS LAN trong một tiến trình và phục vụ luôn `frontend/dist`.
 
 Frontend: `Services/VisionService.ts` (RxJS ajax qua `HttpClient`, không axios/fetch) → `store/<feature>/{Slice,Epics,Selector}` (`vision`, `history`, `setting`) → `page/<Feature>`. Component không gọi API trực tiếp; mọi text qua `t()` (vi/en trong `translations/`); style bằng `.module.less`, import qua `@/`.
 
