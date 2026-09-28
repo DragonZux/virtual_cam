@@ -71,6 +71,26 @@ export interface FrameOptions {
   tolerance: number;
 }
 
+export type MediaKind = "image" | "video";
+
+/** Ảnh / video đã tải lên thư mục lưu của máy chủ */
+export interface MediaItem {
+  name: string;
+  kind: MediaKind;
+  /** byte */
+  size: number;
+  /** epoch ms */
+  modified: number;
+}
+
+/** GET /media */
+export interface MediaList {
+  /** Thư mục lưu trên máy chủ (đường dẫn máy host khi chạy Docker) */
+  folder: string;
+  max_bytes: number;
+  items: MediaItem[];
+}
+
 /* ===== Chỉ ở frontend ===== */
 
 export type MirrorMode = "auto" | "on" | "off";
@@ -103,6 +123,16 @@ export interface SelectionEvent {
 }
 
 export type CameraStatus = "off" | "starting" | "on" | "error";
+
+/** Nguồn hình của khung camera: camera của trình duyệt hoặc ảnh / video thử */
+export type FrameSource = "camera" | "media";
+
+/** Ảnh / video đang phát trong khung camera — url là blob: (file vừa chọn) hoặc /api/media/<name> */
+export interface MediaSource {
+  url: string;
+  name: string;
+  kind: MediaKind;
+}
 
 export interface CameraDevice {
   deviceId: string;

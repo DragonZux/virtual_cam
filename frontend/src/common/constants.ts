@@ -29,6 +29,16 @@ export const STATUS_POLL_MS = 3000;
 export const MAX_HISTORY = 200;
 export const RECENT_COUNT = 4;
 
+/** Đuôi ảnh / video máy chủ nhận (khớp CONTENT_TYPES của backend/services/media.py) */
+export const MEDIA_EXTENSIONS = {
+  image: [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"],
+  video: [".mp4", ".m4v", ".webm", ".mov", ".ogv"],
+} as const;
+/** Ảnh tĩnh được vẽ lại bấy nhiêu lần mỗi giây để vòng gửi khung và "giữ để xác nhận" chạy như camera */
+export const IMAGE_STREAM_FPS = 15;
+/** Cạnh dài tối đa khi đưa ảnh tĩnh vào luồng hình */
+export const IMAGE_MAX_SIDE = 1920;
+
 export const DEFAULT_PREFERENCES: Preferences = {
   pointerMode: "hand",
   laserColor: "red",
