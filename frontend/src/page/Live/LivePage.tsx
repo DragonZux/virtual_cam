@@ -24,13 +24,9 @@ interface Props {
   visible: boolean;
 }
 
-export const LivePage = ({ visible }: Props) => {
+/** Per-frame counters must not render the media picker, history and controls. */
+const LiveMetrics = () => {
   const { t } = useTranslation();
-  const dispatch = useAppDispatch();
-  // Khung camera và thẻ Ảnh / video thử dùng chung một <video>: camera hoặc file đều phát vào đây
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const source = useCamera(videoRef);
-  const maxBytes = useAppSelector(getMediaMaxBytes);
   const fps = useAppSelector(getFps);
   const result = useAppSelector(getFrameResult);
   const cameraOn = useAppSelector(getCamera).status === "on";
@@ -38,6 +34,64 @@ export const LivePage = ({ visible }: Props) => {
   const laser = useAppSelector(getPreferences).pointerMode === "laser";
   const laserState = !cameraOn || !result ? "idle" : result.laser ? "found" : "missing";
   const hand = !cameraOn || !result ? "handIdle" : result.hand_detected ? "handFound" : "handMissing";
+
+  return (
+    <Row gutter={[16, 16]}>
+      <Col xs={12} lg={6}>
+        <StatCard
+          title={t("metrics.fps")}
+          value={cameraOn && fps !== null ? fps.toFixed(1) : "—"}
+          suffix="FPS"
+          hint={t("metrics.fpsNote")}
+          icon={<Activity size={18} />}
+          tone="brand"
+        />
+      </Col>
+      <Col xs={12} lg={6}>
+        <StatCard
+          textual
+          title={t(laser ? "pointer.status" : "metrics.hand")}
+          value={laser ? t(`pointer.${laserState}`) : t(`metrics.${hand}`)}
+          hint={
+            laser
+              ? t(result?.laser ? "pointer.noteFound" : "pointer.noteMissing")
+              : hand === "handFound"
+                ? t("metrics.handNoteFound")
+                : t("metrics.handNoteMissing")
+          }
+          icon={laser ? <Target size={18} /> : <Hand size={18} />}
+          tone="blue"
+        />
+      </Col>
+      <Col xs={12} lg={6}>
+        <StatCard
+          title={t("metrics.objects")}
+          value={cameraOn && result ? result.detections.length : "—"}
+          hint={t("metrics.objectsNote")}
+          icon={<Target size={18} />}
+          tone="dark"
+        />
+      </Col>
+      <Col xs={12} lg={6}>
+        <StatCard
+          title={t("metrics.selections")}
+          value={total}
+          hint={t("metrics.selectionsNote")}
+          icon={<History size={18} />}
+          tone="purple"
+        />
+      </Col>
+    </Row>
+  );
+};
+
+export const LivePage = ({ visible }: Props) => {
+  const { t } = useTranslation();
+  const dispatch = useAppDispatch();
+  // Khung camera và thẻ Ảnh / video thử dùng chung một <video>: camera hoặc file đều phát vào đây
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const source = useCamera(videoRef);
+  const maxBytes = useAppSelector(getMediaMaxBytes);
 
   /** File mới: phát ngay từ máy (không chờ tải lên) và lưu song song vào thư mục của máy chủ */
   const openFile = (file: File) => {
@@ -60,46 +114,7 @@ export const LivePage = ({ visible }: Props) => {
 
   return (
     <div className={styles.page}>
-      <Row gutter={[16, 16]}>
-        <Col xs={12} lg={6}>
-          <StatCard
-            title={t("metrics.fps")}
-            value={cameraOn && fps !== null ? fps.toFixed(1) : "—"}
-            suffix="FPS"
-            hint={t("metrics.fpsNote")}
-            icon={<Activity size={18} />}
-            tone="brand"
-          />
-        </Col>
-        <Col xs={12} lg={6}>
-          <StatCard
-            textual
-            title={t(laser ? "pointer.status" : "metrics.hand")}
-            value={laser ? t(`pointer.${laserState}`) : t(`metrics.${hand}`)}
-            hint={laser ? t(result?.laser ? "pointer.noteFound" : "pointer.noteMissing") : hand === "handFound" ? t("metrics.handNoteFound") : t("metrics.handNoteMissing")}
-            icon={laser ? <Target size={18} /> : <Hand size={18} />}
-            tone="blue"
-          />
-        </Col>
-        <Col xs={12} lg={6}>
-          <StatCard
-            title={t("metrics.objects")}
-            value={cameraOn && result ? result.detections.length : "—"}
-            hint={t("metrics.objectsNote")}
-            icon={<Target size={18} />}
-            tone="dark"
-          />
-        </Col>
-        <Col xs={12} lg={6}>
-          <StatCard
-            title={t("metrics.selections")}
-            value={total}
-            hint={t("metrics.selectionsNote")}
-            icon={<History size={18} />}
-            tone="purple"
-          />
-        </Col>
-      </Row>
+      <LiveMetrics />
 
       <div className={styles.monitor}>
         <CameraPanel visible={visible} videoRef={videoRef} source={source} onOpenFile={openFile} />
