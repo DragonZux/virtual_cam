@@ -5,7 +5,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-# Thư mục gốc dự án: chứa file model dùng chung với finger_select.py và bản build frontend/dist
+# Thư mục gốc dự án: models/ (model dùng chung với desktop/finger_select.py) và bản build frontend/dist
 PROJECT_ROOT = BACKEND_DIR.parent
 
 
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5180,http://127.0.0.1:5180"
 
     # Model: YOLO segmentation (GPU nếu có CUDA) + MediaPipe Hand Landmarker (CPU)
-    MODEL_DIR: Path = PROJECT_ROOT
+    MODEL_DIR: Path = PROJECT_ROOT / "models"
     YOLO_MODEL: str = "yolo26m-seg.pt"  # cân bằng tốc độ / độ chính xác; n nhanh hơn, l (finger_select.py) chính xác hơn
     HAND_MODEL: str = "hand_landmarker.task"
     IMAGE_SIZE: int = Field(640, ge=32)

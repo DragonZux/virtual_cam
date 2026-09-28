@@ -9,6 +9,8 @@ backend/data/*
 /uploads/
 !backend/data/.gitkeep
 frontend/tsconfig.tsbuildinfo
-# Model tải về (setup.bat / ultralytics)
+# Model tải về (scripts/setup.bat, scripts/start.ps1, ultralytics) — giữ thư mục models/
+models/*
+!models/.gitkeep
 *.pt
 *.task
