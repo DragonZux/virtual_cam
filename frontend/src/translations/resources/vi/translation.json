@@ -294,6 +294,28 @@
       "disabled": "Chưa bật chế độ mạng LAN. Chạy máy chủ với tham số --lan (vd. run_web.bat --lan) để điện thoại mở được camera qua HTTPS.",
       "copy": "Sao chép",
       "copied": "Đã sao chép địa chỉ"
+    },
+    "models": {
+      "title": "Mô hình nhận diện",
+      "summary": "Bật {{on}}/{{total}}",
+      "builtin": "Mặc định",
+      "task": {
+        "segment": "Phân đoạn",
+        "detect": "Khung vật thể"
+      },
+      "classes": "{{count}} lớp",
+      "toggle": "Bật / tắt mô hình {{name}}",
+      "remove": "Xoá mô hình {{name}}",
+      "removeConfirm": "Xoá mô hình {{name}} và file .pt của nó?",
+      "lastOn": "Cần bật ít nhất một mô hình",
+      "drop": "Kéo thả hoặc bấm để thêm mô hình YOLO (.pt)",
+      "dropHint": "Mô hình phân đoạn hoặc phát hiện vật thể của Ultralytics — tối đa {{mb}} MB",
+      "loading": "Đang nạp {{name}}…",
+      "added": "Đã thêm {{name}} ({{count}} lớp) — danh sách vật thể đã cập nhật",
+      "onlyPt": "Chỉ nhận file mô hình YOLO .pt.",
+      "tooLarge": "Mô hình vượt quá {{mb}} MB.",
+      "localOnly": "Thêm, bật / tắt, xoá mô hình chỉ làm được trên chính máy chạy máy chủ (mở bằng http://localhost). File .pt có thể chứa mã chạy trên máy chủ.",
+      "note": "Mọi mô hình đang bật cùng nhận diện trên mỗi khung hình và gộp chung danh sách vật thể (cùng tên lớp là cùng một vật thể). Bật càng nhiều mô hình, mỗi khung càng chậm."
     }
   },
   "guide": {

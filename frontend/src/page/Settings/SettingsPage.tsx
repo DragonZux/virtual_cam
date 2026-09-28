@@ -13,6 +13,7 @@ import { getShareUrls, getVisionStatus, visionActions } from "@/store/vision";
 import { formatPercent } from "@/utils/format";
 import { notify } from "@/utils/notify";
 import { speak, speechLang, speechSupported } from "@/utils/speech";
+import { ModelsCard } from "./ModelsCard";
 import { TargetPicker } from "./TargetPicker";
 import styles from "./settings.module.less";
 
@@ -161,6 +162,8 @@ export const SettingsPage = () => {
         </div>
 
         <div className={styles.column}>
+          <ModelsCard />
+
           <Card title={<CardTitle icon={<Volume2 size={17} />}>{t("settings.voice.title")}</CardTitle>}>
             {speechSupported() ? (
               <>

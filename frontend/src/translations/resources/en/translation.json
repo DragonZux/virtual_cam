@@ -294,6 +294,28 @@
       "disabled": "LAN mode is off. Start the server with --lan (e.g. run_web.bat --lan) so phones can open their camera over HTTPS.",
       "copy": "Copy",
       "copied": "Address copied"
+    },
+    "models": {
+      "title": "Detection models",
+      "summary": "{{on}}/{{total}} on",
+      "builtin": "Default",
+      "task": {
+        "segment": "Segmentation",
+        "detect": "Bounding boxes"
+      },
+      "classes": "{{count}} classes",
+      "toggle": "Turn model {{name}} on / off",
+      "remove": "Delete model {{name}}",
+      "removeConfirm": "Delete model {{name}} and its .pt file?",
+      "lastOn": "At least one model must stay on",
+      "drop": "Drop or click to add a YOLO model (.pt)",
+      "dropHint": "Ultralytics segmentation or detection model — up to {{mb}} MB",
+      "loading": "Loading {{name}}…",
+      "added": "Added {{name}} ({{count}} classes) — the object list is updated",
+      "onlyPt": "Only YOLO .pt model files are accepted.",
+      "tooLarge": "The model is larger than {{mb}} MB.",
+      "localOnly": "Adding, switching and deleting models only works on the computer running the server (open it via http://localhost). A .pt file can contain code that runs on the server.",
+      "note": "Every enabled model runs on each frame and their object lists are merged (the same class name is the same object). More enabled models make each frame slower."
     }
   },
   "guide": {
