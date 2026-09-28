@@ -1,0 +1,23 @@
+.git
+.cam
+.env
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+frontend/dist
+frontend/tsconfig.tsbuildinfo
+frontend/test-results
+frontend/playwright-report
+backend/data
+backend/tests
+backend/.env
+# Model mount lúc chạy, không đóng vào image
+*.pt
+*.task
+# Bản desktop / Flask cũ không thuộc image web
+finger_select.py
+segment.py
+test.py
+web_app.py
+static
+templates

@@ -1,0 +1,40 @@
+# Virtual Cam bằng Docker — một container, luôn chạy YOLO trên GPU NVIDIA:
+#   http://localhost:8032      — máy này (localhost được phép mở camera)
+#   https://<LAN_IP>:8033      — điện thoại / máy khác cùng mạng (chứng chỉ tự ký, đặt LAN_IP trong .env)
+# Cần NVIDIA driver + Docker Desktop có WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
+services:
+  virtual-cam:
+    build:
+      context: .
+      args:
+        - TORCH_INDEX=${TORCH_INDEX:-cu128}
+    image: virtual-cam:latest
+    container_name: virtual-cam
+    environment:
+      # Hiện ở Cài đặt › Dùng trên thiết bị khác và ghi vào chứng chỉ HTTPS
+      PUBLIC_URLS: ${LAN_IP:+https://${LAN_IP}:${LAN_HTTPS_PORT:-8033}}
+      # Cạnh ảnh đưa vào YOLO (640 chính xác nhất; 480 / 320 nhanh hơn)
+      IMAGE_SIZE: ${IMAGE_SIZE:-640}
+      # Model YOLO (file ở thư mục gốc, dùng chung với finger_select.py)
+      YOLO_MODEL: ${YOLO_MODEL:-yolo26m-seg.pt}
+    ports:
+      # Chỉ IPv4: cổng IPv6 của Docker Desktop chậm hơn ~30 ms mỗi request (trình duyệt tự dùng 127.0.0.1)
+      - "0.0.0.0:${WEB_PORT:-8032}:8030"
+      - "0.0.0.0:${LAN_HTTPS_PORT:-8033}:8031"
+    volumes:
+      # Model dùng chung với bản chạy trên máy (setup.bat tải hand_landmarker.task)
+      - ./hand_landmarker.task:/models/hand_landmarker.task:ro
+      - ./${YOLO_MODEL:-yolo26m-seg.pt}:/models/${YOLO_MODEL:-yolo26m-seg.pt}:ro
+      - certs:/app/data/certs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  certs:
+    name: virtual-cam-certs
