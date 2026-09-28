@@ -62,6 +62,8 @@ async def analyze_frame(
     pointer_mode: PointerMode = Query(PointerMode.hand, description="Chọn bằng ngón tay hoặc điểm laser"),
     laser_color: LaserColor = Query(LaserColor.red, description="Màu laser cần tìm"),
     laser_brightness: int = Query(200, ge=160, le=250, description="Độ sáng tối thiểu của điểm laser (HSV V)"),
+    laser_hint: str | None = Query(None, pattern=r"^\d{1,5},\d{1,5}$",
+                                   description="x,y chấm laser ổn định gần nhất trình duyệt đang bám (pixel khung trước)"),
     detector: Detector = Depends(get_detector),
 ):
     """Phân tích một khung JPEG: bàn tay, đầu ngón trỏ và vật thể đang được chỉ."""
@@ -70,7 +72,8 @@ async def analyze_frame(
     if not detector.ready.is_set():
         raise HTTPException(503, detector.error or "Bộ nhận diện đang khởi động, thử lại sau giây lát.")
     try:
-        options = detector.options(targets, conf, tolerance, pointer_mode, laser_color, laser_brightness)
+        hint = tuple(int(v) for v in laser_hint.split(",")) if laser_hint else None
+        options = detector.options(targets, conf, tolerance, pointer_mode, laser_color, laser_brightness, hint)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     payload = await read_frame(request, settings.MAX_FRAME_BYTES)

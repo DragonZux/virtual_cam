@@ -5,7 +5,9 @@ import { catchError, exhaustMap, filter, map, mergeMap, switchMap, takeUntil } f
 
 import { STATUS_POLL_MS } from "@/common/constants";
 import { VisionService } from "@/Services/VisionService";
-import { advanceTracking } from "@/utils/tracking";
+import type { FrameResult } from "@/common/types";
+import { advanceLaser, type LaserStep } from "@/utils/laserTrack";
+import { advanceTracking, type Tracking, type TrackingStep } from "@/utils/tracking";
 import { errorMessage } from "../epicHelpers";
 import { historyActions } from "../history/historySlice";
 import type { RootEpic } from "../types";
@@ -37,6 +39,28 @@ const stopsFrames = (action: Action): boolean =>
   (visionActions.setPaused.match(action) && action.payload);
 
 /**
+ * Chế độ laser: chỉ tin khung có chấm ở đúng chỗ đang bám. Khung nhiễu (chấm nhảy sang đốm sáng khác, mất chấm
+ * thoáng qua) giữ nguyên chấm + vật đang hiển thị và không làm gián đoạn "giữ để xác nhận".
+ */
+const stabilizeLaser = (
+  result: FrameResult,
+  previous: FrameResult | null,
+  laser: LaserStep,
+  tracking: Tracking,
+  advance: (selected: FrameResult["selected"]) => TrackingStep,
+): { shown: FrameResult; step: TrackingStep } => {
+  const point = laser.track.point;
+  if (laser.accepted && point && result.laser) {
+    return { shown: { ...result, laser: { ...result.laser, point: [Math.round(point[0]), Math.round(point[1])] } }, step: advance(result.selected) };
+  }
+  const sameSize = previous?.resolution.width === result.resolution.width && previous?.resolution.height === result.resolution.height;
+  if (point && previous?.laser && sameSize) {
+    return { shown: { ...previous, processing_ms: result.processing_ms }, step: { tracking, confirmed: null } };
+  }
+  return { shown: { ...result, laser: null, selected: null }, step: advance(null) };
+};
+
+/**
  * Gửi khung song song tối đa MAX_FRAMES_IN_FLIGHT (useFrameLoop giới hạn số khung đang bay);
  * kết quả về lệch thứ tự thì bỏ khung cũ hơn khung đang hiển thị.
  */
@@ -45,8 +69,8 @@ const analyzeFrame$: RootEpic = (action$, state$) => {
   const isStale = (id: number) => id <= state$.value.vision.lastFrameId;
   return action$.pipe(
     filter(visionActions.analyzeFrameRequest.match),
-    mergeMap(({ payload: { id, image, options, capturedAt } }) =>
-      VisionService.Post.frame(image, options).pipe(
+    mergeMap(({ payload: { id, image, options, capturedAt, laserHint } }) =>
+      VisionService.Post.frame(image, options, laserHint).pipe(
         mergeMap((result) => {
           if (isStale(id)) return of(visionActions.analyzeFrameSkipped());
           const at = Date.now();
@@ -57,8 +81,21 @@ const analyzeFrame$: RootEpic = (action$, state$) => {
               options.laser_brightness !== setting.prefs.laserBrightness) {
             return of(visionActions.analyzeFrameSkipped());
           }
-          const step = advanceTracking(vision.tracking, result.selected, at, setting.prefs.dwellMs);
-          const out: Action[] = [visionActions.analyzeFrameSuccess({ id, result, tracking: step.tracking, at, capturedAt })];
+          const advance = (selected: FrameResult["selected"]) => advanceTracking(vision.tracking, selected, at, setting.prefs.dwellMs);
+          let shown = result;
+          let step: TrackingStep;
+          let laserTrack;
+          if (options.pointer_mode === "laser") {
+            const laser = advanceLaser(vision.laserTrack, result.laser?.point ?? null,
+              Math.max(result.resolution.width, result.resolution.height));
+            ({ shown, step } = stabilizeLaser(result, vision.result, laser, vision.tracking, advance));
+            laserTrack = laser.track;
+          } else {
+            step = advance(result.selected);
+          }
+          const out: Action[] = [
+            visionActions.analyzeFrameSuccess({ id, result: shown, tracking: step.tracking, laserTrack, at, capturedAt }),
+          ];
           if (step.confirmed) {
             const { name, confidence } = step.confirmed;
             out.push(historyActions.addSelection({ name, confidence, time: at, pointerMode: options.pointer_mode }));

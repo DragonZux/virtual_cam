@@ -54,5 +54,11 @@ def test_real_models_analyze_frame():
         assert np.linalg.norm(np.array(laser_result.laser.point) - [x, y]) <= 2
         assert laser_result.selected is not None and laser_result.selected.name == "bus"
         assert laser_result.hand_detected is False and laser_result.tip is None
+        tracked = detector.analyze(encoded.tobytes(), detector.options(
+            "bus", 0.25, None, PointerMode.laser, LaserColor.green,
+            laser_hint=tuple(laser_result.laser.point),
+        ))
+        assert tracked.laser is not None and tracked.laser.point == laser_result.laser.point
+        assert tracked.selected is not None and tracked.selected.name == "bus"
     finally:
         detector.close()

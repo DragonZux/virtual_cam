@@ -52,6 +52,8 @@ class FrameOptions:
     pointer_mode: PointerMode = PointerMode.hand
     laser_color: LaserColor = LaserColor.red
     laser_brightness: int = 200
+    # Vị trí chấm laser ổn định gần nhất trình duyệt đang bám (pixel của khung trước) — ưu tiên ứng viên gần đó
+    laser_hint: tuple[int, int] | None = None
 
 
 @dataclass
@@ -392,7 +394,7 @@ class Detector:
 
     def options(self, targets: str | None, confidence: float | None, tolerance: int | None,
                 pointer_mode: PointerMode = PointerMode.hand, laser_color: LaserColor = LaserColor.red,
-                laser_brightness: int = 200) -> FrameOptions:
+                laser_brightness: int = 200, laser_hint: tuple[int, int] | None = None) -> FrameOptions:
         """Kiểm tra cài đặt trình duyệt gửi kèm khung hình; bỏ trống = mặc định máy chủ."""
         names = list(dict.fromkeys(n.strip() for n in targets.split(",") if n.strip())) if targets else self.default_targets
         if not names:
@@ -407,6 +409,7 @@ class Detector:
             pointer_mode=pointer_mode,
             laser_color=laser_color,
             laser_brightness=laser_brightness,
+            laser_hint=laser_hint if pointer_mode == PointerMode.laser else None,
         )
 
     def analyze(self, payload: bytes, options: FrameOptions) -> FrameResult:
@@ -467,7 +470,7 @@ class Detector:
 
     def _run_models(self, frame: np.ndarray, options: FrameOptions) -> ModelOutput:
         hand_job = self._hand_pool.submit(self._detect_hand, frame) if options.pointer_mode == PointerMode.hand else None
-        laser = detect_laser(frame, options.laser_color, options.laser_brightness) if options.pointer_mode == PointerMode.laser else None
+        laser = detect_laser(frame, options.laser_color, options.laser_brightness, options.laser_hint) if options.pointer_mode == PointerMode.laser else None
         results = []
         try:
             # GPU chạy lần lượt từng mô hình; bàn tay vẫn song song trên CPU

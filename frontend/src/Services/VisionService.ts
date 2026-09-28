@@ -16,11 +16,13 @@ class VisionController extends ApiReduxHelpers {
 
   public Post = {
     /** POST /vision/frame — một khung JPEG của camera → bàn tay + vật thể đang được chỉ */
-    frame: (image: Blob, options: FrameOptions): Observable<FrameResult> =>
+    frame: (image: Blob, options: FrameOptions, laserHint?: [number, number] | null): Observable<FrameResult> =>
       HttpClient.post<FrameResult>(`${this.base()}/frame`, image, {
         search: {
           targets: options.targets.join(","), conf: options.conf, tolerance: options.tolerance,
           pointer_mode: options.pointer_mode, laser_color: options.laser_color, laser_brightness: options.laser_brightness,
+          // Chấm laser đang bám ở khung trước: máy chủ ưu tiên ứng viên gần đó thay vì đốm sáng khác
+          laser_hint: laserHint ? laserHint.join(",") : undefined,
         },
         headers: { "Content-Type": "image/jpeg" },
         // Khung hình gửi liên tục: lỗi hiện trên khung camera thay vì bật thông báo mỗi lần

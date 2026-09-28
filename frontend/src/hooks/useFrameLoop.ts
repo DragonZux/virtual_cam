@@ -5,6 +5,7 @@ import type { FrameOptions } from "@/common/types";
 import { useAppStore } from "@/store/hooks";
 import { visionActions } from "@/store/vision";
 import { canvasToJpeg, captureFrame } from "@/utils/capture";
+import { laserHint } from "@/utils/laserTrack";
 
 interface Params {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -121,11 +122,14 @@ export const useFrameLoop = ({ videoRef, active, mirror, options }: Params) => {
       nextAllowedAt = Math.max(captureStarted - frameSlack, nextAllowedAt) +
         Math.max(MIN_FRAME_INTERVAL_MS, processingInterval);
       sent += 1;
+      // Gợi ý chỉ có nghĩa khi khung mới cùng cỡ với khung đã cho ra vị trí đang bám
+      const sameSize = vision.result?.resolution.width === upload.width && vision.result?.resolution.height === upload.height;
       store.dispatch(visionActions.analyzeFrameRequest({
         id: vision.lastRequestId + 1,
         image,
         options: opts,
         capturedAt,
+        laserHint: opts.pointer_mode === "laser" && sameSize ? laserHint(vision.laserTrack) : null,
       }));
       schedule();
     };

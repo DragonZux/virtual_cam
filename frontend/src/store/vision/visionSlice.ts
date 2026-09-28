@@ -1,6 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 import type { CameraDevice, CameraStatus, FrameOptions, FrameResult, FrameSource, MediaKind, VisionStatus } from "@/common/types";
+import { EMPTY_LASER_TRACK, type LaserPoint, type LaserTrack } from "@/utils/laserTrack";
 import { EMPTY_TRACKING, type Tracking } from "@/utils/tracking";
 
 export type Connection = "connecting" | "online" | "offline";
@@ -45,6 +46,8 @@ interface VisionState {
   fps: number | null;
   lastResultAt: number | null;
   tracking: Tracking;
+  /** Chấm laser đang bám qua các khung (chế độ laser) */
+  laserTrack: LaserTrack;
   /** Lần đầu bật camera trong phiên (đếm thời gian phiên) */
   sessionStartedAt: number | null;
 }
@@ -63,6 +66,7 @@ const initialState: VisionState = {
   fps: null,
   lastResultAt: null,
   tracking: EMPTY_TRACKING,
+  laserTrack: EMPTY_LASER_TRACK,
   sessionStartedAt: null,
 };
 
@@ -73,6 +77,7 @@ const resetLive = (state: VisionState) => {
   state.lastResultAt = null;
   state.lastCaptureAt = null;
   state.tracking = EMPTY_TRACKING;
+  state.laserTrack = EMPTY_LASER_TRACK;
 };
 
 const visionSlice = createSlice({
@@ -136,14 +141,24 @@ const visionSlice = createSlice({
     },
 
     /** Khung đã chụp (id tăng dần) → epic gửi lên máy chủ; tạm dừng / tắt camera huỷ các request đang chờ */
-    analyzeFrameRequest: (state, action: PayloadAction<{ id: number; image: Blob; options: FrameOptions; capturedAt: number }>) => {
+    analyzeFrameRequest: (
+      state,
+      action: PayloadAction<{ id: number; image: Blob; options: FrameOptions; capturedAt: number; laserHint?: LaserPoint | null }>,
+    ) => {
       state.lastRequestId = action.payload.id;
     },
     analyzeFrameSuccess: (
       state,
-      action: PayloadAction<{ id: number; result: FrameResult; tracking: Tracking; at: number; capturedAt: number }>,
+      action: PayloadAction<{
+        id: number;
+        result: FrameResult;
+        tracking: Tracking;
+        laserTrack?: LaserTrack;
+        at: number;
+        capturedAt: number;
+      }>,
     ) => {
-      const { id, result, tracking, at, capturedAt } = action.payload;
+      const { id, result, tracking, laserTrack, at, capturedAt } = action.payload;
       state.lastFrameId = id;
       state.lastCaptureAt = capturedAt;
       if (state.lastResultAt !== null && at > state.lastResultAt) {
@@ -154,6 +169,7 @@ const visionSlice = createSlice({
       state.lastResultAt = at;
       state.result = result;
       state.tracking = tracking;
+      state.laserTrack = laserTrack ?? EMPTY_LASER_TRACK;
       state.frameError = null;
       state.frameSeq += 1;
     },
