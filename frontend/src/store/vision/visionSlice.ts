@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-import type { CameraDevice, CameraStatus, FrameOptions, FrameResult, VisionStatus } from "@/common/types";
+import type { CameraDevice, CameraStatus, FrameOptions, FrameResult, FrameSource, MediaKind, VisionStatus } from "@/common/types";
 import { EMPTY_TRACKING, type Tracking } from "@/utils/tracking";
 
 export type Connection = "connecting" | "online" | "offline";
@@ -14,6 +14,10 @@ export interface CameraState {
   deviceId: string | null;
   facingMode: string | null;
   devices: CameraDevice[];
+  /** Khung đang lấy hình từ camera hay từ ảnh / video thử */
+  source: FrameSource;
+  /** Ảnh / video đang phát khi source = "media" */
+  media: { name: string; kind: MediaKind } | null;
 }
 
 export interface FrameError {
@@ -48,7 +52,7 @@ interface VisionState {
 const initialState: VisionState = {
   status: null,
   connection: "connecting",
-  camera: { status: "off", error: null, ended: false, deviceId: null, facingMode: null, devices: [] },
+  camera: { status: "off", error: null, ended: false, deviceId: null, facingMode: null, devices: [], source: "camera", media: null },
   paused: false,
   result: null,
   frameSeq: 0,
@@ -86,8 +90,11 @@ const visionSlice = createSlice({
       state.connection = "offline";
     },
 
-    cameraStarting: (state) => {
+    /** Bắt đầu mở camera (mặc định) hoặc ảnh / video thử */
+    cameraStarting: (state, action: PayloadAction<FrameSource | undefined>) => {
       state.camera.status = "starting";
+      state.camera.source = action.payload ?? "camera";
+      state.camera.media = null;
       state.camera.error = null;
       state.camera.ended = false;
     },
@@ -96,7 +103,15 @@ const visionSlice = createSlice({
       action: PayloadAction<Pick<CameraState, "deviceId" | "facingMode" | "devices"> & { startedAt: number }>,
     ) => {
       const { startedAt, ...info } = action.payload;
-      state.camera = { ...state.camera, ...info, status: "on", error: null, ended: false };
+      state.camera = { ...state.camera, ...info, status: "on", error: null, ended: false, source: "camera", media: null };
+      state.paused = false;
+      state.sessionStartedAt ??= startedAt;
+      resetLive(state);
+    },
+    /** Ảnh / video thử đã phát trong khung camera — vòng gửi khung chạy như với camera */
+    mediaStarted: (state, action: PayloadAction<{ name: string; kind: MediaKind; startedAt: number }>) => {
+      const { startedAt, name, kind } = action.payload;
+      state.camera = { ...state.camera, status: "on", error: null, ended: false, source: "media", media: { name, kind } };
       state.paused = false;
       state.sessionStartedAt ??= startedAt;
       resetLive(state);

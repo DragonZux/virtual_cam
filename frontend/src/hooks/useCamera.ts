@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 
-import type { CameraDevice } from "@/common/types";
+import { IMAGE_MAX_SIDE, IMAGE_STREAM_FPS } from "@/common/constants";
+import type { CameraDevice, MediaSource } from "@/common/types";
 import { useAppDispatch } from "@/store/hooks";
 import { visionActions } from "@/store/vision";
 
@@ -13,19 +14,32 @@ const errorCode = (error: unknown): string => {
 };
 
 /**
- * Vòng đời camera của trình duyệt: stream giữ trong ref (không đưa vào store), trạng thái đẩy vào store
- * để header, bảng số liệu… cùng đọc. Mỗi lần bật/tắt tăng `run` để bỏ qua kết quả của lần bật cũ.
+ * Vòng đời nguồn hình của khung camera: camera trình duyệt hoặc ảnh / video thử, cùng phát trong một <video>
+ * nên vòng gửi khung, lớp vẽ và "giữ để xác nhận" không cần biết nguồn. Stream giữ trong ref (không đưa vào store),
+ * trạng thái đẩy vào store để header, bảng số liệu… cùng đọc. Mỗi lần bật/tắt tăng `run` để bỏ qua kết quả của lần bật cũ.
  */
 export const useCamera = (videoRef: RefObject<HTMLVideoElement | null>) => {
   const dispatch = useAppDispatch();
   const streamRef = useRef<MediaStream | null>(null);
   const runRef = useRef(0);
+  /** Dọn phần riêng của ảnh / video thử (bộ vẽ lại ảnh, blob URL, listener lỗi) */
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   const release = useCallback(() => {
     runRef.current += 1;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+    const video = videoRef.current;
+    if (video) {
+      video.srcObject = null;
+      video.loop = false;
+      if (video.hasAttribute("src")) {
+        video.removeAttribute("src");
+        video.load();
+      }
+    }
   }, [videoRef]);
 
   const stop = useCallback(
@@ -40,7 +54,7 @@ export const useCamera = (videoRef: RefObject<HTMLVideoElement | null>) => {
     async (deviceId?: string) => {
       release();
       const run = runRef.current;
-      dispatch(visionActions.cameraStarting());
+      dispatch(visionActions.cameraStarting("camera"));
       try {
         if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
           dispatch(visionActions.cameraFailed("insecure"));
@@ -93,6 +107,71 @@ export const useCamera = (videoRef: RefObject<HTMLVideoElement | null>) => {
     [dispatch, release, stop, videoRef],
   );
 
+  /**
+   * Phát ảnh / video thử thay cho camera. Video lặp lại liên tục; ảnh tĩnh được vẽ lại IMAGE_STREAM_FPS lần/giây
+   * qua canvas.captureStream để có khung hình mới như camera. blob: URL được thu hồi khi đổi nguồn / tắt.
+   */
+  const playMedia = useCallback(
+    async (media: MediaSource) => {
+      release();
+      const run = runRef.current;
+      const video = videoRef.current;
+      const revoke = () => media.url.startsWith("blob:") && URL.revokeObjectURL(media.url);
+      if (!video) {
+        revoke();
+        return;
+      }
+      cleanupRef.current = revoke;
+      dispatch(visionActions.cameraStarting("media"));
+      const fail = () => {
+        if (run !== runRef.current) return;
+        release();
+        dispatch(visionActions.cameraFailed("media"));
+      };
+      try {
+        if (media.kind === "video") {
+          video.addEventListener("error", fail);
+          cleanupRef.current = () => {
+            video.removeEventListener("error", fail);
+            revoke();
+          };
+          video.crossOrigin = "anonymous";
+          video.loop = true;
+          video.src = media.url;
+          await video.play();
+        } else {
+          const image = new Image();
+          image.crossOrigin = "anonymous";
+          image.src = media.url;
+          await image.decode();
+          if (run !== runRef.current) return;
+          const scale = Math.min(1, IMAGE_MAX_SIDE / Math.max(image.naturalWidth, image.naturalHeight));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(16, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(16, Math.round(image.naturalHeight * scale));
+          const ctx = canvas.getContext("2d", { alpha: false });
+          if (!ctx) throw new Error("canvas");
+          const draw = () => ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          draw();
+          const stream = canvas.captureStream(IMAGE_STREAM_FPS);
+          const timer = window.setInterval(draw, 1000 / IMAGE_STREAM_FPS);
+          streamRef.current = stream;
+          cleanupRef.current = () => {
+            window.clearInterval(timer);
+            revoke();
+          };
+          video.srcObject = stream;
+          await video.play();
+        }
+        if (run !== runRef.current) return;
+        dispatch(visionActions.mediaStarted({ name: media.name, kind: media.kind, startedAt: Date.now() }));
+      } catch {
+        fail();
+      }
+    },
+    [dispatch, release, videoRef],
+  );
+
   // Rời trang / đóng tab: tắt đèn camera ngay
   useEffect(() => {
     window.addEventListener("pagehide", release);
@@ -102,5 +181,5 @@ export const useCamera = (videoRef: RefObject<HTMLVideoElement | null>) => {
     };
   }, [release]);
 
-  return { start, stop };
+  return { start, stop, playMedia };
 };

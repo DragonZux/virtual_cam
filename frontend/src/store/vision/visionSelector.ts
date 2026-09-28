@@ -2,6 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 
 import type { LiveState, MirrorMode } from "@/common/types";
 import type { RootState } from "@/store/types";
+import type { CameraState } from "./visionSlice";
 
 export const getVisionState = (state: RootState) => state.vision;
 export const getVisionStatus = (state: RootState) => state.vision.status;
@@ -20,9 +21,12 @@ export const isDetectorReady = (state: RootState) =>
 
 export const getShareUrls = createSelector([getVisionStatus], (status) => status?.share_urls ?? []);
 
-/** Lật ngang khi là camera trước; webcam laptop thường không báo facingMode nên cũng coi là camera trước */
-export const selectMirror = (mode: MirrorMode, facingMode: string | null): boolean =>
-  mode === "auto" ? facingMode !== "environment" : mode === "on";
+/**
+ * Lật ngang khi là camera trước; webcam laptop thường không báo facingMode nên cũng coi là camera trước.
+ * Ảnh / video thử luôn giữ nguyên chiều.
+ */
+export const selectMirror = (mode: MirrorMode, camera: Pick<CameraState, "facingMode" | "source">): boolean =>
+  camera.source === "media" ? false : mode === "auto" ? camera.facingMode !== "environment" : mode === "on";
 
 export const getLiveState = createSelector(
   [getConnection, getVisionStatus, getCamera, isPaused, getFrameError, getFrameResult],
