@@ -10,6 +10,30 @@ export interface DetectionDefaults {
   tolerance: number;
 }
 
+export type ModelTask = "segment" | "detect";
+
+/** Một mô hình YOLO: mặc định của máy chủ hoặc file .pt tải thêm ở Cài đặt */
+export interface ModelInfo {
+  /** Tên file .pt */
+  id: string;
+  builtin: boolean;
+  enabled: boolean;
+  /** segment: có viền vật thể; detect: chỉ có khung (viền lấy theo khung) */
+  task: ModelTask;
+  classes: string[];
+  size: number;
+  error: string | null;
+}
+
+/** GET /models */
+export interface ModelList {
+  /** Trình duyệt này được tải / bật tắt / xoá mô hình (chỉ máy chạy máy chủ) */
+  can_manage: boolean;
+  folder: string;
+  max_bytes: number;
+  items: ModelInfo[];
+}
+
 /** GET /vision/status */
 export interface VisionStatus {
   phase: DetectorPhase;
@@ -18,11 +42,13 @@ export interface VisionStatus {
   device: string | null;
   model: string;
   image_size: number;
-  /** Lớp chọn làm mục tiêu được (máy chủ đã bỏ "person") */
+  /** Lớp chọn làm mục tiêu được — hợp các mô hình đang bật (máy chủ đã bỏ "person") */
   classes: string[];
   defaults: DetectionDefaults;
   /** Địa chỉ HTTPS cho thiết bị khác — chỉ có khi máy chủ chạy `serve.py --lan` */
   share_urls: string[];
+  /** Các mô hình YOLO; máy chủ cũ không có trường này */
+  models?: ModelInfo[];
 }
 
 export interface Point {
