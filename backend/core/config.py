@@ -1,0 +1,75 @@
+from pathlib import Path
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+# Thư mục gốc dự án: chứa file model dùng chung với finger_select.py và bản build frontend/dist
+PROJECT_ROOT = BACKEND_DIR.parent
+
+
+class Settings(BaseSettings):
+    """Cấu hình đọc từ biến môi trường / file .env (xem .env.example)."""
+
+    API_TITLE: str = "Virtual Cam API"
+    API_VERSION: str = "1.0.0"
+    LOG_LEVEL: str = "INFO"
+
+    # serve.py: cổng web trên máy này và cổng HTTPS cho thiết bị khác trong mạng LAN (--lan)
+    HOST: str = "127.0.0.1"
+    PORT: int = 8030
+    LAN_PORT: int = 8031
+    # Chứng chỉ tự ký cho chế độ --lan (tự tạo, tự làm mới khi IP máy đổi)
+    CERT_DIR: Path = BACKEND_DIR / "data" / "certs"
+    # Địa chỉ cho thiết bị khác khi chạy sau proxy (Docker/nginx), cách nhau dấu phẩy; serve.py --lan tự điền
+    PUBLIC_URLS: str = ""
+
+    # Chỉ cần khi chạy frontend dev (vite) ở origin khác; bình thường vite proxy /api nên cùng origin
+    CORS_ORIGINS: str = "http://localhost:5180,http://127.0.0.1:5180"
+
+    # Model: YOLO segmentation (GPU nếu có CUDA) + MediaPipe Hand Landmarker (CPU)
+    MODEL_DIR: Path = PROJECT_ROOT
+    YOLO_MODEL: str = "yolo26m-seg.pt"  # cân bằng tốc độ / độ chính xác; n nhanh hơn, l (finger_select.py) chính xác hơn
+    HAND_MODEL: str = "hand_landmarker.task"
+    IMAGE_SIZE: int = Field(640, ge=32)
+    DEVICE: str = "auto"  # auto = GPU 0 nếu có CUDA, ngược lại CPU; "cpu" để ép chạy CPU
+    HAND_CONFIDENCE: float = Field(0.6, gt=0, le=1)
+
+    # Mặc định nhận diện — mỗi trình duyệt tự chỉnh ở màn Cài đặt và gửi kèm từng khung hình
+    DEFAULT_TARGETS: str = "laptop,mouse,keyboard"
+    DEFAULT_CONFIDENCE: float = Field(0.80, ge=0.05, le=0.95)  # CONF của finger_select.py
+    DEFAULT_TOLERANCE_PX: int = Field(30, ge=0, le=100)
+
+    # Giới hạn khung hình trình duyệt gửi lên
+    MAX_FRAME_BYTES: int = 2 * 1024 * 1024
+    MAX_FRAME_SIDE: int = 1920
+    # Một khung xử lý tại một thời điểm; trình duyệt khác chờ tối đa bấy nhiêu giây rồi nhận 429
+    BUSY_WAIT_SECONDS: float = 0.5
+
+    # Bản build React (npm run build) — backend phục vụ luôn để chạy một cổng; không có thì chỉ chạy API
+    FRONTEND_DIST: Path = PROJECT_ROOT / "frontend" / "dist"
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def public_urls(self) -> list[str]:
+        return [u.strip() for u in self.PUBLIC_URLS.split(",") if u.strip()]
+
+    @property
+    def default_targets(self) -> list[str]:
+        return [name.strip() for name in self.DEFAULT_TARGETS.split(",") if name.strip()]
+
+    @property
+    def yolo_model_path(self) -> Path:
+        return self.MODEL_DIR / self.YOLO_MODEL
+
+    @property
+    def hand_model_path(self) -> Path:
+        return self.MODEL_DIR / self.HAND_MODEL
+
+
+settings = Settings()

@@ -1,0 +1,12 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pydantic-settings>=2.3
+numpy
+opencv-contrib-python
+mediapipe
+ultralytics>=8.4.162   # YOLO26 + tham số quantize (thay half)
+pillow
+cryptography>=42       # chứng chỉ tự ký cho chế độ --lan
+pytest
+httpx2                 # TestClient của Starlette 1.x
