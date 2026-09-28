@@ -46,12 +46,12 @@ virtual_cam/
 ├── backend/     FastAPI: nhận khung JPEG → bàn tay + vật thể được chỉ (YOLO GPU + MediaPipe CPU chạy song song)
 ├── frontend/    React 19 + TypeScript + Vite + Ant Design + Redux Toolkit / redux-observable
 ├── desktop/     Bản desktop độc lập với web: finger_select.py (cửa sổ OpenCV, Logitech C930e /dev/video3 trên Linux,
-│                bắt buộc GPU), segment.py (thử laser đỏ), camera_test.py, requirements*.txt, setup.sh (Linux)
+│                bắt buộc GPU), segment.py (thử laser đỏ), camera_test.py, setup.sh (Linux)
 ├── models/      hand_landmarker.task, yolo26*-seg.pt — không commit (web mặc định yolo26m-seg.pt, finger_select.py
 │                dùng yolo26l-seg.pt; scripts tự tải model còn thiếu)
 ├── docker/      Dockerfile, docker-compose.yml (một container web + API + GPU), docker-compose.cpu.yml (máy không GPU)
 ├── scripts/     setup.bat, run_web.bat (chạy trên Windows), start_docker.bat → start.ps1 (Docker tự theo máy)
-└── README.md, .env.example   (.env do scripts/start.ps1 tạo)
+└── requirements.txt (mọi thư viện Python: web, desktop, test — pip install -r requirements.txt), README.md, .env.example
 ```
 
 ## Tính năng
