@@ -71,6 +71,8 @@ Bấm đúp **`scripts\start_docker.bat`** (hoặc `powershell -ExecutionPolicy 
 4. Kiểm dung lượng ổ chứa dữ liệu Docker (build đầy đủ bản GPU cần ~20 GB, chỉ đổi code ~3 GB) và RAM trống trước khi build.
 5. Build, chạy, chờ bộ nhận diện sẵn sàng, in địa chỉ và mở trình duyệt.
 
+Chỉ chạy CPU (máy không có GPU NVIDIA, hoặc muốn nhường GPU cho việc khác): bấm đúp **`scripts\start_docker_cpu.bat`** hoặc gõ `.\start_cpu.ps1` trong thư mục `scripts` — giống `start.ps1 -Cpu`: PyTorch bản CPU (image nhẹ hơn, cần ~6 GB trống), không xin GPU, ảnh YOLO 480px (chậm hơn GPU; muốn nhanh hơn thêm `-ImageSize 320`). Chạy lại `start_docker.bat` để quay về GPU.
+
 Tham số: `-Cpu` (ép CPU), `-PublicHost 192.168.1.10`, `-ImageSize 480`, `-Force` (bỏ qua kiểm tra dung lượng / RAM), `-NoBrowser`. Chạy lại bao nhiêu lần cũng được (sau khi sửa code chỉ build lại phần code, vài phút). Sau khi script đã ghi `.env`, lệnh tay `docker compose up -d --build` / `docker compose down` / `docker compose logs -f` chạy ở thư mục gốc cũng dùng đúng chế độ đó (`.env` trỏ `COMPOSE_FILE` vào `docker/`).
 
 | Địa chỉ | Dùng cho |
