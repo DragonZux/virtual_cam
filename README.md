@@ -20,6 +20,14 @@ Tham khảo: [Laser-Dot-Detector](https://github.com/YuxueYang1204/Laser-Dot-Det
 
 API `POST /api/vision/frame` thêm query `pointer_mode=hand|laser` (mặc định `hand`), `laser_color=red|green` (mặc định `red`), `laser_brightness=160..250` (mặc định `200`). Response thêm `pointer_mode` và `laser: {point: [x,y], color, score} | null`; `score` là điểm xếp hạng, không phải xác suất. `tip` chỉ dành cho ngón tay; trong chế độ laser, `hand_detected=false`, `landmarks=[]`, `tip=null`.
 
+## Thử bằng ảnh / video
+
+Không cần camera: ở trang Tổng quan, kéo thả ảnh hoặc video vào thẻ **Ảnh / video thử** (hoặc bấm **Dùng ảnh / video** trên khung camera). File phát ngay trong khung camera và được nhận diện y như camera — chỉ tay, laser, giữ để xác nhận, lịch sử, chụp ảnh đều dùng được; video tự lặp lại, Tạm dừng dừng cả video. Ảnh tĩnh được vẽ lại 15 lần/giây nên "giữ để xác nhận" vẫn chạy.
+
+File tải lên được **lưu thẳng vào `C:\Users\<tên>\Documents\virtual_cam`** của máy chạy máy chủ (tên thêm mốc thời gian, không ghi đè) và hiện trong danh sách của thẻ để bấm thử lại. Nhận JPG, PNG, WEBP, BMP, GIF, MP4, WEBM, MOV, M4V, OGV, tối đa 500 MB (`MAX_UPLOAD_MB`). Đổi thư mục: `UPLOAD_DIR` trong `backend/.env` (chạy trên Windows) hoặc `UPLOAD_HOST_DIR` trong `.env` gốc (Docker — `start.ps1` tự đặt về `%USERPROFILE%\Documents\virtual_cam` và mount vào container).
+
+Video nên là MP4 (H.264) hoặc WEBM để trình duyệt phát được. API: `GET /api/media` (danh sách, thư mục lưu), `POST /api/media?name=<tên file>` (body là file thô), `GET /api/media/<tên>` (phát lại, hỗ trợ tua).
+
 ```
 virtual_cam/
 ├── backend/            FastAPI: nhận khung JPEG → bàn tay + vật thể được chỉ (YOLO GPU + MediaPipe CPU chạy song song)
@@ -34,7 +42,7 @@ virtual_cam/
 
 ## Tính năng
 
-- **Tổng quan**: camera trực tiếp với khung xương bàn tay, vòng “giữ để xác nhận” quanh đầu ngón trỏ, viền vật thể đang chọn và khung các vật thể khác; FPS, trạng thái bàn tay, số vật thể, số lượt chọn; chụp ảnh khung hình, toàn màn hình, phím tắt (Space tạm dừng, S chụp ảnh, F toàn màn hình). Tab bị ẩn thì tự ngừng gửi khung.
+- **Tổng quan**: camera trực tiếp (hoặc ảnh / video tải lên để thử) với khung xương bàn tay, vòng “giữ để xác nhận” quanh đầu ngón trỏ, viền vật thể đang chọn và khung các vật thể khác; FPS, trạng thái bàn tay, số vật thể, số lượt chọn; chụp ảnh khung hình, toàn màn hình, phím tắt (Space tạm dừng, S chụp ảnh, F toàn màn hình). Tab bị ẩn thì tự ngừng gửi khung.
 - **Lịch sử**: thống kê phiên (tổng lượt, vật thể chọn nhiều nhất, độ tin cậy trung bình, thời gian phiên), bảng lượt chọn, xuất CSV mở được bằng Excel.
 - **Cài đặt** (lưu trên từng trình duyệt): chọn vật thể trong 79 lớp COCO (tìm không dấu), ngưỡng tin cậy, vùng chấp nhận quanh đầu ngón tay, thời gian giữ để xác nhận, lớp hiển thị, chế độ gương, đọc tên vật thể bằng giọng nói, địa chỉ cho điện thoại.
 - **Hướng dẫn**, giao diện **tiếng Việt / English**, dùng được trên điện thoại (HTTPS trong mạng LAN).
@@ -97,14 +105,14 @@ Sau khi sửa frontend, chạy `npm run build` để `run_web.bat` / backend ph�
 ## Kiểm thử
 
 ```bash
-cd backend && ..\.cam\Scripts\python.exe -m pytest        # API, chọn vật thể, chứng chỉ, phục vụ SPA (không cần model)
+cd backend && ..\.cam\Scripts\python.exe -m pytest        # API, chọn vật thể, tải ảnh / video, chứng chỉ, phục vụ SPA (không cần model)
 cd backend && ..\.cam\Scripts\python.exe -m pytest -m model   # chạy YOLO + MediaPipe thật (~20 giây)
 cd frontend && npm run lint && npm test && npm run build
 ```
 
 ## Kiến trúc & quy ước
 
-Backend: `main.py` → `routers/vision.py` (HTTP: `GET /api/vision/status`, `POST /api/vision/frame` nhận ảnh JPEG thô + `targets` / `conf` / `tolerance`) → `services/detector.py` (một model dùng chung, khoá một khung một lúc, bàn tay chạy CPU song song YOLO trên GPU) → `services/pointing.py` (cùng luật với `find_object_at_point` của `finger_select.py`: bỏ vật mà đầu ngón trỏ nằm ngoài mép quá `tolerance`, còn lại chọn vật đầu ngón tay nằm sâu bên trong nhất, bằng nhau thì vật nhỏ hơn). Schema ở `models.py`, cấu hình `core/config.py` (pydantic-settings, `.env`). `serve.py` chạy HTTP + HTTPS LAN trong một tiến trình và phục vụ luôn `frontend/dist`.
+Backend: `main.py` → `routers/vision.py` (HTTP: `GET /api/vision/status`, `POST /api/vision/frame` nhận ảnh JPEG thô + `targets` / `conf` / `tolerance`) → `services/detector.py` (một model dùng chung, khoá một khung một lúc, bàn tay chạy CPU song song YOLO trên GPU) → `services/pointing.py` (cùng luật với `find_object_at_point` của `finger_select.py`: bỏ vật mà đầu ngón trỏ nằm ngoài mép quá `tolerance`, còn lại chọn vật đầu ngón tay nằm sâu bên trong nhất, bằng nhau thì vật nhỏ hơn). `routers/media.py` + `services/media.py` lưu / liệt kê / phát lại ảnh, video thử trong `UPLOAD_DIR`. Schema ở `models.py`, cấu hình `core/config.py` (pydantic-settings, `.env`). `serve.py` chạy HTTP + HTTPS LAN trong một tiến trình và phục vụ luôn `frontend/dist`.
 
 Frontend: `Services/VisionService.ts` (RxJS ajax qua `HttpClient`, không axios/fetch) → `store/<feature>/{Slice,Epics,Selector}` (`vision`, `history`, `setting`) → `page/<Feature>`. Component không gọi API trực tiếp; mọi text qua `t()` (vi/en trong `translations/`); style bằng `.module.less`, import qua `@/`.
 
@@ -116,7 +124,7 @@ Backend giữ nguyên model, kích thước suy luận YOLO và độ chính xá
 
 Kiểm tra trình duyệt dùng camera giả lập, không mở webcam thật: `cd frontend && npm test` (Windows dùng Chrome đã cài; Linux cần `npx playwright install chromium`). Đo luồng camera với máy chủ đang chạy: `node scripts/benchmark-camera.mjs http://127.0.0.1:8032`. Chạy phép đo riêng, tránh cùng lúc chạy test model/build để số đo CPU/GPU không bị nhiễu.
 
-Khung hình chỉ dùng để nhận diện rồi bỏ — không lưu ảnh/video. Cài đặt nằm trong `localStorage`, lịch sử chỉ trong tab (tải lại trang là mất).
+Khung hình camera chỉ dùng để nhận diện rồi bỏ — không lưu ảnh/video; chỉ file người dùng chủ động tải lên ở thẻ Ảnh / video thử mới được lưu vào `UPLOAD_DIR`. Cài đặt nằm trong `localStorage`, lịch sử chỉ trong tab (tải lại trang là mất).
 
 ## Đồng bộ với finger_select.py
 
