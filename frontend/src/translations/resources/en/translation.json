@@ -115,7 +115,8 @@
       "starting": "STARTING",
       "live": "LIVE",
       "paused": "PAUSED",
-      "interrupted": "INTERRUPTED"
+      "interrupted": "INTERRUPTED",
+      "file": "TEST FILE"
     },
     "stream": {
       "off": "Camera is off",
@@ -150,11 +151,39 @@
       "NotReadableError": "The camera could not be opened. Close other apps using the camera and try again.",
       "OverconstrainedError": "The selected camera is no longer available. Choose another camera.",
       "AbortError": "The browser cancelled opening the camera. Please try again.",
-      "default": "Could not open the camera. Please try again."
+      "default": "Could not open the camera. Please try again.",
+      "media": "The browser cannot open this file. Try a JPG/PNG image or an MP4 (H.264) / WEBM video."
     },
     "snapshotSaved": "Snapshot saved",
     "snapshotEmpty": "No frame to capture yet",
     "fullscreenUnsupported": "This browser does not support full screen."
+  },
+  "media": {
+    "title": "Test image / video",
+    "stageTitle": "Test image / video",
+    "drop": "Drop or click to choose an image or video",
+    "formats": "JPG, PNG, WEBP, BMP, GIF · MP4, WEBM, MOV — up to {{mb}} MB",
+    "open": "Use image / video",
+    "savedTo": "Saved to",
+    "folderUnknown": "server not connected",
+    "saving": "Saving {{name}}…",
+    "saved": "Saved {{name}} to {{folder}}",
+    "recent": "Uploaded",
+    "empty": "No files yet. Uploaded files appear here so you can test them again.",
+    "playing": "Playing",
+    "play": "Play {{name}}",
+    "image": "Image",
+    "video": "Video",
+    "stop": "Stop playback",
+    "caption": "Testing: {{name}}",
+    "unsupported": "Only images (JPG, PNG, WEBP, BMP, GIF) or videos (MP4, WEBM, MOV, M4V, OGV) are accepted.",
+    "tooLarge": "The file is larger than {{mb}} MB.",
+    "startingTitle": "Opening image / video",
+    "startingText": "Frames are analysed like the camera: a finger or laser dot in the image / video selects objects.",
+    "stoppedTitle": "Image / video stopped",
+    "stoppedText": "Pick a file again under Test image / video, or start the camera.",
+    "errorTitle": "Cannot play the image / video",
+    "pausedText": "The video is paused. Press Resume to play and keep detecting."
   },
   "selection": {
     "title": "Selected object",

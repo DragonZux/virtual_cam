@@ -342,6 +342,152 @@
   font-size: 11px;
 }
 
+/* ===== Ảnh / video thử ===== */
+.overlayActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.mediaDrop {
+  :global(.ant-upload-drag) {
+    background: @fill-soft;
+    border-color: @border-strong;
+  }
+  :global(.ant-upload-drag:hover) {
+    border-color: @primary;
+  }
+  :global(.ant-upload-btn) {
+    padding: 12px 10px !important;
+  }
+}
+
+.mediaDropIcon {
+  color: @primary;
+}
+
+.mediaDropText {
+  margin: 6px 0 2px;
+  font-size: 12px;
+  color: @text-2;
+}
+
+.mediaDropHint {
+  margin: 0;
+  font-size: 10px;
+  color: @muted-light;
+}
+
+.mediaFolder {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: @muted;
+  word-break: break-all;
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  code {
+    font-size: 11px;
+    color: @text-2;
+  }
+}
+
+.mediaSaving {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: @primary-hover;
+  word-break: break-all;
+}
+
+.mediaList {
+  margin-top: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.mediaEmpty {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: @muted-light;
+}
+
+.mediaRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+
+  & + & {
+    border-top: 1px solid @fill;
+  }
+  &:hover {
+    background: @fill-soft;
+  }
+  &:focus-visible {
+    outline: 2px solid @primary;
+    outline-offset: -2px;
+  }
+}
+
+.mediaActive {
+  background: @primary-soft !important;
+
+  .mediaName,
+  .mediaMeta {
+    color: @primary-hover;
+  }
+  .mediaIcon {
+    color: @primary;
+    background: @primary-soft-strong;
+  }
+}
+
+.mediaIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: @text-3;
+  background: @fill;
+}
+
+.mediaText {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.mediaName {
+  font-size: 12px;
+  color: @text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mediaMeta {
+  font-size: 10px;
+  color: @muted-light;
+}
+
 /* ===== Lựa chọn gần đây ===== */
 .softLabel {
   font-size: 11px;

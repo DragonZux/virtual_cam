@@ -1,11 +1,11 @@
-import { Button, Card, Select, Tooltip } from "antd";
-import { Aperture, Camera, Maximize, Minimize, Pause, Play, Power } from "lucide-react";
-import { useRef } from "react";
+import { Button, Card, Select, Tooltip, Upload } from "antd";
+import { Aperture, Camera, Film, Maximize, Minimize, Pause, Play, Power, Upload as UploadIcon } from "lucide-react";
+import { useEffect, useRef, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
 import { DISPLAY_MAX_SIDE } from "@/common/constants";
 import { PointerControls } from "@/components/PointerControls/PointerControls";
-import { useCamera, useDocumentVisible, useFrameLoop, useFullscreen, useOverlay, useShortcuts } from "@/hooks";
+import { useDocumentVisible, useFrameLoop, useFullscreen, useOverlay, useShortcuts, type useCamera } from "@/hooks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getFrameOptions, getPreferences } from "@/store/setting";
 import {
@@ -24,12 +24,17 @@ import {
 import { canvasToPng, captureFrame } from "@/utils/capture";
 import { downloadBlob } from "@/utils/download";
 import { fileStamp, objectLabel } from "@/utils/format";
+import { MEDIA_ACCEPT } from "@/utils/media";
 import { notify } from "@/utils/notify";
 import styles from "./live.module.less";
 
 interface Props {
   /** Đang ở trang Tổng quan (trang được giữ mount khi chuyển trang) — chỉ bắt phím tắt lúc hiện */
   visible: boolean;
+  /** <video> dùng chung với thẻ Ảnh / video thử (LivePage giữ) */
+  videoRef: RefObject<HTMLVideoElement | null>;
+  source: ReturnType<typeof useCamera>;
+  onOpenFile: (file: File) => void;
 }
 
 interface OverlayContent {
@@ -38,10 +43,9 @@ interface OverlayContent {
   action?: boolean;
 }
 
-export const CameraPanel = ({ visible }: Props) => {
+export const CameraPanel = ({ visible, videoRef, source, onOpenFile }: Props) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
-  const videoRef = useRef<HTMLVideoElement>(null);
   const outputRef = useRef<HTMLCanvasElement>(null);
   const objectsRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -60,11 +64,12 @@ export const CameraPanel = ({ visible }: Props) => {
   const options = useAppSelector(getFrameOptions);
   const sessionStarted = useAppSelector(getSessionStartedAt) !== null;
   const pageVisible = useDocumentVisible();
-  const { start, stop } = useCamera(videoRef);
+  const { start, stop } = source;
   const fullscreen = useFullscreen(stageRef);
 
   const cameraOn = camera.status === "on";
-  const mirror = selectMirror(prefs.mirror, camera.facingMode);
+  const media = camera.source === "media";
+  const mirror = selectMirror(prefs.mirror, camera);
   const interrupted = !!frameError && frameError.status !== 429;
   useFrameLoop({
     videoRef,
@@ -85,6 +90,15 @@ export const CameraPanel = ({ visible }: Props) => {
     prefs,
     label: (name) => objectLabel(t, name),
   });
+
+  // Tạm dừng video thử cùng lúc với nhận diện để tiếp tục đúng khung đang xem
+  const videoFile = cameraOn && media && camera.media?.kind === "video";
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!videoFile || !video) return;
+    if (paused) video.pause();
+    else void video.play().catch(() => undefined);
+  }, [paused, videoFile, videoRef]);
 
   const startCamera = () => start(camera.status === "error" ? undefined : (camera.deviceId ?? undefined));
   const togglePause = () => cameraOn && dispatch(visionActions.setPaused(!paused));
@@ -119,17 +133,22 @@ export const CameraPanel = ({ visible }: Props) => {
   useShortcuts(visible, { space: togglePause, s: snapshot, f: toggleFullscreen });
 
   const overlay = ((): OverlayContent | null => {
-    if (camera.status === "starting") return { title: t("camera.overlay.startingTitle"), text: t("camera.overlay.startingText") };
+    if (camera.status === "starting") {
+      return media
+        ? { title: t("media.startingTitle"), text: t("media.startingText") }
+        : { title: t("camera.overlay.startingTitle"), text: t("camera.overlay.startingText") };
+    }
     if (camera.status === "error") {
       const text = t(`camera.errors.${camera.error ?? "default"}`, { defaultValue: t("camera.errors.default") });
-      return { title: t("camera.overlay.errorTitle"), text, action: true };
+      return { title: t(camera.error === "media" ? "media.errorTitle" : "camera.overlay.errorTitle"), text, action: true };
     }
     if (camera.status === "off") {
+      if (media && sessionStarted) return { title: t("media.stoppedTitle"), text: t("media.stoppedText"), action: true };
       if (camera.ended) return { title: t("camera.overlay.endedTitle"), text: t("camera.overlay.endedText"), action: true };
       if (sessionStarted) return { title: t("camera.overlay.stoppedTitle"), text: t("camera.overlay.stoppedText"), action: true };
       return { title: t("camera.overlay.introTitle"), text: t("camera.overlay.introText"), action: true };
     }
-    if (paused) return { title: t("camera.overlay.pausedTitle"), text: t("camera.overlay.pausedText") };
+    if (paused) return { title: t("camera.overlay.pausedTitle"), text: t(media ? "media.pausedText" : "camera.overlay.pausedText") };
     if (connection === "offline") return { title: t("camera.overlay.offlineTitle"), text: t("camera.overlay.offlineText") };
     if (status?.phase === "error") return { title: t("camera.overlay.serverErrorTitle"), text: status.error ?? "" };
     if (interrupted) {
@@ -149,7 +168,9 @@ export const CameraPanel = ({ visible }: Props) => {
       : interrupted
         ? "interrupted"
         : result
-          ? "live"
+          ? media
+            ? "file"
+            : "live"
           : "starting";
 
   const streamLabel = !cameraOn
@@ -169,8 +190,8 @@ export const CameraPanel = ({ visible }: Props) => {
       className={styles.cameraCard}
       title={
         <span className={styles.cardTitle}>
-          <Camera size={17} />
-          {t("camera.title")}
+          {media ? <Film size={17} /> : <Camera size={17} />}
+          {t(media ? "media.stageTitle" : "camera.title")}
         </span>
       }
       extra={
@@ -180,7 +201,7 @@ export const CameraPanel = ({ visible }: Props) => {
           aria-label={t("camera.select")}
           placeholder={t("camera.select")}
           value={camera.deviceId ?? undefined}
-          disabled={!cameraOn || camera.devices.length < 2}
+          disabled={!cameraOn || media || camera.devices.length < 2}
           popupMatchSelectWidth={false}
           options={camera.devices.map((device, index) => ({
             value: device.deviceId,
@@ -219,14 +240,28 @@ export const CameraPanel = ({ visible }: Props) => {
             <strong>{overlay.title}</strong>
             <p>{overlay.text}</p>
             {overlay.action && (
-              <Button type="primary" icon={<Camera size={16} />} onClick={startCamera}>
-                {t("camera.start")}
-              </Button>
+              <div className={styles.overlayActions}>
+                <Button type="primary" icon={<Camera size={16} />} onClick={startCamera}>
+                  {t("camera.start")}
+                </Button>
+                <Upload
+                  accept={MEDIA_ACCEPT}
+                  showUploadList={false}
+                  beforeUpload={(file) => {
+                    onOpenFile(file);
+                    return Upload.LIST_IGNORE;
+                  }}
+                >
+                  <Button ghost icon={<UploadIcon size={16} />}>
+                    {t("media.open")}
+                  </Button>
+                </Upload>
+              </div>
             )}
           </div>
         )}
         <div className={styles.badges}>
-          <span className={`${styles.liveBadge} ${badge === "live" ? styles.isLive : ""}`}>
+          <span className={`${styles.liveBadge} ${badge === "live" || badge === "file" ? styles.isLive : ""}`}>
             <span className={styles.badgeDot} />
             {t(`camera.badge.${badge}`)}
           </span>
@@ -236,13 +271,15 @@ export const CameraPanel = ({ visible }: Props) => {
         </div>
         <div className={styles.caption}>
           <span className={styles.frameCorner} />
-          {t(prefs.pointerMode === "laser" ? "pointer.caption" : "camera.caption")}
+          {media && camera.media
+            ? t("media.caption", { name: camera.media.name })
+            : t(prefs.pointerMode === "laser" ? "pointer.caption" : "camera.caption")}
         </div>
       </div>
 
       <div className={styles.toolbar}>
         <div className={styles.streamInfo}>
-          <span className={`${styles.badgeDot} ${badge === "live" ? styles.dotLive : ""}`} />
+          <span className={`${styles.badgeDot} ${badge === "live" || badge === "file" ? styles.dotLive : ""}`} />
           {streamLabel}
         </div>
         <div className={styles.actions}>
@@ -259,7 +296,7 @@ export const CameraPanel = ({ visible }: Props) => {
             {t("camera.snapshot")}
           </Button>
           <Button size="small" type="text" icon={<Power size={14} />} disabled={!cameraOn} onClick={() => stop()}>
-            {t("camera.stop")}
+            {t(media ? "media.stop" : "camera.stop")}
           </Button>
           <Tooltip title={fullscreen.active ? t("camera.exitFullscreen") : t("camera.fullscreen")}>
             <Button

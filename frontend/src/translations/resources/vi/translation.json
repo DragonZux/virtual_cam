@@ -115,7 +115,8 @@
       "starting": "ĐANG KHỞI ĐỘNG",
       "live": "TRỰC TIẾP",
       "paused": "TẠM DỪNG",
-      "interrupted": "TẠM GIÁN ĐOẠN"
+      "interrupted": "TẠM GIÁN ĐOẠN",
+      "file": "FILE THỬ"
     },
     "stream": {
       "off": "Camera chưa bật",
@@ -150,11 +151,39 @@
       "NotReadableError": "Không mở được camera. Hãy đóng ứng dụng khác đang dùng camera rồi thử lại.",
       "OverconstrainedError": "Camera đã chọn không còn khả dụng. Hãy chọn camera khác.",
       "AbortError": "Trình duyệt đã huỷ việc mở camera. Hãy thử lại.",
-      "default": "Không thể mở camera. Hãy thử lại."
+      "default": "Không thể mở camera. Hãy thử lại.",
+      "media": "Trình duyệt không mở được file này. Thử ảnh JPG/PNG hoặc video MP4 (H.264) / WEBM."
     },
     "snapshotSaved": "Đã lưu ảnh chụp khung hình",
     "snapshotEmpty": "Chưa có khung hình để chụp",
     "fullscreenUnsupported": "Trình duyệt này chưa hỗ trợ chế độ toàn màn hình."
+  },
+  "media": {
+    "title": "Ảnh / video thử",
+    "stageTitle": "Ảnh / video thử",
+    "drop": "Kéo thả hoặc bấm để chọn ảnh, video",
+    "formats": "JPG, PNG, WEBP, BMP, GIF · MP4, WEBM, MOV — tối đa {{mb}} MB",
+    "open": "Dùng ảnh / video",
+    "savedTo": "Lưu tại",
+    "folderUnknown": "chưa kết nối máy chủ",
+    "saving": "Đang lưu {{name}}…",
+    "saved": "Đã lưu {{name}} vào {{folder}}",
+    "recent": "Đã tải lên",
+    "empty": "Chưa có file nào. File tải lên sẽ nằm ở đây để thử lại.",
+    "playing": "Đang phát",
+    "play": "Phát {{name}}",
+    "image": "Ảnh",
+    "video": "Video",
+    "stop": "Dừng phát",
+    "caption": "Đang thử: {{name}}",
+    "unsupported": "Chỉ nhận ảnh (JPG, PNG, WEBP, BMP, GIF) hoặc video (MP4, WEBM, MOV, M4V, OGV).",
+    "tooLarge": "File vượt quá {{mb}} MB.",
+    "startingTitle": "Đang mở ảnh / video",
+    "startingText": "Khung hình sẽ được nhận diện như camera: chỉ tay hoặc chấm laser trong ảnh / video sẽ chọn vật thể.",
+    "stoppedTitle": "Đã dừng ảnh / video",
+    "stoppedText": "Chọn lại file ở mục Ảnh / video thử hoặc bật camera.",
+    "errorTitle": "Không phát được ảnh / video",
+    "pausedText": "Video đang dừng. Nhấn Tiếp tục để phát và nhận diện tiếp."
   },
   "selection": {
     "title": "Vật thể đang chọn",

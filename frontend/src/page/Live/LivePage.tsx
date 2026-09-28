@@ -1,13 +1,20 @@
 import { Col, Row } from "antd";
 import { Activity, Hand, History, Target } from "lucide-react";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { MediaItem } from "@/common/types";
 import { StatCard } from "@/components";
+import { useCamera } from "@/hooks";
 import { getSelectionTotal } from "@/store/history";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { getMediaMaxBytes, mediaActions } from "@/store/media";
 import { getPreferences } from "@/store/setting";
 import { getCamera, getFps, getFrameResult } from "@/store/vision";
+import { mediaKindOf, mediaUrl } from "@/utils/media";
+import { notify } from "@/utils/notify";
 import { CameraPanel } from "./CameraPanel";
+import { MediaCard } from "./MediaCard";
 import { RecentSelections } from "./RecentSelections";
 import { SelectionCard } from "./SelectionCard";
 import { TargetsCard } from "./TargetsCard";
@@ -19,6 +26,11 @@ interface Props {
 
 export const LivePage = ({ visible }: Props) => {
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
+  // Khung camera và thẻ Ảnh / video thử dùng chung một <video>: camera hoặc file đều phát vào đây
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const source = useCamera(videoRef);
+  const maxBytes = useAppSelector(getMediaMaxBytes);
   const fps = useAppSelector(getFps);
   const result = useAppSelector(getFrameResult);
   const cameraOn = useAppSelector(getCamera).status === "on";
@@ -26,6 +38,25 @@ export const LivePage = ({ visible }: Props) => {
   const laser = useAppSelector(getPreferences).pointerMode === "laser";
   const laserState = !cameraOn || !result ? "idle" : result.laser ? "found" : "missing";
   const hand = !cameraOn || !result ? "handIdle" : result.hand_detected ? "handFound" : "handMissing";
+
+  /** File mới: phát ngay từ máy (không chờ tải lên) và lưu song song vào thư mục của máy chủ */
+  const openFile = (file: File) => {
+    const kind = mediaKindOf(file.name);
+    if (!kind) {
+      notify.error(t("media.unsupported"));
+      return;
+    }
+    if (maxBytes !== null && file.size > maxBytes) {
+      notify.error(t("media.tooLarge", { mb: Math.round(maxBytes / 1024 / 1024) }));
+      return;
+    }
+    void source.playMedia({ url: URL.createObjectURL(file), name: file.name, kind });
+    dispatch(mediaActions.uploadRequest(file));
+  };
+
+  const openSaved = (item: MediaItem) => {
+    void source.playMedia({ url: mediaUrl(item.name), name: item.name, kind: item.kind });
+  };
 
   return (
     <div className={styles.page}>
@@ -71,9 +102,10 @@ export const LivePage = ({ visible }: Props) => {
       </Row>
 
       <div className={styles.monitor}>
-        <CameraPanel visible={visible} />
+        <CameraPanel visible={visible} videoRef={videoRef} source={source} onOpenFile={openFile} />
         <div className={styles.side}>
           <SelectionCard />
+          <MediaCard onOpenFile={openFile} onOpenSaved={openSaved} />
           <TargetsCard />
         </div>
       </div>
