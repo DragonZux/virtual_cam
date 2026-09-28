@@ -1,5 +1,5 @@
 # Chỉ dùng cho máy KHÔNG có GPU NVIDIA dùng được trong Docker (start.ps1 tự chọn):
-#   docker compose -f docker-compose.yml -f docker-compose.cpu.yml up -d --build
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.cpu.yml up -d --build   (chạy ở thư mục gốc)
 # Bỏ phần xin GPU; bản PyTorch CPU do TORCH_INDEX=cpu trong .env quyết định.
 services:
   virtual-cam:

@@ -2,10 +2,14 @@
 #   http://localhost:8032      — máy này (localhost được phép mở camera)
 #   https://<LAN_IP>:8033      — điện thoại / máy khác cùng mạng (chứng chỉ tự ký, đặt LAN_IP trong .env)
 # Cần NVIDIA driver + Docker Desktop có WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
+# Chạy từ thư mục gốc: scripts/start.ps1 ghi COMPOSE_FILE=docker/docker-compose.yml vào .env gốc nên
+# `docker compose up -d` / `down` / `logs` ở gốc dùng được luôn. Đường dẫn dưới đây tính từ thư mục docker/.
+name: virtual_cam
 services:
   virtual-cam:
     build:
-      context: .
+      context: ..
+      dockerfile: docker/Dockerfile
       args:
         - TORCH_INDEX=${TORCH_INDEX:-cu128}
     image: virtual-cam:latest
@@ -15,22 +19,21 @@ services:
       PUBLIC_URLS: ${LAN_IP:+https://${LAN_IP}:${LAN_HTTPS_PORT:-8033}}
       # Cạnh ảnh đưa vào YOLO (640 chính xác nhất; 480 / 320 nhanh hơn)
       IMAGE_SIZE: ${IMAGE_SIZE:-640}
-      # Model YOLO (file ở thư mục gốc, dùng chung với finger_select.py)
+      # Model YOLO (file trong models/, dùng chung với desktop/finger_select.py)
       YOLO_MODEL: ${YOLO_MODEL:-yolo26m-seg.pt}
       # Ảnh / video tải lên lưu vào thư mục của máy host (start.ps1 đặt UPLOAD_HOST_DIR = Documents\virtual_cam)
       UPLOAD_DIR: /data/uploads
-      UPLOAD_DIR_DISPLAY: ${UPLOAD_HOST_DIR:-./uploads}
+      UPLOAD_DIR_DISPLAY: ${UPLOAD_HOST_DIR:-uploads}
     ports:
       # Chỉ IPv4: cổng IPv6 của Docker Desktop chậm hơn ~30 ms mỗi request (trình duyệt tự dùng 127.0.0.1)
       # HTTP chỉ cho chính máy này: cổng này được quản lý mô hình (MODEL_ADMIN=local); máy khác dùng HTTPS bên dưới
       - "127.0.0.1:${WEB_PORT:-8032}:8030"
       - "0.0.0.0:${LAN_HTTPS_PORT:-8033}:8031"
     volumes:
-      # Model dùng chung với bản chạy trên máy (setup.bat tải hand_landmarker.task)
-      - ./hand_landmarker.task:/models/hand_landmarker.task:ro
-      - ./${YOLO_MODEL:-yolo26m-seg.pt}:/models/${YOLO_MODEL:-yolo26m-seg.pt}:ro
+      # Thư mục models/ dùng chung với bản chạy trên máy (scripts/start.ps1 / setup.bat tải model còn thiếu)
+      - ../models:/models:ro
       - certs:/app/data/certs
-      - ${UPLOAD_HOST_DIR:-./uploads}:/data/uploads
+      - ${UPLOAD_HOST_DIR:-../uploads}:/data/uploads
     deploy:
       resources:
         reservations:

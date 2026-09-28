@@ -1,4 +1,5 @@
 # Virtual Cam — một image: giao diện React (build sẵn) + API FastAPI + YOLO trên GPU NVIDIA.
+# Build context là thư mục gốc (docker-compose.yml: context ..); loại trừ file ở docker/Dockerfile.dockerignore.
 # backend/serve.py phục vụ cả web lẫn API: HTTP :8030 (máy này) và HTTPS :8031 (điện thoại / máy khác trong LAN).
 
 # ---- 1. Build giao diện React ----
@@ -36,7 +37,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 COPY backend/ .
 COPY --from=web /web/dist /app/frontend/dist
 
-# Model mount vào /models (xem docker-compose.yml); chứng chỉ HTTPS tự ký giữ trong volume /app/data/certs
+# Thư mục models/ mount vào /models (xem docker-compose.yml); chứng chỉ HTTPS tự ký giữ trong volume /app/data/certs
 ENV MODEL_DIR=/models \
     FRONTEND_DIST=/app/frontend/dist \
     CERT_DIR=/app/data/certs

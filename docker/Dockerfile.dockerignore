@@ -12,13 +12,12 @@ backend/data
 backend/tests
 backend/.env
 # Model mount lúc chạy, không đóng vào image
+models
 *.pt
 *.task
-# Bản desktop / Flask cũ không thuộc image web
-finger_select.py
-segment.py
-test.py
-web_app.py
-static
-templates
+# Bản desktop, script chạy máy và tài liệu không thuộc image web
+desktop
+scripts
+docker
 uploads
+*.md
