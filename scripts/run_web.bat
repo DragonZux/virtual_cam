@@ -1,14 +1,15 @@
 @echo off
 rem Virtual Cam web: API + giao dien tren http://localhost:8030
-rem   run_web.bat          chi may nay
-rem   run_web.bat --lan    them https://<IP LAN>:8031 cho dien thoai / may khac (chung chi tu ky)
+rem   scripts\run_web.bat          chi may nay
+rem   scripts\run_web.bat --lan    them https://<IP LAN>:8031 cho dien thoai / may khac (chung chi tu ky)
 setlocal
-pushd "%~dp0"
+rem Script nam trong scripts\ - lam viec o thu muc goc du an
+pushd "%~dp0.."
 if errorlevel 1 exit /b 1
 
-set "VENV_PYTHON=%~dp0.cam\Scripts\python.exe"
+set "VENV_PYTHON=%CD%\.cam\Scripts\python.exe"
 if not exist "%VENV_PYTHON%" (
-    echo [ERROR] Python environment not found. Run setup.bat first.
+    echo [ERROR] Python environment not found. Run scripts\setup.bat first.
     goto :failed
 )
 
@@ -16,7 +17,7 @@ if exist "frontend\dist\index.html" goto :serve
 echo Building the web interface ^(first run^)...
 where npm >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Node.js/npm not found. Install Node.js 20+ then run setup.bat.
+    echo [ERROR] Node.js/npm not found. Install Node.js 20+ then run scripts\setup.bat.
     goto :failed
 )
 pushd frontend

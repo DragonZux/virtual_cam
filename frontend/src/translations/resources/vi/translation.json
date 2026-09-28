@@ -291,7 +291,7 @@
       "intro": "Điện thoại hoặc máy khác cùng mạng Wi-Fi mở địa chỉ sau để dùng camera của chính thiết bị đó:",
       "others": "Địa chỉ khác",
       "certNote": "Chứng chỉ tự ký: khi trình duyệt cảnh báo, chọn Nâng cao → Tiếp tục truy cập.",
-      "disabled": "Chưa bật chế độ mạng LAN. Chạy máy chủ với tham số --lan (vd. run_web.bat --lan) để điện thoại mở được camera qua HTTPS.",
+      "disabled": "Chưa bật chế độ mạng LAN. Chạy máy chủ với tham số --lan (vd. scripts\\run_web.bat --lan) để điện thoại mở được camera qua HTTPS.",
       "copy": "Sao chép",
       "copied": "Đã sao chép địa chỉ"
     },
@@ -333,7 +333,7 @@
     "shortcutSnapshot": "Chụp ảnh khung hình",
     "shortcutFullscreen": "Bật / tắt toàn màn hình",
     "devicesTitle": "Dùng trên điện thoại",
-    "devicesText": "Trình duyệt chỉ cho mở camera qua HTTPS hoặc localhost. Chạy máy chủ bằng run_web.bat --lan, rồi mở địa chỉ HTTPS hiện ở Cài đặt › Dùng trên thiết bị khác."
+    "devicesText": "Trình duyệt chỉ cho mở camera qua HTTPS hoặc localhost. Chạy máy chủ bằng scripts\\run_web.bat --lan, rồi mở địa chỉ HTTPS hiện ở Cài đặt › Dùng trên thiết bị khác."
   },
   "httpError": {
     "default": "Có lỗi xảy ra, vui lòng thử lại",

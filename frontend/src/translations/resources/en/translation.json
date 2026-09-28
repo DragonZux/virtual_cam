@@ -291,7 +291,7 @@
       "intro": "Phones or computers on the same Wi-Fi can open this address to use their own camera:",
       "others": "Other addresses",
       "certNote": "Self-signed certificate: when the browser warns, choose Advanced → Proceed.",
-      "disabled": "LAN mode is off. Start the server with --lan (e.g. run_web.bat --lan) so phones can open their camera over HTTPS.",
+      "disabled": "LAN mode is off. Start the server with --lan (e.g. scripts\\run_web.bat --lan) so phones can open their camera over HTTPS.",
       "copy": "Copy",
       "copied": "Address copied"
     },
@@ -333,7 +333,7 @@
     "shortcutSnapshot": "Take a snapshot",
     "shortcutFullscreen": "Toggle full screen",
     "devicesTitle": "Use on a phone",
-    "devicesText": "Browsers only open cameras over HTTPS or localhost. Start the server with run_web.bat --lan, then open the HTTPS address shown in Settings › Use on other devices."
+    "devicesText": "Browsers only open cameras over HTTPS or localhost. Start the server with scripts\\run_web.bat --lan, then open the HTTPS address shown in Settings › Use on other devices."
   },
   "httpError": {
     "default": "Something went wrong, please try again",

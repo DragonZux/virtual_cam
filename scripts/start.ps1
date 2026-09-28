@@ -26,10 +26,13 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'  # native tools report errors through $LASTEXITCODE
-Set-Location -LiteralPath $PSScriptRoot
+# This script lives in scripts/; docker compose runs from the project root so it reads the root .env
+$Root = Split-Path -Parent $PSScriptRoot
+Set-Location -LiteralPath $Root
 
-$EnvFile = Join-Path $PSScriptRoot '.env'
-$Project = 'virtual_cam'          # compose project name (folder name)
+$EnvFile = Join-Path $Root '.env'
+$ModelDir = Join-Path $Root 'models'
+$Project = 'virtual_cam'          # compose project name (`name:` in docker/docker-compose.yml)
 $Image = 'virtual-cam:latest'
 $ProbeImage = 'python:3.11-slim'  # base image of the build: `nvidia-smi` inside it proves Docker sees the GPU
 # PyTorch CUDA builds, preferred first, with the driver CUDA version each one needs
@@ -37,7 +40,9 @@ $CudaBuilds = @(@('cu128', '12.8'), @('cu126', '12.6'), @('cu118', '11.8'))
 $HandModelUrl = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
 # Ultralytics release holding the YOLO26 weights (yolo26n-seg.pt, yolo26m-seg.pt, yolo26l-seg.pt, ...)
 $YoloReleaseUrl = 'https://github.com/ultralytics/assets/releases/download/v8.4.0'
-$DefaultYoloModel = 'yolo26m-seg.pt'  # balance of speed and accuracy (finger_select.py uses yolo26l-seg.pt)
+$DefaultYoloModel = 'yolo26m-seg.pt'  # balance of speed and accuracy (desktop/finger_select.py uses yolo26l-seg.pt)
+$ComposeGpu = 'docker/docker-compose.yml'
+$ComposeCpu = 'docker/docker-compose.yml,docker/docker-compose.cpu.yml'
 # Free space needed on the Docker data disk: full build with PyTorch CUDA / CPU, or only code layers changed
 $NeedGpuGB = 20; $NeedCpuGB = 6; $NeedUpdateGB = 3
 
@@ -56,7 +61,7 @@ function Confirm-Continue([string]$Question) {
 
 function Read-EnvFile {
     if (-not (Test-Path -LiteralPath $EnvFile)) {
-        Copy-Item -LiteralPath (Join-Path $PSScriptRoot '.env.example') -Destination $EnvFile
+        Copy-Item -LiteralPath (Join-Path $Root '.env.example') -Destination $EnvFile
         Info 'Created .env from .env.example'
     }
     $script:EnvText = [System.IO.File]::ReadAllText($EnvFile)
@@ -242,8 +247,9 @@ if (-not $yoloModel) {
     Save-EnvFile
 }
 $Models = @(@('hand_landmarker.task', $HandModelUrl), @($yoloModel, "$YoloReleaseUrl/$yoloModel"))
+New-Item -ItemType Directory -Force -Path $ModelDir | Out-Null
 foreach ($model in $Models) {
-    $path = Join-Path $PSScriptRoot $model[0]
+    $path = Join-Path $ModelDir $model[0]
     if (Test-Path -LiteralPath $path -PathType Container) {
         Fail "$($model[0]) is a folder (Docker creates one when the file is missing): delete it and run again."
     }
@@ -317,7 +323,7 @@ Info "Mode: $mode (PyTorch $torchIndex, YOLO image size $ImageSize)"
 
 # Kept in .env so later plain `docker compose ...` commands build and run the same way.
 Set-EnvValue 'COMPOSE_PATH_SEPARATOR' ','
-Set-EnvValue 'COMPOSE_FILE' $(if ($mode -eq 'gpu') { 'docker-compose.yml' } else { 'docker-compose.yml,docker-compose.cpu.yml' })
+Set-EnvValue 'COMPOSE_FILE' $(if ($mode -eq 'gpu') { $ComposeGpu } else { $ComposeCpu })
 Set-EnvValue 'TORCH_INDEX' $torchIndex
 Set-EnvValue 'IMAGE_SIZE' $ImageSize
 Save-EnvFile
@@ -355,7 +361,7 @@ if ($LASTEXITCODE -ne 0 -and $mode -eq 'gpu' -and -not $Gpu) {
     Confirm-Continue 'Build the CPU version instead?'
     $mode = 'cpu'; $torchIndex = 'cpu'
     if ($ImageSize -eq 640) { $ImageSize = 480 }
-    Set-EnvValue 'COMPOSE_FILE' 'docker-compose.yml,docker-compose.cpu.yml'
+    Set-EnvValue 'COMPOSE_FILE' $ComposeCpu
     Set-EnvValue 'TORCH_INDEX' 'cpu'
     Set-EnvValue 'IMAGE_SIZE' $ImageSize
     Save-EnvFile
@@ -405,5 +411,5 @@ if ($PublicHost) {
     Write-Host '  If phones cannot connect, allow the port in an admin PowerShell:'
     Write-Host "  New-NetFirewallRule -DisplayName 'Virtual Cam' -Direction Inbound -Protocol TCP -LocalPort $($ports[1]) -Action Allow -Profile Private"
 }
-Write-Host '  Stop: docker compose down    Logs: docker compose logs -f'
+Write-Host '  Stop: docker compose down    Logs: docker compose logs -f   (run in the project root folder)'
 if (-not $NoBrowser) { Start-Process $localUrl }

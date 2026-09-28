@@ -1,18 +1,19 @@
 @echo off
 setlocal
-pushd "%~dp0"
+rem Script nam trong scripts\ - lam viec o thu muc goc du an
+pushd "%~dp0.."
 if errorlevel 1 exit /b 1
 
 set "VENV_PYTHON=.cam\Scripts\python.exe"
-set "MODEL_FILE=hand_landmarker.task"
+set "MODEL_FILE=models\hand_landmarker.task"
 set "MODEL_URL=https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
 
 echo ======================================
 echo       virtual_cam Windows setup
 echo ======================================
 
-if not exist "requirements-windows.txt" (
-    echo [ERROR] requirements-windows.txt not found.
+if not exist "desktop\requirements-windows.txt" (
+    echo [ERROR] desktop\requirements-windows.txt not found.
     goto :failed
 )
 if not exist "backend\requirements.txt" (
@@ -52,7 +53,7 @@ echo.
 echo [3/5] Installing Python dependencies (desktop app + web backend)...
 "%VENV_PYTHON%" -m pip install --upgrade pip setuptools wheel
 if errorlevel 1 goto :failed
-"%VENV_PYTHON%" -m pip install -r requirements-windows.txt -r backend\requirements.txt
+"%VENV_PYTHON%" -m pip install -r desktop\requirements-windows.txt -r backend\requirements.txt
 if errorlevel 1 goto :failed
 
 rem Install CUDA wheels when the NVIDIA driver is available.
@@ -67,6 +68,7 @@ if errorlevel 1 goto :failed
 :model_check
 echo.
 echo [4/5] Checking MediaPipe Hand Landmarker model...
+if not exist "models" mkdir "models"
 if exist "%MODEL_FILE%" (
     echo [OK] Model already exists. Skipping download.
 ) else (
@@ -99,11 +101,11 @@ popd
 echo.
 echo Setup completed!
 echo Run the web app with:
-echo     run_web.bat            ^(http://localhost:8030^)
-echo     run_web.bat --lan      ^(also https://^<LAN IP^>:8031 for phones^)
+echo     scripts\run_web.bat            ^(http://localhost:8030^)
+echo     scripts\run_web.bat --lan      ^(also https://^<LAN IP^>:8031 for phones^)
 echo.
-echo Desktop window version ^(Linux camera /dev/video3 - edit CAMERA at the top of finger_select.py^):
-echo     .cam\Scripts\python.exe finger_select.py
+echo Desktop window version ^(Linux camera /dev/video3 - edit CAMERA at the top of desktop\finger_select.py^):
+echo     .cam\Scripts\python.exe desktop\finger_select.py
 echo.
 set "SETUP_EXIT_CODE=0"
 goto :finish

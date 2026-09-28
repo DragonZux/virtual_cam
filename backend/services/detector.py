@@ -188,7 +188,7 @@ class Detector:
 
             hand_path = self.cfg.hand_model_path
             if not hand_path.is_file():
-                raise RuntimeError(f"Thiếu model bàn tay {hand_path.name}. Hãy chạy setup.bat rồi mở lại web.")
+                raise RuntimeError(f"Thiếu model bàn tay {hand_path.name}. Hãy chạy scripts\\setup.bat rồi mở lại web.")
             self._gpu = self.cfg.DEVICE.lower() != "cpu" and torch.cuda.is_available()
             if self.cfg.DEVICE.lower() not in ("auto", "cpu") and not self._gpu:
                 logger.warning("DEVICE=%s but CUDA is unavailable - running YOLO on CPU", self.cfg.DEVICE)
