@@ -50,7 +50,7 @@ virtual_cam/
 ├── models/      hand_landmarker.task, yolo26*-seg.pt — không commit (web mặc định yolo26m-seg.pt, finger_select.py
 │                dùng yolo26l-seg.pt; scripts tự tải model còn thiếu)
 ├── docker/      Dockerfile, docker-compose.yml (một container web + API + GPU), docker-compose.cpu.yml (máy không GPU)
-├── scripts/     setup.bat, run_web.bat (chạy trên Windows), start_docker.bat → start.ps1 (Docker tự theo máy)
+├── scripts/     setup.bat, run_web.bat (Windows), setup.sh, run_web.sh (Linux), start_docker.bat → start.ps1 (Docker tự theo máy)
 └── README.md, .env.example   (.env do scripts/start.ps1 tạo)
 ```
 
@@ -92,6 +92,19 @@ scripts\run_web.bat --lan      :: thêm https://<IP LAN>:8031 cho điện thoạ
 ```
 
 Lần đầu mở cổng LAN, Windows Firewall hỏi quyền cho Python — chọn *Allow* cho mạng Private.
+
+## Chạy trực tiếp trên Linux (không Docker)
+
+Cần Python 3 (Ubuntu/Debian: `sudo apt install python3 python3-venv`) và Node.js 20+ để build giao diện.
+
+```bash
+bash scripts/setup.sh          # tạo .cam, cài thư viện (CUDA nếu có GPU NVIDIA), tải model vào models/, build giao diện
+bash scripts/setup.sh --cpu    # ép PyTorch CPU (không có GPU / driver NVIDIA < 580)
+bash scripts/run_web.sh        # http://localhost:8030
+bash scripts/run_web.sh --lan  # thêm https://<IP LAN>:8031 cho điện thoại
+```
+
+Máy chủ tối giản thiếu thư viện đồ hoạ cho OpenCV / MediaPipe: `sudo apt install libgl1 libglib2.0-0 libegl1 libgles2`. `scripts/setup.sh` đã cài đủ thư viện cho cả `desktop/finger_select.py` (`.cam/bin/python desktop/finger_select.py`), không cần chạy thêm `desktop/setup.sh`. Ảnh / video tải lên lưu ở `~/Documents/virtual_cam`. Trình duyệt chỉ cho mở camera qua `localhost` hoặc HTTPS, nên truy cập từ máy khác phải dùng `--lan` (có tường lửa thì mở cổng 8031, vd. `sudo ufw allow 8031/tcp`).
 
 ## Phát triển
 
