@@ -17,7 +17,6 @@ export const RecentSelections = () => {
   return (
     <Card
       size="small"
-      className={styles.recentCard}
       title={
         <>
           {t("recent.title")}

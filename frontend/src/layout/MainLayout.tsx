@@ -122,7 +122,7 @@ export const MainLayout = () => {
         )}
       </Layout.Sider>
 
-      <Layout className={styles.workspace}>
+      <Layout>
         <Layout.Header className={styles.header}>
           <div className={styles.breadcrumb}>
             {t("header.workspace")} <span>/</span> <strong>{t(`nav.${current}`)}</strong>
