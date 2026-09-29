@@ -66,7 +66,7 @@ echo "[2/5] Checking environment Python..."
 echo
 echo "[3/5] Installing Python dependencies (web backend + desktop app)..."
 "$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
-# PyTorch cài trước để backend/requirements.txt không kéo thêm bản mặc định (vài GB thư viện CUDA)
+# PyTorch cài trước để requirements.txt không kéo thêm bản mặc định (vài GB thư viện CUDA)
 TORCH_INDEX=cpu
 if [ "$FORCE_CPU" = 0 ] && command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then
     TORCH_INDEX=cu130
@@ -76,7 +76,7 @@ else
 fi
 "$VENV_PYTHON" -m pip install --upgrade "torch==$TORCH_VERSION+$TORCH_INDEX" "torchvision==$TORCHVISION_VERSION+$TORCH_INDEX" \
     --index-url "https://download.pytorch.org/whl/$TORCH_INDEX"
-"$VENV_PYTHON" -m pip install -r backend/requirements.txt
+"$VENV_PYTHON" -m pip install -r requirements.txt
 if [ "$TORCH_INDEX" != cpu ]; then
     "$VENV_PYTHON" -c "import torch; assert torch.cuda.is_available(); print('GPU:', torch.cuda.get_device_name(0))" \
         || fail "PyTorch cannot use the GPU. Update the NVIDIA driver (CUDA 13 needs driver 580+) or run: bash scripts/setup.sh --cpu"
@@ -90,6 +90,8 @@ echo "[4/5] Checking models..."
 mkdir -p models
 fetch_model hand_landmarker.task "$HAND_MODEL_URL"
 fetch_model "$YOLO_MODEL" "$YOLO_RELEASE_URL/$YOLO_MODEL"
+echo "Preparing the trained red laser model..."
+"$VENV_PYTHON" scripts/prepare_laser_model.py || fail "Could not prepare the red laser model."
 
 echo
 echo "[5/5] Building the web interface..."
