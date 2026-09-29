@@ -22,6 +22,7 @@ services:
       LASER_MODEL: ${LASER_MODEL:-laser-advr-yolov5l6.torchscript}
       LASER_IMAGE_SIZE: ${LASER_IMAGE_SIZE:-1280}
       LASER_CONFIDENCE: ${LASER_CONFIDENCE:-0.55}
+      LASER_CROP_SIZE: ${LASER_CROP_SIZE:-384}
       # Model YOLO (file trong models/, dùng chung với desktop/finger_select.py)
       YOLO_MODEL: ${YOLO_MODEL:-yolo26m-seg.pt}
       # Ảnh / video tải lên lưu vào thư mục của máy host (start.ps1 đặt UPLOAD_HOST_DIR = Documents\virtual_cam)

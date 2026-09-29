@@ -24,7 +24,8 @@ def prepare_frame(frame: np.ndarray, size: int, stride: int = 64):
     gain = min(target_h / height, target_w / width)
     resized_w, resized_h = round(width * gain), round(height * gain)
     pad_x, pad_y = (target_w - resized_w) / 2, (target_h - resized_h) / 2
-    resized = cv2.resize(frame, (resized_w, resized_h), interpolation=cv2.INTER_LINEAR)
+    resized = (frame if (resized_w, resized_h) == (width, height) else
+               cv2.resize(frame, (resized_w, resized_h), interpolation=cv2.INTER_LINEAR))
     padded = cv2.copyMakeBorder(resized, round(pad_y - 0.1), round(pad_y + 0.1),
                                round(pad_x - 0.1), round(pad_x + 0.1), cv2.BORDER_CONSTANT,
                                value=(114, 114, 114))
@@ -34,7 +35,7 @@ def prepare_frame(frame: np.ndarray, size: int, stride: int = 64):
 
 def select_spot(prediction: np.ndarray, shape: tuple[int, int], gain: float,
                 padding: tuple[float, float], confidence: float,
-                hint: tuple[int, int] | None = None) -> LaserSpot | None:
+                hint: tuple[int, int] | None = None, *, hint_radius: float | None = None) -> LaserSpot | None:
     """Decode one-class xywh/objectness/class rows; hints only select current detections."""
     rows = np.asarray(prediction).reshape(-1, 6)
     scores = rows[:, 4] * rows[:, 5]
@@ -53,7 +54,8 @@ def select_spot(prediction: np.ndarray, shape: tuple[int, int], gain: float,
     # the highest-confidence choice, so an NMS dependency is unnecessary here.
     indices = np.arange(len(centers))
     if hint is not None:
-        nearby = indices[np.linalg.norm(centers - np.array(hint), axis=1) <= HINT_RADIUS * max(shape) / 640]
+        radius = HINT_RADIUS * max(shape) / 640 if hint_radius is None else hint_radius
+        nearby = indices[np.linalg.norm(centers - np.array(hint), axis=1) <= radius]
         if len(nearby):
             indices = nearby
     winner = indices[np.argmax(scores[indices])]
@@ -63,7 +65,8 @@ def select_spot(prediction: np.ndarray, shape: tuple[int, int], gain: float,
 
 
 class LaserModel:
-    def __init__(self, path: Path, device: str, size: int = 1280, confidence: float = 0.55):
+    def __init__(self, path: Path, device: str, size: int = 1280, confidence: float = 0.55,
+                 crop_size: int = 384):
         # Constructor runs only in Detector's background loader, not on import.
         import torch
 
@@ -80,9 +83,43 @@ class LaserModel:
         self.model.to(dtype=self.dtype)
         self.size = size
         self.confidence = confidence
+        self.crop_size = crop_size
+
+    def warm_up(self) -> None:
+        # Warm both acquisition orientations and tracking before accepting frames.
+        for shape in ((720, 1280, 3), (1280, 720, 3)):
+            self._detect(np.zeros(shape, dtype=np.uint8), self.size)
+        if 0 < self.crop_size < self.size:
+            self._detect(np.zeros((self.crop_size, self.crop_size, 3), dtype=np.uint8), self.crop_size)
 
     def detect(self, frame: np.ndarray, hint: tuple[int, int] | None = None) -> LaserSpot | None:
-        pixels, gain, padding = prepare_frame(frame, self.size)
+        """Try a current-frame crop near this client's hint, then reacquire on the full frame.
+
+        Scale the crop with the full-frame input size so small spots keep their
+        pixel size at the network. No previous detection or image is cached.
+        """
+        height, width = frame.shape[:2]
+        if (hint is not None and 0 < self.crop_size < self.size and
+                0 <= hint[0] < width and 0 <= hint[1] < height):
+            side = max(1, round(self.crop_size * max(height, width) / self.size))
+            # Very narrow images cannot provide a square crop at the original scale.
+            if side <= min(height, width):
+                left = max(0, min(width - side, hint[0] - side // 2))
+                top = max(0, min(height - side, hint[1] - side // 2))
+                local_hint = (hint[0] - left, hint[1] - top)
+                radius = HINT_RADIUS * max(height, width) / 640
+                spot = self._detect(frame[top:top + side, left:left + side], self.crop_size,
+                                    local_hint, hint_radius=radius)
+                if spot is not None:
+                    point = [spot.point[0] + left, spot.point[1] + top]
+                    # A distant LED inside the crop must not prevent full-frame reacquisition.
+                    if np.hypot(point[0] - hint[0], point[1] - hint[1]) <= radius:
+                        return spot.model_copy(update={"point": point})
+        return self._detect(frame, self.size, hint)
+
+    def _detect(self, frame: np.ndarray, size: int, hint: tuple[int, int] | None = None,
+                *, hint_radius: float | None = None) -> LaserSpot | None:
+        pixels, gain, padding = prepare_frame(frame, size)
         with self.torch.inference_mode():
             output = self.model(self.torch.from_numpy(pixels).to(device=self.device, dtype=self.dtype))
             raw = output[0] if isinstance(output, (tuple, list)) else output
@@ -90,4 +127,5 @@ class LaserModel:
             rows = raw[0]
             rows = rows[rows[:, 4] * rows[:, 5] >= self.confidence]
             prediction = rows.detach().cpu().numpy()
-        return select_spot(prediction, frame.shape[:2], gain, padding, self.confidence, hint)
+        return select_spot(prediction, frame.shape[:2], gain, padding, self.confidence, hint,
+                           hint_radius=hint_radius)

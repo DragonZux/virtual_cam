@@ -6,7 +6,7 @@ import pytest
 
 from models import LaserColor, LaserSpot, PointerMode
 from services.detector import Detector
-from services.laser_model import prepare_frame, select_spot
+from services.laser_model import LaserModel, prepare_frame, select_spot
 from tests.test_laser import encode, scene
 from tests.test_vision_api import post_frame
 
@@ -82,3 +82,77 @@ def test_laser_initialization_failure_does_not_break_hand_readiness(detector, mo
     detector._load_laser()
     assert detector._laser is None and detector.laser_error == "invalid laser checkpoint"
     assert detector.ready.is_set() and detector.error is None
+
+
+def crop_model(monkeypatch, responses, size=1280, crop_size=384):
+    """Exercise tracking control flow without loading torch or model weights."""
+    model = LaserModel.__new__(LaserModel)
+    model.size = size
+    model.crop_size = crop_size
+    calls = []
+    def detect(frame, size, hint=None, *, hint_radius=None):
+        calls.append((frame, size, hint, hint_radius))
+        return responses[len(calls) - 1]
+    monkeypatch.setattr(model, "_detect", detect)
+    return model, calls
+
+
+@pytest.mark.parametrize("shape,hint,region", [
+    ((720, 1280), (702, 253), (510, 61, 384)),
+    ((1280, 720), (360, 700), (168, 508, 384)),
+    ((720, 1280), (2, 2), (0, 0, 384)),
+    ((720, 1280), (1278, 718), (896, 336, 384)),
+    ((360, 640), (320, 180), (224, 84, 192)),
+    ((1080, 1920), (1000, 500), (712, 212, 576)),
+])
+def test_crop_preserves_scale_coordinates_and_only_returns_current_detection(monkeypatch, shape, hint, region):
+    frame = np.arange(shape[0] * shape[1] * 3, dtype=np.uint8).reshape(*shape, 3)
+    left, top, side = region
+    local = LaserSpot(point=[hint[0] - left + 1, hint[1] - top + 1], color=LaserColor.red, score=0.73)
+    model, calls = crop_model(monkeypatch, [local])
+    spot = model.detect(frame, hint)
+    assert spot.point == [hint[0] + 1, hint[1] + 1] and spot.score == 0.73
+    assert len(calls) == 1
+    crop, size, local_hint, radius = calls[0]
+    np.testing.assert_array_equal(crop, frame[top:top + side, left:left + side])
+    assert size / crop.shape[0] == pytest.approx(1280 / max(shape))
+    assert local_hint == (hint[0] - left, hint[1] - top)
+    assert radius == 40 * max(shape) / 640
+
+
+@pytest.mark.parametrize("local", [None, LaserSpot(point=[10, 10], color=LaserColor.red, score=0.99)])
+def test_missed_crop_or_distant_led_reacquires_on_same_full_frame(monkeypatch, local):
+    frame = np.zeros((720, 1280, 3), np.uint8)
+    moved = LaserSpot(point=[1100, 600], color=LaserColor.red, score=0.8)
+    model, calls = crop_model(monkeypatch, [local, moved])
+    assert model.detect(frame, (640, 360)) == moved
+    assert len(calls) == 2
+    assert calls[1][0] is frame and calls[1][1:3] == (1280, (640, 360))
+
+
+def test_missing_laser_is_not_fabricated_from_hint_and_clients_do_not_share_state(monkeypatch):
+    frame = np.zeros((720, 1280, 3), np.uint8)
+    model, calls = crop_model(monkeypatch, [None, None, None])
+    assert model.detect(frame, (640, 360)) is None
+    assert model.detect(frame) is None
+    assert len(calls) == 3 and calls[-1][0] is frame and calls[-1][2] is None
+
+
+@pytest.mark.parametrize("hint,size,crop_size,shape", [
+    (None, 1280, 384, (720, 1280)), ((-1, 20), 1280, 384, (720, 1280)),
+    ((1280, 20), 1280, 384, (720, 1280)), ((20, 720), 1280, 384, (720, 1280)),
+    ((640, 360), 1280, 0, (720, 1280)), ((640, 360), 384, 384, (720, 1280)),
+    ((640, 360), 320, 384, (720, 1280)), ((640, 100), 1280, 384, (200, 1280)),
+])
+def test_acquisition_invalid_hint_or_disabled_crop_uses_full_frame(monkeypatch, hint, size, crop_size, shape):
+    frame = np.zeros((*shape, 3), np.uint8)
+    model, calls = crop_model(monkeypatch, [None], size, crop_size)
+    assert model.detect(frame, hint) is None
+    assert len(calls) == 1 and calls[0][0] is frame and calls[0][1] == size
+
+
+def test_crop_keeps_full_frame_hint_radius_when_choosing_between_laser_and_led():
+    # Both are in the crop; only the weaker point is within 80px of the hint.
+    rows = np.array([[70, 192, 8, 8, 0.99, 1], [250, 192, 8, 8, 0.8, 1]])
+    spot = select_spot(rows, (384, 384), 1, (0, 0), 0.55, (192, 192), hint_radius=80)
+    assert spot.point == [250, 192]

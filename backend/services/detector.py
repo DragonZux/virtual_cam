@@ -235,8 +235,8 @@ class Detector:
     def _load_laser(self) -> None:
         try:
             laser = LaserModel(self.cfg.laser_model_path, "cuda:0" if self._gpu else "cpu",
-                               self.cfg.LASER_IMAGE_SIZE, self.cfg.LASER_CONFIDENCE)
-            laser.detect(np.zeros((720, 1280, 3), dtype=np.uint8))
+                               self.cfg.LASER_IMAGE_SIZE, self.cfg.LASER_CONFIDENCE, self.cfg.LASER_CROP_SIZE)
+            laser.warm_up()
             self._laser = laser
             self.laser_error = None
             logger.info("Red laser model ready: %s / imgsz %d", self.cfg.LASER_MODEL, self.cfg.LASER_IMAGE_SIZE)
