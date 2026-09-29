@@ -42,6 +42,8 @@ export interface VisionStatus {
   device: string | null;
   model: string;
   image_size: number;
+  laser_model?: string | null;
+  laser_error?: string | null;
   /** Lớp chọn làm mục tiêu được — hợp các mô hình đang bật (máy chủ đã bỏ "person") */
   classes: string[];
   defaults: DetectionDefaults;

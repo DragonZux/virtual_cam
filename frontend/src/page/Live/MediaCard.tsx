@@ -38,7 +38,6 @@ export const MediaCard = ({ onOpenFile, onOpenSaved }: Props) => {
   return (
     <Card
       size="small"
-      className={styles.mediaCard}
       title={t("media.title")}
       extra={<span className={styles.countBadge}>{String(items.length).padStart(2, "0")}</span>}
     >

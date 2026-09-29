@@ -5,6 +5,7 @@ import type { FrameOptions } from "@/common/types";
 import { useAppStore } from "@/store/hooks";
 import { visionActions } from "@/store/vision";
 import { canvasToJpeg, captureFrame } from "@/utils/capture";
+import { laserHint } from "@/utils/laserTrack";
 
 interface Params {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -43,40 +44,58 @@ export const useFrameLoop = ({ videoRef, active, mirror, options }: Params) => {
     let retryAt = 0;
     let lastMediaTime = -1;
     let lastPresentedTime = -1;
+    let lastPresentedFrame: number | undefined;
     let frameInterval = MIN_FRAME_INTERVAL_MS;
     let lastCaptureStarted = -Infinity;
+
+    const frameSlack = () => Math.min(50, frameInterval / 2) + 2;
 
     const schedule = () => {
       if (cancelled || encoding || timer !== undefined || videoCallback !== undefined || fallbackCallback !== undefined) return;
       const { vision } = store.getState();
-      const limit = vision.frameError ? 1 : MAX_FRAMES_IN_FLIGHT;
+      // With slow inference, a second request mostly waits behind the first
+      // and can exceed the server's busy timeout. Capture afresh on completion.
+      const limit = vision.frameError || processingInterval > 250 ? 1 : MAX_FRAMES_IN_FLIGHT;
       if (sent - vision.frameSeq >= limit) return;
-      timer = window.setTimeout(() => {
-        timer = undefined;
+      const requestNextFrame = () => {
         if (typeof video.requestVideoFrameCallback === "function") {
           videoCallback = video.requestVideoFrameCallback((_now, metadata) => {
             videoCallback = undefined;
-            void capture(metadata.mediaTime);
+            void capture(metadata.mediaTime, metadata.presentedFrames);
           });
         } else {
           fallbackCallback = requestAnimationFrame(() => {
             fallbackCallback = undefined;
-            void capture(video.currentTime);
+            void capture(video.currentTime, video.getVideoPlaybackQuality?.().totalVideoFrames);
           });
         }
-      }, Math.max(0, retryAt - performance.now()));
+      };
+      // Sleep through frames that cannot be sent. Register a camera callback
+      // one interval early so rounding to camera frames does not halve FPS.
+      const delay = Math.max(retryAt, nextAllowedAt - frameInterval - frameSlack()) - performance.now();
+      if (delay > 0) {
+        timer = window.setTimeout(() => {
+          timer = undefined;
+          requestNextFrame();
+        }, delay);
+      } else requestNextFrame();
     };
 
-    const capture = async (mediaTime: number) => {
+    const capture = async (mediaTime: number, presentedFrames?: number) => {
       if (cancelled) return;
       if (lastPresentedTime >= 0 && mediaTime > lastPresentedTime) {
-        frameInterval = Math.min(200, Math.max(8, (mediaTime - lastPresentedTime) * 1000));
+        // Timer pacing skips callbacks, not camera frames. Use frame counters
+        // so the sleep interval is not mistaken for a slower camera rate.
+        const frames = presentedFrames !== undefined && lastPresentedFrame !== undefined
+          ? presentedFrames - lastPresentedFrame : 0;
+        if (frames > 0) frameInterval = Math.min(200, Math.max(8, (mediaTime - lastPresentedTime) * 1000 / frames));
       }
       lastPresentedTime = mediaTime;
+      lastPresentedFrame = presentedFrames;
       // Register before the next camera frame; waiting one full interval THEN registering
       // would miss every other frame on a 30 FPS camera.
-      const frameSlack = Math.min(50, frameInterval / 2) + 2;
-      if (performance.now() + frameSlack < nextAllowedAt ||
+      const slack = frameSlack();
+      if (performance.now() + slack < nextAllowedAt ||
           performance.now() - lastCaptureStarted < MIN_FRAME_INTERVAL_MS - 2) {
         schedule();
         return;
@@ -118,14 +137,17 @@ export const useFrameLoop = ({ videoRef, active, mirror, options }: Params) => {
       // Pace slow GPUs/CPU while still allowing upload and inference to overlap.
       // Carry the pacing deadline forward: rounding to camera frames must not halve FPS
       // when inference takes just slightly longer than one camera interval.
-      nextAllowedAt = Math.max(captureStarted - frameSlack, nextAllowedAt) +
+      nextAllowedAt = Math.max(captureStarted - slack, nextAllowedAt) +
         Math.max(MIN_FRAME_INTERVAL_MS, processingInterval);
       sent += 1;
+      // Gợi ý chỉ có nghĩa khi khung mới cùng cỡ với khung đã cho ra vị trí đang bám
+      const sameSize = vision.result?.resolution.width === upload.width && vision.result?.resolution.height === upload.height;
       store.dispatch(visionActions.analyzeFrameRequest({
         id: vision.lastRequestId + 1,
         image,
         options: opts,
         capturedAt,
+        laserHint: opts.pointer_mode === "laser" && sameSize ? laserHint(vision.laserTrack) : null,
       }));
       schedule();
     };
@@ -143,7 +165,10 @@ export const useFrameLoop = ({ videoRef, active, mirror, options }: Params) => {
           : vision.result.processing_ms;
         // The first CUDA frame can take seconds after the OS pages memory back in.
         // Recover promptly when it becomes fast again; in-flight limits still handle slow models.
-        processingInterval = Math.min(250, measured * 1.25, average);
+        // Respect sustained CPU inference times above 250 ms too: capping here
+        // fills the server queue with old frames. The current sample still
+        // lets pacing recover immediately after a slow startup frame.
+        processingInterval = Math.min(measured * 1.25, average);
         nextAllowedAt = Math.min(nextAllowedAt, lastCaptureStarted + Math.max(MIN_FRAME_INTERVAL_MS, processingInterval));
       }
       if (vision.frameError) {

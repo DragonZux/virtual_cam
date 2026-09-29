@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --retries 10 --timeout 120 torch torchvision --index-url "https://download.pytorch.org/whl/${TORCH_INDEX}"
 
 WORKDIR /app
-COPY backend/requirements.txt .
+COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --retries 10 --timeout 60 -r requirements.txt
 

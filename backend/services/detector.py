@@ -29,6 +29,7 @@ from models import (
 )
 from services import model_store
 from services.laser import detect_laser
+from services.laser_model import LaserModel, LaserUnavailable
 from services.pointing import index_tip, object_at_point, object_at_laser
 
 # Chỉ vào "person" luôn trúng chính bàn tay người đang chỉ, nên lớp này không bao giờ là mục tiêu
@@ -52,6 +53,8 @@ class FrameOptions:
     pointer_mode: PointerMode = PointerMode.hand
     laser_color: LaserColor = LaserColor.red
     laser_brightness: int = 200
+    # Vị trí chấm laser ổn định gần nhất trình duyệt đang bám (pixel của khung trước) — ưu tiên ứng viên gần đó
+    laser_hint: tuple[int, int] | None = None
 
 
 @dataclass
@@ -164,6 +167,8 @@ class Detector:
         self._canonical: dict[str, str] = {}
         self.default_targets: list[str] = []
         self._hands: Any = None
+        self._laser: LaserModel | None = None
+        self.laser_error: str | None = None
         self._mp: Any = None
         self._gpu = False
         self._loader: threading.Thread | None = None
@@ -214,6 +219,7 @@ class Detector:
             )
             self._hands = mp.tasks.vision.HandLandmarker.create_from_options(options)
             self._mp = mp
+            self._load_laser()
             # Chạy thử các cỡ khung hay gặp (webcam 4:3 / 16:9, điện thoại dọc): mỗi cỡ mới lần đầu mất vài giây
             # để GPU chọn kernel — làm sẵn ở đây thì khung đầu tiên của người dùng không bị đứng hình
             for entry in self.models:
@@ -225,6 +231,19 @@ class Detector:
         except Exception as exc:
             self.error = str(exc) or type(exc).__name__
             logger.exception("Detector initialization failed")
+
+    def _load_laser(self) -> None:
+        try:
+            laser = LaserModel(self.cfg.laser_model_path, "cuda:0" if self._gpu else "cpu",
+                               self.cfg.LASER_IMAGE_SIZE, self.cfg.LASER_CONFIDENCE, self.cfg.LASER_CROP_SIZE)
+            laser.warm_up()
+            self._laser = laser
+            self.laser_error = None
+            logger.info("Red laser model ready: %s / imgsz %d", self.cfg.LASER_MODEL, self.cfg.LASER_IMAGE_SIZE)
+        except Exception as exc:
+            self._laser = None
+            self.laser_error = str(exc) or type(exc).__name__
+            logger.exception("Red laser unavailable; hand and green laser remain available")
 
     def _open_model(self, path: Path) -> tuple[Any, str, dict[int, str]]:
         """Nạp một file YOLO; chỉ nhận mô hình phân đoạn / phát hiện vật thể (cần khung + tên lớp)."""
@@ -306,6 +325,8 @@ class Detector:
             "error": self.error,
             "device": self.device_name,
             "model": self.cfg.YOLO_MODEL,
+            "laser_model": self.cfg.LASER_MODEL if self._laser is not None else None,
+            "laser_error": self.laser_error,
             "image_size": self.cfg.IMAGE_SIZE,
             "classes": list(self.classes) if ready else [],
             "defaults": DetectionDefaults(
@@ -392,7 +413,7 @@ class Detector:
 
     def options(self, targets: str | None, confidence: float | None, tolerance: int | None,
                 pointer_mode: PointerMode = PointerMode.hand, laser_color: LaserColor = LaserColor.red,
-                laser_brightness: int = 200) -> FrameOptions:
+                laser_brightness: int = 200, laser_hint: tuple[int, int] | None = None) -> FrameOptions:
         """Kiểm tra cài đặt trình duyệt gửi kèm khung hình; bỏ trống = mặc định máy chủ."""
         names = list(dict.fromkeys(n.strip() for n in targets.split(",") if n.strip())) if targets else self.default_targets
         if not names:
@@ -407,6 +428,7 @@ class Detector:
             pointer_mode=pointer_mode,
             laser_color=laser_color,
             laser_brightness=laser_brightness,
+            laser_hint=laser_hint if pointer_mode == PointerMode.laser else None,
         )
 
     def analyze(self, payload: bytes, options: FrameOptions) -> FrameResult:
@@ -466,21 +488,34 @@ class Detector:
             self._predict(entry, np.zeros((height, width, 3), dtype=np.uint8), entry.classes, self.cfg.DEFAULT_CONFIDENCE)
 
     def _run_models(self, frame: np.ndarray, options: FrameOptions) -> ModelOutput:
-        hand_job = self._hand_pool.submit(self._detect_hand, frame) if options.pointer_mode == PointerMode.hand else None
-        laser = detect_laser(frame, options.laser_color, options.laser_brightness) if options.pointer_mode == PointerMode.laser else None
+        # Laser đỏ dùng cùng GPU với YOLO vật thể: chạy lần lượt dưới Detector.lock.
+        # Bàn tay / laser xanh chạy CPU song song với YOLO như trước.
+        laser = None
+        side_job = None
+        if options.pointer_mode == PointerMode.laser:
+            if options.laser_color == LaserColor.red:
+                if self._laser is None:
+                    raise LaserUnavailable(self.laser_error or "Model laser đỏ chưa sẵn sàng.")
+                laser = self._laser.detect(frame, options.laser_hint)
+            else:
+                side_job = self._hand_pool.submit(detect_laser, frame, options.laser_brightness, options.laser_hint)
+        else:
+            side_job = self._hand_pool.submit(self._detect_hand, frame)
         results = []
         try:
-            # GPU chạy lần lượt từng mô hình; bàn tay vẫn song song trên CPU
+            # GPU chạy lần lượt từng mô hình
             for entry in self.models:
                 if entry.active:
                     result = self._predict(entry, frame, options.targets, options.confidence)
                     if result is not None:
                         results.append(result)
         finally:
-            # Không để luồng bàn tay chạy tiếp sau khi đã nhả khoá
-            if hand_job is not None:
-                wait([hand_job])
-        landmarks = hand_job.result() if hand_job is not None else None
+            # Không để luồng CPU chạy tiếp sau khi đã nhả khoá
+            if side_job is not None:
+                wait([side_job])
+        if options.pointer_mode == PointerMode.laser and side_job is not None:
+            laser = side_job.result()
+        landmarks = side_job.result() if options.pointer_mode == PointerMode.hand else None
 
         tolerance = 4 * max(frame.shape[:2]) / 640 if options.pointer_mode == PointerMode.laser else options.tolerance
         output = self._extract_output(results, landmarks, tolerance, tuple(laser.point) if laser else None,
@@ -548,4 +583,5 @@ class Detector:
             if self._hands is not None:
                 self._hands.close()
                 self._hands = None
+            self._laser = None
         self._hand_pool.shutdown(wait=False, cancel_futures=True)

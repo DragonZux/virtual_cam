@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     IMAGE_SIZE: int = Field(640, ge=32)
     DEVICE: str = "auto"  # auto = GPU 0 nếu có CUDA, ngược lại CPU; "cpu" để ép chạy CPU
     HAND_CONFIDENCE: float = Field(0.6, gt=0, le=1)
+    # Model chuyên laser đỏ; ngưỡng độc lập với confidence của vật thể.
+    LASER_MODEL: str = "laser-advr-yolov5l6.torchscript"
+    LASER_IMAGE_SIZE: int = Field(1280, ge=64, le=1920, multiple_of=64)
+    LASER_CONFIDENCE: float = Field(0.55, ge=0.05, le=0.95)
+    # Bám gần vị trí khung trước ở cùng tỉ lệ pixel; mất dấu thì quét toàn ảnh. 0 = luôn quét toàn ảnh.
+    LASER_CROP_SIZE: int = Field(384, ge=0, le=1920, multiple_of=64)
 
     # Mặc định nhận diện — mỗi trình duyệt tự chỉnh ở màn Cài đặt và gửi kèm từng khung hình
     DEFAULT_TARGETS: str = "laptop,mouse,keyboard"
@@ -108,6 +114,10 @@ class Settings(BaseSettings):
     @property
     def hand_model_path(self) -> Path:
         return self.MODEL_DIR / self.HAND_MODEL
+
+    @property
+    def laser_model_path(self) -> Path:
+        return self.MODEL_DIR / self.LASER_MODEL
 
 
 settings = Settings()

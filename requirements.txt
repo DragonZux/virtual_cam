@@ -1,0 +1,32 @@
+# Toan bo thu vien Python cua du an - cai mot lan: pip install -r requirements.txt
+# Dung chung cho web backend (backend/), ban desktop (desktop/finger_select.py, segment.py), test va Docker.
+# Chu thich khong dau: pip tren Windows doc file nay theo cp1252.
+# torch: ultralytics tu keo ve; scripts/setup.bat cai ban CUDA neu may co GPU NVIDIA.
+
+# --- Nhan dien (web + desktop) ---
+numpy
+opencv-contrib-python
+mediapipe
+ultralytics>=8.4.162   # YOLO26 + tham so quantize (thay half)
+pillow
+
+# Xuat model laser ADVR mot lan (scripts/prepare_laser_model.py).
+# Suy luan laser chi dung torch; cac thu vien nay phuc vu ma YOLOv5 v7.0 khi xuat.
+ipython>=8.32,<9
+seaborn>=0.13,<0.14
+pandas>=2,<3
+setuptools<81            # YOLOv5 v7.0 can pkg_resources
+
+# --- Web API ---
+fastapi>=0.115
+# Khong dung uvicorn[standard]: bo watchfiles (chi cho --reload) va websockets (app khong co WebSocket)
+uvicorn>=0.30
+httptools>=0.6                          # bo doc HTTP nhanh cua uvicorn
+uvloop>=0.19; sys_platform != "win32"   # vong lap su kien nhanh tren Linux / Docker
+pydantic>=2.7
+pydantic-settings>=2.3
+cryptography>=42       # chung chi tu ky cho che do --lan
+
+# --- Test (pytest trong backend/) ---
+pytest
+httpx2                 # TestClient cua Starlette 1.x

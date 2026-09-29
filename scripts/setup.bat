@@ -12,12 +12,8 @@ echo ======================================
 echo       virtual_cam Windows setup
 echo ======================================
 
-if not exist "desktop\requirements-windows.txt" (
-    echo [ERROR] desktop\requirements-windows.txt not found.
-    goto :failed
-)
-if not exist "backend\requirements.txt" (
-    echo [ERROR] backend\requirements.txt not found.
+if not exist "requirements.txt" (
+    echo [ERROR] requirements.txt not found.
     goto :failed
 )
 
@@ -53,7 +49,7 @@ echo.
 echo [3/5] Installing Python dependencies (desktop app + web backend)...
 "%VENV_PYTHON%" -m pip install --upgrade pip setuptools wheel
 if errorlevel 1 goto :failed
-"%VENV_PYTHON%" -m pip install -r desktop\requirements-windows.txt -r backend\requirements.txt
+"%VENV_PYTHON%" -m pip install -r requirements.txt
 if errorlevel 1 goto :failed
 
 rem Install CUDA wheels when the NVIDIA driver is available.
@@ -78,6 +74,10 @@ if exist "%MODEL_FILE%" (
 )
 
 echo.
+echo Preparing the trained red laser model...
+"%VENV_PYTHON%" scripts\prepare_laser_model.py
+if errorlevel 1 goto :failed
+
 echo [5/5] Building the web interface...
 where npm >nul 2>&1
 if errorlevel 1 (

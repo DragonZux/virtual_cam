@@ -25,7 +25,6 @@ export const TargetsCard = () => {
   return (
     <Card
       size="small"
-      className={styles.targetsCard}
       title={t("targets.title")}
       extra={<span className={styles.countBadge}>{String(targets.length).padStart(2, "0")}</span>}
     >

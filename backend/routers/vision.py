@@ -6,6 +6,7 @@ from core.config import settings
 from core.logging import logger
 from models import FrameResult, StatusOut, PointerMode, LaserColor
 from services.detector import Detector, DetectorBusy
+from services.laser_model import LaserUnavailable
 
 router = APIRouter(prefix="/vision", tags=["Vision"])
 
@@ -61,7 +62,9 @@ async def analyze_frame(
     tolerance: int | None = Query(None, ge=0, le=100, description="Đầu ngón tay được cách mép vật thể tối đa (pixel)"),
     pointer_mode: PointerMode = Query(PointerMode.hand, description="Chọn bằng ngón tay hoặc điểm laser"),
     laser_color: LaserColor = Query(LaserColor.red, description="Màu laser cần tìm"),
-    laser_brightness: int = Query(200, ge=160, le=250, description="Độ sáng tối thiểu của điểm laser (HSV V)"),
+    laser_brightness: int = Query(200, ge=160, le=250, description="Độ sáng tối thiểu (HSV V), chỉ dùng cho laser xanh"),
+    laser_hint: str | None = Query(None, pattern=r"^\d{1,5},\d{1,5}$",
+                                   description="x,y chấm laser ổn định gần nhất trình duyệt đang bám (pixel khung trước)"),
     detector: Detector = Depends(get_detector),
 ):
     """Phân tích một khung JPEG: bàn tay, đầu ngón trỏ và vật thể đang được chỉ."""
@@ -70,7 +73,8 @@ async def analyze_frame(
     if not detector.ready.is_set():
         raise HTTPException(503, detector.error or "Bộ nhận diện đang khởi động, thử lại sau giây lát.")
     try:
-        options = detector.options(targets, conf, tolerance, pointer_mode, laser_color, laser_brightness)
+        hint = tuple(int(v) for v in laser_hint.split(",")) if laser_hint else None
+        options = detector.options(targets, conf, tolerance, pointer_mode, laser_color, laser_brightness, hint)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     payload = await read_frame(request, settings.MAX_FRAME_BYTES)
@@ -80,6 +84,8 @@ async def analyze_frame(
         raise HTTPException(400, str(exc)) from exc
     except DetectorBusy as exc:
         raise HTTPException(429, "Máy chủ đang bận, đang thử lại…", headers={"Retry-After": "1"}) from exc
+    except LaserUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
     except Exception as exc:
         logger.exception("Frame analysis failed")
         raise HTTPException(500, "Không xử lý được khung hình. Hãy thử bật lại camera.") from exc

@@ -21,7 +21,7 @@ export const SelectionCard = () => {
   return (
     <Card
       size="small"
-      className={`${styles.selectionCard} ${held ? styles.hasSelection : ""}`}
+      className={held ? styles.hasSelection : undefined}
       title={t("selection.title")}
       extra={<span className={styles.tinyLabel}>{t("selection.current")}</span>}
     >

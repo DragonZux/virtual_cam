@@ -25,7 +25,7 @@ class LaserColor(str, Enum):
 class LaserSpot(BaseModel):
     point: list[int] = Field(min_length=2, max_length=2, description="Tâm điểm laser [x, y] (pixel)")
     color: LaserColor
-    score: float = Field(ge=0, le=1, description="Điểm xếp hạng màu/độ sáng, không phải xác suất")
+    score: float = Field(ge=0, le=1, description="Laser đỏ: confidence của model; xanh: điểm màu/độ sáng. Không phải xác suất hiệu chuẩn.")
 
 
 class DetectionDefaults(BaseModel):
@@ -70,6 +70,8 @@ class StatusOut(BaseModel):
     device: str | None = Field(None, description="GPU / CPU đang chạy YOLO")
     model: str
     image_size: int
+    laser_model: str | None = None
+    laser_error: str | None = None
     classes: list[str] = Field(default_factory=list, description="Lớp chọn làm mục tiêu được (không có 'person')")
     defaults: DetectionDefaults
     share_urls: list[str] = Field(default_factory=list, description="Địa chỉ HTTPS cho thiết bị khác (serve.py --lan)")

@@ -61,12 +61,12 @@ echo "[3/4] Installing Python dependencies..."
 
 python -m pip install --upgrade pip setuptools wheel
 
-if [ ! -f "desktop/requirements.txt" ]; then
-    echo "[ERROR] desktop/requirements.txt not found."
+if [ ! -f "requirements.txt" ]; then
+    echo "[ERROR] requirements.txt not found."
     exit 1
 fi
 
-python -m pip install -r desktop/requirements.txt
+python -m pip install -r requirements.txt
 
 
 # --------------------------------------------------

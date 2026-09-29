@@ -266,6 +266,11 @@ foreach ($model in $Models) {
 }
 
 Step 'Preparing .env'
+$laserModel = Get-EnvValue 'LASER_MODEL'
+if (-not $laserModel) { $laserModel = 'laser-advr-yolov5l6.torchscript' }
+if (-not (Test-Path -LiteralPath (Join-Path $ModelDir $laserModel) -PathType Leaf)) {
+    Warn 'Red laser model is missing. Run scripts\setup.bat or python scripts\prepare_laser_model.py before using red laser. Hand pointing and green laser will still work.'
+}
 if (-not $PublicHost) { $PublicHost = Get-LanIp }
 if ($PublicHost) {
     Set-EnvValue 'LAN_IP' $PublicHost

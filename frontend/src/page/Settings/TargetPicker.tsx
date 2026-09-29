@@ -63,7 +63,6 @@ export const TargetPicker = () => {
 
   return (
     <Card
-      className={styles.targetsCard}
       title={
         <span className={styles.cardTitle}>
           <Target size={17} />

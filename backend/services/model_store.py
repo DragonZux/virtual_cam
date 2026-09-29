@@ -42,13 +42,6 @@ def model_files(folder: Path) -> list[Path]:
     return sorted(files, key=lambda path: (path.stat().st_mtime, path.name))
 
 
-def find_model(folder: Path, name: str) -> Path | None:
-    if not name or Path(name).name != name or "\\" in name or Path(name).suffix.lower() != MODEL_SUFFIX:
-        return None
-    path = folder / name
-    return path if path.is_file() else None
-
-
 def load_state(folder: Path) -> dict[str, Any]:
     state: dict[str, Any] = {"disabled": [], "meta": {}}
     path = folder / STATE_FILE

@@ -3,7 +3,6 @@
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
   readonly APP_VERSION?: string;
-  readonly BUILD_TIME?: string;
 }
 
 interface ImportMeta {
