@@ -150,8 +150,6 @@ Laser đỏ suy luận toàn khung, ưu tiên ứng viên đủ confidence gần
 
 Kiểm tra trình duyệt dùng camera giả lập, không mở webcam thật: `cd frontend && npm test` (Windows dùng Chrome đã cài; Linux cần `npx playwright install chromium`). Đo luồng camera với máy chủ đang chạy: `node scripts/benchmark-camera.mjs http://127.0.0.1:8032`. Chạy phép đo riêng, tránh cùng lúc chạy test model/build để số đo CPU/GPU không bị nhiễu.
 
-Đo riêng bộ lọc OpenCV cũ từ thư mục gốc: `.cam\Scripts\python.exe scripts\benchmark_laser.py` (thêm `--baseline <đường-dẫn-laser.py-cũ>` để so sánh). Script này không đo model AI laser đỏ. Phép đo dùng ảnh tổng hợp không thay thế kiểm tra video/camera thật.
-
 Khung hình camera chỉ dùng để nhận diện rồi bỏ — không lưu ảnh/video; chỉ file người dùng chủ động tải lên ở thẻ Ảnh / video thử mới được lưu vào `UPLOAD_DIR`. Cài đặt nằm trong `localStorage`, lịch sử chỉ trong tab (tải lại trang là mất).
 
 ## Đồng bộ với finger_select.py
