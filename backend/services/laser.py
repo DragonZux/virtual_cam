@@ -1,5 +1,6 @@
-"""Detect compact laser spots with clear colour evidence, including white cores.
+"""Detect compact green laser spots with clear colour evidence, including white cores.
 
+Red lasers use the trained model in laser_model.py; this module only serves green.
 A single-frame heuristic, not a trained or calibrated classifier. Similar LEDs
 can still be ambiguous; no temporal state is shared between browser requests.
 Candidates first pass fixed gates (brightness, shape, local colour), then are
@@ -25,27 +26,26 @@ from models import LaserColor, LaserSpot
 # A hand-held pointer moves this far between frames at most (pixels at 640 px on the long side)
 HINT_RADIUS = 40
 
-# OpenCV hue is 0..179. Keep both sides of red without accepting orange/magenta.
-RED_HUE_LOW_MAX = 10
-RED_HUE_HIGH_MIN = 170
+# OpenCV hue is 0..179.
+GREEN_HUE_MIN = 40
+GREEN_HUE_MAX = 85
 WHITE_HALO_MIN_SATURATION = 40
 WHITE_HALO_MIN_TINT = 20
 WHITE_HALO_MIN_COVERAGE = 0.35
 
 
-def _colour(hue: np.ndarray, color: LaserColor) -> np.ndarray:
-    return ((hue <= RED_HUE_LOW_MAX) | (hue >= RED_HUE_HIGH_MIN)
-            if color == LaserColor.red else (hue >= 40) & (hue <= 85))
+def _colour(hue: np.ndarray) -> np.ndarray:
+    return (hue >= GREEN_HUE_MIN) & (hue <= GREEN_HUE_MAX)
 
 
-def _tint(bgr: np.ndarray, color: LaserColor) -> np.ndarray:
+def _tint(bgr: np.ndarray) -> np.ndarray:
     b, g, r = (bgr[:, :, i].astype(np.float32) for i in range(3))
-    # The target channel must beat BOTH others: an average also rewards yellow
-    # (R ~= G) and magenta (R ~= B), including their desaturated white cores.
-    return r - np.maximum(g, b) if color == LaserColor.red else g - np.maximum(r, b)
+    # Green must beat BOTH others: an average also rewards yellow (G ~= R) and
+    # cyan (G ~= B), including their desaturated white cores.
+    return g - np.maximum(r, b)
 
 
-def _candidates(frame: np.ndarray, hsv: np.ndarray, color: LaserColor, brightness: int,
+def _candidates(frame: np.ndarray, hsv: np.ndarray, brightness: int,
                 white_core: bool, scale: float) -> list[tuple[tuple[float, float], float]]:
     height, width = frame.shape[:2]
     value = hsv[:, :, 2]
@@ -58,12 +58,7 @@ def _candidates(frame: np.ndarray, hsv: np.ndarray, color: LaserColor, brightnes
     # uint8 subtract saturates at 0, so this equals `light - background >= 25`
     mask = (light >= core_threshold) & (cv2.subtract(light, background) >= 25)
     if not white_core:
-        if color == LaserColor.red:
-            hue_ok = (cv2.inRange(hsv, (0, 120, 0), (RED_HUE_LOW_MAX, 255, 255))
-                      | cv2.inRange(hsv, (RED_HUE_HIGH_MIN, 120, 0), (179, 255, 255)))
-        else:
-            hue_ok = cv2.inRange(hsv, (40, 120, 0), (85, 255, 255))
-        mask &= hue_ok > 0
+        mask &= cv2.inRange(hsv, (GREEN_HUE_MIN, 120, 0), (GREEN_HUE_MAX, 255, 255)) > 0
     count, labels, stats, centres = cv2.connectedComponentsWithStats(mask.view(np.uint8), connectivity=8)
     if count <= 1:
         return []
@@ -93,8 +88,8 @@ def _candidates(frame: np.ndarray, hsv: np.ndarray, color: LaserColor, brightnes
         if np.count_nonzero(ring) < 8:
             continue
         patch = hsv[top:bottom, left:right]
-        tint = _tint(frame[top:bottom, left:right], color)
-        colour_ok = _colour(patch[:, :, 0], color)
+        tint = _tint(frame[top:bottom, left:right])
+        colour_ok = _colour(patch[:, :, 0])
         if white_core:
             # Colour must extend beyond the bright component. A few tinted
             # pixels inside a reflection are insufficient. Allow asymmetric
@@ -109,7 +104,7 @@ def _candidates(frame: np.ndarray, hsv: np.ndarray, color: LaserColor, brightnes
             if np.count_nonzero(coloured) < 2:
                 continue
         contrast = peak - float(np.median(patch[:, :, 2][ring]))
-        # Use the upper background quartile for white cores so a nearby red
+        # Use the upper background quartile for white cores so a nearby green
         # surface cannot supply their halo colour simply by covering <50% of
         # the ring. A compact laser has stronger colour than its surroundings.
         background_tint = float(np.percentile(tint[ring], 75)) if white_core else float(np.median(tint[ring]))
@@ -138,16 +133,15 @@ def _candidates(frame: np.ndarray, hsv: np.ndarray, color: LaserColor, brightnes
     return found
 
 
-def _spots(frame: np.ndarray, color: LaserColor, brightness: int,
-           scale: float) -> list[tuple[tuple[int, int], float]]:
+def _spots(frame: np.ndarray, brightness: int, scale: float) -> list[tuple[tuple[int, int], float]]:
     """Rank/merge a region, using the full frame's scale for every size gate."""
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     # Every candidate must reach this peak. Dark frames need no blur or labels.
     if cv2.minMaxLoc(hsv[:, :, 2])[1] < brightness:
         return []
     candidates = sorted(
-        _candidates(frame, hsv, color, brightness, True, scale)
-        + _candidates(frame, hsv, color, brightness, False, scale),
+        _candidates(frame, hsv, brightness, True, scale)
+        + _candidates(frame, hsv, brightness, False, scale),
         key=lambda item: item[1], reverse=True,
     )
     # Merge pieces of one physical dot: its white core and coloured halo, or a
@@ -169,7 +163,7 @@ def _spots(frame: np.ndarray, color: LaserColor, brightness: int,
     return unique
 
 
-def detect_laser(frame: np.ndarray, color: LaserColor, min_brightness: int = 200,
+def detect_laser(frame: np.ndarray, min_brightness: int = 200,
                  hint: tuple[int, int] | None = None) -> LaserSpot | None:
     height, width = frame.shape[:2]
     scale = max(width, height) / 640
@@ -182,20 +176,20 @@ def detect_laser(frame: np.ndarray, color: LaserColor, min_brightness: int = 200
         left, top = max(0, hint[0] - padding), max(0, hint[1] - padding)
         right, bottom = min(width, hint[0] + padding + 1), min(height, hint[1] + padding + 1)
         if left > 0 or top > 0 or right < width or bottom < height:
-            local = _spots(frame[top:bottom, left:right], color, min_brightness, scale)
+            local = _spots(frame[top:bottom, left:right], min_brightness, scale)
             for (x, y), score in local:
                 point = (x + left, y + top)
                 if np.hypot(point[0] - hint[0], point[1] - hint[1]) <= radius:
-                    return LaserSpot(point=list(point), color=color, score=score)
+                    return LaserSpot(point=list(point), color=LaserColor.green, score=score)
 
-    unique = _spots(frame, color, min_brightness, scale)
+    unique = _spots(frame, min_brightness, scale)
     if hint is not None:
         # Keep following the tracked dot; a far look-alike (LED, reflection) must not steal it.
         near = [c for c in unique if np.hypot(c[0][0] - hint[0], c[0][1] - hint[1]) <= radius]
         if near:
             point, score = near[0]
-            return LaserSpot(point=list(point), color=color, score=score)
+            return LaserSpot(point=list(point), color=LaserColor.green, score=score)
     if not unique or (len(unique) > 1 and unique[1][1] >= unique[0][1] * 0.85):
         return None
     point, score = unique[0]
-    return LaserSpot(point=list(point), color=color, score=score)
+    return LaserSpot(point=list(point), color=LaserColor.green, score=score)

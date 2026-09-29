@@ -498,8 +498,7 @@ class Detector:
                     raise LaserUnavailable(self.laser_error or "Model laser đỏ chưa sẵn sàng.")
                 laser = self._laser.detect(frame, options.laser_hint)
             else:
-                side_job = self._hand_pool.submit(detect_laser, frame, options.laser_color, options.laser_brightness,
-                                                  options.laser_hint)
+                side_job = self._hand_pool.submit(detect_laser, frame, options.laser_brightness, options.laser_hint)
         else:
             side_job = self._hand_pool.submit(self._detect_hand, frame)
         results = []
