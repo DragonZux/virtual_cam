@@ -4,13 +4,11 @@ import type { LiveState, MirrorMode } from "@/common/types";
 import type { RootState } from "@/store/types";
 import type { CameraState } from "./visionSlice";
 
-export const getVisionState = (state: RootState) => state.vision;
 export const getVisionStatus = (state: RootState) => state.vision.status;
 export const getConnection = (state: RootState) => state.vision.connection;
 export const getCamera = (state: RootState) => state.vision.camera;
 export const isPaused = (state: RootState) => state.vision.paused;
 export const getFrameResult = (state: RootState) => state.vision.result;
-export const getFrameSeq = (state: RootState) => state.vision.frameSeq;
 export const getFrameError = (state: RootState) => state.vision.frameError;
 export const getFps = (state: RootState) => state.vision.fps;
 export const getTracking = (state: RootState) => state.vision.tracking;

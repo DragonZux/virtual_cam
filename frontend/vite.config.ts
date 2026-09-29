@@ -6,7 +6,6 @@ import path from "path";
 export default defineConfig({
   define: {
     "import.meta.env.APP_VERSION": JSON.stringify(process.env.npm_package_version ?? "0.0.0"),
-    "import.meta.env.BUILD_TIME": JSON.stringify(new Date().toISOString()),
   },
   resolve: {
     alias: {
