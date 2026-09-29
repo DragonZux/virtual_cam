@@ -152,6 +152,10 @@ Tìm theo vùng giảm thời gian khi chấm đang được bám ổn định; 
 
 Kiểm tra trình duyệt dùng camera giả lập, không mở webcam thật: `cd frontend && npm test` (Windows dùng Chrome đã cài; Linux cần `npx playwright install chromium`). Đo luồng camera với máy chủ đang chạy: `node scripts/benchmark-camera.mjs http://127.0.0.1:8032`. Chạy phép đo riêng, tránh cùng lúc chạy test model/build để số đo CPU/GPU không bị nhiễu.
 
+Đo model AI laser đỏ: `.cam\Scripts\python.exe scripts\benchmark_laser_model.py <ảnh-laser-1.jpg> <ảnh-laser-2.jpg> --iterations 20`. Script dùng cùng model, luân phiên quét toàn ảnh và tìm theo vùng, báo median/p95 cho bắt đầu, bám chấm và tìm lại khi gợi ý sai; kèm tọa độ/confidence để đối chiếu. Số đo này chỉ tính bước tìm laser, chưa gồm YOLO đồ vật, truyền ảnh hay FPS camera.
+
+Đo ngày 29/09/2026 trên RTX 3050 Laptop 6GB, ba ảnh laser đã tải lên, 20 mẫu mỗi cách và chạy luân phiên: median tìm laser khi đang bám giảm từ 159–178 ms xuống 44–46 ms. Đo riêng cả xử lý backend (giải mã JPEG + laser + YOLO26m-seg 640 + chọn vật) giảm từ 234–244 ms xuống 115–139 ms, nhanh hơn khoảng 1,7–2,1 lần; tọa độ khác tối đa 1px và kết quả chọn vật giống nhau trên ba ảnh. Đây là phép đo ảnh tĩnh, chưa gồm mạng/trình duyệt và không đại diện độ chính xác hay FPS camera thực tế. Khi phải tìm lại toàn ảnh, bước tìm laser tăng từ 146–175 ms lên 213–218 ms do chạy thêm vùng nhỏ trước.
+
 Khung hình camera chỉ dùng để nhận diện rồi bỏ — không lưu ảnh/video; chỉ file người dùng chủ động tải lên ở thẻ Ảnh / video thử mới được lưu vào `UPLOAD_DIR`. Cài đặt nằm trong `localStorage`, lịch sử chỉ trong tab (tải lại trang là mất).
 
 ## Đồng bộ với finger_select.py
