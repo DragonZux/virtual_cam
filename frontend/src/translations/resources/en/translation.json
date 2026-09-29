@@ -172,7 +172,6 @@
     "folderUnknown": "server not connected",
     "saving": "Saving {{name}}…",
     "saved": "Saved {{name}} to {{folder}}",
-    "recent": "Uploaded",
     "empty": "No files yet. Uploaded files appear here so you can test them again.",
     "playing": "Playing",
     "play": "Play {{name}}",
