@@ -2,7 +2,7 @@
 #   http://localhost:8032      — máy này (localhost được phép mở camera)
 #   https://<LAN_IP>:8033      — điện thoại / máy khác cùng mạng (chứng chỉ tự ký, đặt LAN_IP trong .env)
 # Cần NVIDIA driver + Docker Desktop có WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
-# Chạy từ thư mục gốc: scripts/start.ps1 ghi COMPOSE_FILE=docker/docker-compose.yml vào .env gốc nên
+# Chạy từ thư mục gốc: scripts/start.ps1 (Linux: scripts/start.sh) ghi COMPOSE_FILE=docker/docker-compose.yml vào .env gốc nên
 # `docker compose up -d` / `down` / `logs` ở gốc dùng được luôn. Đường dẫn dưới đây tính từ thư mục docker/.
 name: virtual_cam
 services:
