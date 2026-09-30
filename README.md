@@ -106,8 +106,8 @@ Lần đầu mở cổng LAN, Windows Firewall hỏi quyền cho Python — ch�
 Cần Python 3 (Ubuntu/Debian: `sudo apt install python3 python3-venv`) và Node.js 20+ để build giao diện.
 
 ```bash
-bash scripts/setup.sh          # tạo .cam, cài requirements.txt (CUDA nếu có GPU NVIDIA), tải model + xuất model laser đỏ, build giao diện
-bash scripts/setup.sh --cpu    # ép PyTorch CPU (không có GPU / driver NVIDIA < 580)
+bash scripts/setup.sh          # tạo .cam, cài requirements.txt (PyTorch CUDA 13.0 nếu driver NVIDIA ≥ 580, CUDA 12.6 nếu ≥ 560, còn lại CPU), tải model + xuất model laser đỏ, build giao diện
+bash scripts/setup.sh --cpu    # ép PyTorch CPU (không có GPU NVIDIA, hoặc muốn nhường GPU cho việc khác)
 bash scripts/run_web.sh        # http://localhost:8030
 bash scripts/run_web.sh --lan  # thêm https://<IP LAN>:8031 cho điện thoại
 ```
