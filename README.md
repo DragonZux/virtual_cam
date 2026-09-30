@@ -30,7 +30,7 @@ API `POST /api/vision/frame` thêm query `pointer_mode=hand|laser` (mặc địn
 
 Không cần camera: ở trang Tổng quan, kéo thả ảnh hoặc video vào thẻ **Ảnh / video thử** (hoặc bấm **Dùng ảnh / video** trên khung camera). File phát ngay trong khung camera và được nhận diện y như camera — chỉ tay, laser, giữ để xác nhận, lịch sử, chụp ảnh đều dùng được; video tự lặp lại, Tạm dừng dừng cả video. Ảnh tĩnh được vẽ lại 15 lần/giây nên "giữ để xác nhận" vẫn chạy.
 
-File tải lên được **lưu thẳng vào `C:\Users\<tên>\Documents\virtual_cam`** của máy chạy máy chủ (tên thêm mốc thời gian, không ghi đè) và hiện trong danh sách của thẻ để bấm thử lại. Nhận JPG, PNG, WEBP, BMP, GIF, MP4, WEBM, MOV, M4V, OGV, tối đa 500 MB (`MAX_UPLOAD_MB`). Đổi thư mục: `UPLOAD_DIR` trong `backend/.env` (chạy trên Windows) hoặc `UPLOAD_HOST_DIR` trong `.env` gốc (Docker — `scripts/start.ps1` tự đặt về `%USERPROFILE%\Documents\virtual_cam` và mount vào container).
+File tải lên được **lưu thẳng vào `C:\Users\<tên>\Documents\virtual_cam`** của máy chạy máy chủ (tên thêm mốc thời gian, không ghi đè) và hiện trong danh sách của thẻ để bấm thử lại. Nhận JPG, PNG, WEBP, BMP, GIF, MP4, WEBM, MOV, M4V, OGV, tối đa 500 MB (`MAX_UPLOAD_MB`). Đổi thư mục: `UPLOAD_DIR` trong `backend/.env` (chạy trên Windows) hoặc `UPLOAD_HOST_DIR` trong `.env` gốc (Docker — `scripts/start.ps1` tự đặt về `%USERPROFILE%\Documents\virtual_cam`, `scripts/start.sh` về `~/Documents/virtual_cam`, và mount vào container).
 
 Video nên là MP4 (H.264) hoặc WEBM để trình duyệt phát được. API: `GET /api/media` (danh sách, thư mục lưu), `POST /api/media?name=<tên file>` (body là file thô), `GET /api/media/<tên>` (phát lại, hỗ trợ tua).
 
@@ -56,7 +56,7 @@ virtual_cam/
 ├── models/      hand_landmarker.task, yolo26*-seg.pt — không commit (web mặc định yolo26m-seg.pt, finger_select.py
 │                dùng yolo26l-seg.pt; scripts tự tải model còn thiếu)
 ├── docker/      Dockerfile, docker-compose.yml (một container web + API + GPU), docker-compose.cpu.yml (máy không GPU)
-├── scripts/     setup.bat, run_web.bat (Windows), setup.sh, run_web.sh (Linux), start_docker.bat → start.ps1 (Docker tự theo máy)
+├── scripts/     setup.bat, run_web.bat (Windows), setup.sh, run_web.sh (Linux), start_docker.bat → start.ps1 (Docker tự theo máy), start.sh (Docker trên Linux)
 └── requirements.txt (mọi thư viện Python: web, desktop, test — pip install -r requirements.txt), README.md, .env.example
 ```
 
@@ -81,13 +81,15 @@ Chỉ chạy CPU (máy không có GPU NVIDIA, hoặc muốn nhường GPU cho vi
 
 Tham số: `-Cpu` (ép CPU), `-PublicHost 192.168.1.10`, `-ImageSize 480`, `-Force` (bỏ qua kiểm tra dung lượng / RAM), `-NoBrowser`. Chạy lại bao nhiêu lần cũng được (sau khi sửa code chỉ build lại phần code, vài phút). Sau khi script đã ghi `.env`, lệnh tay `docker compose up -d --build` / `docker compose down` / `docker compose logs -f` chạy ở thư mục gốc cũng dùng đúng chế độ đó (`.env` trỏ `COMPOSE_FILE` vào `docker/`).
 
+**Linux:** `bash scripts/start.sh` làm đúng các bước trên với Docker Engine (cần Docker Compose 2.24+; GPU cần thêm [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)). Tham số: `--cpu`, `--gpu`, `--host 192.168.1.10`, `--image-size 480`, `--force`, `--no-browser`. Tài khoản chưa thuộc nhóm `docker` thì chạy `sudo bash scripts/start.sh` (hoặc `sudo usermod -aG docker $USER` rồi đăng nhập lại). Ảnh / video tải lên lưu ở `~/Documents/virtual_cam`. Trên **Jetson**, image Docker chạy YOLO bằng CPU (wheel PyTorch trong image không có kernel cho GPU Jetson); muốn dùng GPU thì chạy trực tiếp (mục Linux bên dưới).
+
 | Địa chỉ | Dùng cho |
 |---|---|
 | http://localhost:8032 | Máy chạy Docker |
 | https://`LAN_IP`:8033 | Điện thoại / máy khác cùng Wi-Fi (chứng chỉ tự ký: chọn *Nâng cao → Tiếp tục*) |
 | http://localhost:8032/docs | Tài liệu API (Swagger) |
 
-Một image duy nhất (`docker/Dockerfile`, build context là thư mục gốc, loại trừ file theo `docker/Dockerfile.dockerignore`): bước 1 build giao diện React bằng Node, bước 2 là Python + PyTorch CUDA (`cu128`) + FastAPI; `backend/serve.py` phục vụ cả web lẫn API và cổng HTTPS cho điện thoại. `docker/docker-compose.yml` xin GPU NVIDIA (cần NVIDIA driver + Docker Desktop có WSL2 GPU); máy không có GPU dùng thêm `docker/docker-compose.cpu.yml` (script tự chọn). Thư mục `models/` mount vào container (chỉ đọc).
+Một image duy nhất (`docker/Dockerfile`, build context là thư mục gốc, loại trừ file theo `docker/Dockerfile.dockerignore`): bước 1 build giao diện React bằng Node, bước 2 là Python + PyTorch CUDA (`cu128`) + FastAPI; `backend/serve.py` phục vụ cả web lẫn API và cổng HTTPS cho điện thoại. `docker/docker-compose.yml` xin GPU NVIDIA (cần NVIDIA driver + Docker Desktop có WSL2 GPU, trên Linux là NVIDIA Container Toolkit); máy không có GPU dùng thêm `docker/docker-compose.cpu.yml` (script tự chọn). Thư mục `models/` mount vào container (chỉ đọc).
 
 Image ~12 GB (thư viện CUDA): trước khi build xem ổ chứa dữ liệu Docker (máy này là `G:\DockerDesktopWSL`) còn ≥ 20 GB và đóng bớt ứng dụng nặng. Dockerfile dùng cache mount cho pip nên build lại sau khi hỏng không phải tải lại wheel.
 
@@ -106,13 +108,15 @@ Lần đầu mở cổng LAN, Windows Firewall hỏi quyền cho Python — ch�
 Cần Python 3 (Ubuntu/Debian: `sudo apt install python3 python3-venv`) và Node.js 20+ để build giao diện.
 
 ```bash
-bash scripts/setup.sh          # tạo .cam, cài requirements.txt (PyTorch CUDA 13.0 nếu driver NVIDIA ≥ 580, CUDA 12.6 nếu ≥ 560, còn lại CPU), tải model + xuất model laser đỏ, build giao diện
+bash scripts/setup.sh          # tạo .cam, cài requirements.txt (PyTorch CUDA 13.0 nếu driver NVIDIA ≥ 580, CUDA 12.6 nếu ≥ 560, bản Jetson trên Jetson, còn lại CPU), tải model + xuất model laser đỏ, build giao diện
 bash scripts/setup.sh --cpu    # ép PyTorch CPU (không có GPU NVIDIA, hoặc muốn nhường GPU cho việc khác)
 bash scripts/run_web.sh        # http://localhost:8030
 bash scripts/run_web.sh --lan  # thêm https://<IP LAN>:8031 cho điện thoại
 ```
 
 Máy chủ tối giản thiếu thư viện đồ hoạ cho OpenCV / MediaPipe: `sudo apt install libgl1 libglib2.0-0 libegl1 libgles2`. `scripts/setup.sh` đã cài đủ thư viện cho cả `desktop/finger_select.py` (`.cam/bin/python desktop/finger_select.py`), không cần chạy thêm `desktop/setup.sh`. Ảnh / video tải lên lưu ở `~/Documents/virtual_cam`. Trình duyệt chỉ cho mở camera qua `localhost` hoặc HTTPS, nên truy cập từ máy khác phải dùng `--lan` (có tường lửa thì mở cổng 8031, vd. `sudo ufw allow 8031/tcp`).
+
+**Jetson (JetPack 6.1+, vd. Orin):** wheel CUDA của download.pytorch.org không có kernel cho GPU Jetson, nên `setup.sh` cài PyTorch 2.10 bản NVIDIA build cho Jetson (Python 3.10) và gỡ các gói CUDA `nvidia-*` của pip còn sót trong `.cam` (torch nạp chúng trước thư viện của JetPack). Bản này cần thêm OpenBLAS và cuDSS của hệ thống: thiếu thì script dừng và in sẵn lệnh cài (`sudo apt-get install -y libopenblas-dev`, gói `cudss` từ kho của NVIDIA), cài xong chạy lại `setup.sh`.
 
 ## Phát triển
 
