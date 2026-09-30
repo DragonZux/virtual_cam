@@ -15,9 +15,11 @@ backend/.env
 models
 *.pt
 *.task
-# Bản desktop, script chạy máy và tài liệu không thuộc image web
+# Bản desktop, script chạy máy và tài liệu không thuộc image web (trừ file image cần)
 desktop
-scripts
-docker
+scripts/*
+!scripts/prepare_laser_model.py
+docker/*
+!docker/init_models.py
 uploads
 *.md

@@ -1,20 +1,25 @@
-# Virtual Cam bằng Docker — một container, luôn chạy YOLO trên GPU NVIDIA:
+# Virtual Cam bằng Docker trên NVIDIA Jetson (JetPack 6) — một container, YOLO chạy trên GPU Jetson:
 #   http://localhost:8032      — máy này (localhost được phép mở camera)
 #   https://<LAN_IP>:8033      — điện thoại / máy khác cùng mạng (chứng chỉ tự ký, đặt LAN_IP trong .env)
-# Cần NVIDIA driver + Docker Desktop có WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
-# Chạy từ thư mục gốc: scripts/start.ps1 (Linux: scripts/start.sh) ghi COMPOSE_FILE=docker/docker-compose.yml vào .env gốc nên
-# `docker compose up -d` / `down` / `logs` ở gốc dùng được luôn. Đường dẫn dưới đây tính từ thư mục docker/.
+# Máy host không cần cài Python / PyTorch: chỉ cần Docker + NVIDIA container runtime của JetPack.
+# Chạy ở thư mục gốc của dự án:
+#   docker compose -f docker/docker-compose.yml up -d --build
+#   docker compose -f docker/docker-compose.yml logs -f
+# Lần chạy đầu container tự tải model còn thiếu vào models/ (xem docker/init_models.py). Đường dẫn dưới đây tính từ thư mục docker/.
 name: virtual_cam
 services:
   virtual-cam:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-      args:
-        - TORCH_INDEX=${TORCH_INDEX:-cu128}
     image: virtual-cam:latest
     container_name: virtual-cam
+    # GPU Jetson qua NVIDIA container runtime (không dùng deploy.resources.devices như máy x86)
+    runtime: nvidia
+    ipc: host
     environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
       # Hiện ở Cài đặt › Dùng trên thiết bị khác và ghi vào chứng chỉ HTTPS
       PUBLIC_URLS: ${LAN_IP:+https://${LAN_IP}:${LAN_HTTPS_PORT:-8033}}
       # Cạnh ảnh đưa vào YOLO (640 chính xác nhất; 480 / 320 nhanh hơn)
@@ -23,28 +28,20 @@ services:
       LASER_IMAGE_SIZE: ${LASER_IMAGE_SIZE:-1280}
       LASER_CONFIDENCE: ${LASER_CONFIDENCE:-0.55}
       LASER_CROP_SIZE: ${LASER_CROP_SIZE:-384}
-      # Model YOLO (file trong models/, dùng chung với desktop/finger_select.py)
+      # Model YOLO (file trong models/)
       YOLO_MODEL: ${YOLO_MODEL:-yolo26m-seg.pt}
-      # Ảnh / video tải lên lưu vào thư mục của máy host (start.ps1 đặt UPLOAD_HOST_DIR = Documents\virtual_cam)
+      # Ảnh / video tải lên lưu vào thư mục của máy host
       UPLOAD_DIR: /data/uploads
       UPLOAD_DIR_DISPLAY: ${UPLOAD_HOST_DIR:-uploads}
     ports:
-      # Chỉ IPv4: cổng IPv6 của Docker Desktop chậm hơn ~30 ms mỗi request (trình duyệt tự dùng 127.0.0.1)
       # HTTP chỉ cho chính máy này: cổng này được quản lý mô hình (MODEL_ADMIN=local); máy khác dùng HTTPS bên dưới
       - "127.0.0.1:${WEB_PORT:-8032}:8030"
       - "0.0.0.0:${LAN_HTTPS_PORT:-8033}:8031"
     volumes:
-      # Thư mục models/ dùng chung với bản chạy trên máy (scripts/start.ps1 / setup.bat tải model còn thiếu)
-      - ../models:/models:ro
+      # models/ ghi được: container tự tải model bàn tay / YOLO và xuất model laser vào đây ở lần chạy đầu
+      - ../models:/models
       - certs:/app/data/certs
       - ${UPLOAD_HOST_DIR:-../uploads}:/data/uploads
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     restart: unless-stopped
 
 volumes:
