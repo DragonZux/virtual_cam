@@ -57,7 +57,8 @@ def get_status(request: Request, detector: Detector = Depends(get_detector)):
 )
 async def analyze_frame(
     request: Request,
-    targets: str | None = Query(None, description="Tên lớp cần nhận diện, cách nhau dấu phẩy (trống = mặc định)"),
+    targets: str | None = Query(None, description="Tên lớp cần nhận diện, cách nhau dấu phẩy (trống = mặc định); "
+                                                  "không phân biệt hoa / thường, bỏ qua lớp máy chủ không còn"),
     conf: float | None = Query(None, ge=0.05, le=0.95, description="Ngưỡng tin cậy tối thiểu của YOLO"),
     tolerance: int | None = Query(None, ge=0, le=100, description="Đầu ngón tay được cách mép vật thể tối đa (pixel)"),
     pointer_mode: PointerMode = Query(PointerMode.hand, description="Chọn bằng ngón tay hoặc điểm laser"),

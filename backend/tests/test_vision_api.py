@@ -51,10 +51,18 @@ def test_frame_waits_for_detector(client, detector):
     assert post_frame(client).status_code == 503
 
 
-def test_frame_rejects_unknown_or_excluded_target(client):
-    response = post_frame(client, params={"targets": "laptop,person,ghost"})
+def test_frame_skips_unavailable_targets_but_needs_one_valid(client, fake_models):
+    # Mô hình vừa bị tắt: khung gửi trước lần hỏi trạng thái kế tiếp còn kèm lớp của nó — bỏ qua, không báo lỗi
+    assert post_frame(client, params={"targets": "laptop,person,ghost"}).status_code == 200
+    assert fake_models.calls[-1].targets == ("laptop",)
+    response = post_frame(client, params={"targets": "person,ghost"})
     assert response.status_code == 400
     assert "person" in response.json()["detail"] and "ghost" in response.json()["detail"]
+
+
+def test_frame_targets_ignore_case_and_spaces(client, fake_models):
+    assert post_frame(client, params={"targets": " Mouse ,LAPTOP"}).status_code == 200
+    assert fake_models.calls[-1].targets == ("laptop", "mouse")
 
 
 def test_frame_rejects_out_of_range_options(client):

@@ -301,8 +301,9 @@ class Detector:
         self._canonical = canonical
         classes = list(canonical.values())
         self.classes = classes
-        defaults = [name for name in self.cfg.default_targets if name in classes]
-        self.default_targets = defaults or classes[:1]
+        # So như tên lớp giữa các mô hình: "laptop" của DEFAULT_TARGETS vẫn khớp "Laptop" khi tắt mô hình mặc định
+        defaults = [canonical[key] for key in map(class_key, self.cfg.default_targets) if key in canonical]
+        self.default_targets = list(dict.fromkeys(defaults)) or classes[:1]
 
     def _model_path(self, entry: LoadedModel) -> Path:
         return self.cfg.yolo_model_path if entry.builtin else self.cfg.custom_model_dir / entry.id
@@ -418,11 +419,14 @@ class Detector:
         names = list(dict.fromkeys(n.strip() for n in targets.split(",") if n.strip())) if targets else self.default_targets
         if not names:
             raise ValueError("Cần chọn ít nhất một vật thể.")
-        unknown = [name for name in names if name not in self.classes]
-        if unknown:
-            raise ValueError("Vật thể không hợp lệ: " + ", ".join(unknown))
+        # Tên so không phân biệt hoa / thường như giữa các mô hình. Lớp máy chủ không còn (mô hình vừa tắt / xoá mà
+        # trình duyệt chưa kịp hỏi lại trạng thái) thì bỏ qua; chỉ báo lỗi khi không còn lớp nào nhận diện được.
+        canonical = self._canonical
+        wanted = {canonical[key] for key in map(class_key, names) if key in canonical}
+        if not wanted:
+            raise ValueError("Vật thể không hợp lệ: " + ", ".join(names))
         return FrameOptions(
-            targets=tuple(name for name in self.classes if name in names),
+            targets=tuple(name for name in canonical.values() if name in wanted),
             confidence=self.cfg.DEFAULT_CONFIDENCE if confidence is None else confidence,
             tolerance=self.cfg.DEFAULT_TOLERANCE_PX if tolerance is None else tolerance,
             pointer_mode=pointer_mode,

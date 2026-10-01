@@ -184,3 +184,13 @@ def test_classes_merge_across_models_ignoring_case(detector):
     det = detect_result([(0, 0.97, [101, 99, 499, 401])], oiv)
     output = Detector._extract_output([seg, det], None, 30, canonical=detector._canonical)
     assert [(d.name, d.confidence) for d in output.detections] == [("cup", 0.8), ("mouse", 0.85), ("laptop", 0.97)]
+
+
+def test_defaults_and_chosen_targets_ignore_case_without_builtin(detector):
+    """Chỉ còn mô hình Open Images: "laptop" của DEFAULT_TARGETS và của trình duyệt vẫn là "Laptop"."""
+    detector.models = [type(detector.models[0])(id="oiv.pt", builtin=False, names={0: "Drone", 1: "Laptop"})]
+    detector._refresh_classes()
+    assert detector.classes == ["Drone", "Laptop"]
+    assert detector.default_targets == ["Laptop"]
+    assert detector.options(None, None, None).targets == ("Laptop",)
+    assert detector.options("laptop, DRONE", None, None).targets == ("Drone", "Laptop")
