@@ -22,7 +22,6 @@ def test_status_ready_lists_targets_without_person(client):
     assert body["phase"] == "ready"
     assert body["classes"] == ["cup", "laptop", "mouse", "keyboard"]
     assert body["defaults"] == {"targets": ["laptop", "mouse", "keyboard"], "confidence": 0.8, "tolerance": 30}
-    assert body["share_urls"] == []
 
 
 def test_status_while_starting_hides_classes(client, detector):

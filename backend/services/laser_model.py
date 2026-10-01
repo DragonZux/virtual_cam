@@ -8,8 +8,10 @@ from typing import Any
 import cv2
 import numpy as np
 
-from models import LaserColor, LaserSpot
-from services.laser import HINT_RADIUS
+from models import LaserSpot
+
+# A hand-held pointer moves this far between frames at most (pixels at 640 px on the long side)
+HINT_RADIUS = 40
 
 
 class LaserUnavailable(RuntimeError):
@@ -61,7 +63,7 @@ def select_spot(prediction: np.ndarray, shape: tuple[int, int], gain: float,
     winner = indices[np.argmax(scores[indices])]
     x, y = np.rint(centers[winner]).astype(int)
     return LaserSpot(point=[int(np.clip(x, 0, width - 1)), int(np.clip(y, 0, height - 1))],
-                     color=LaserColor.red, score=round(float(scores[winner]), 4))
+                     score=round(float(scores[winner]), 4))
 
 
 class LaserModel:
@@ -71,7 +73,7 @@ class LaserModel:
         import torch
 
         if not path.is_file():
-            raise FileNotFoundError(f"Thiếu model laser {path.name}. Chạy python scripts/prepare_laser_model.py rồi khởi động lại.")
+            raise FileNotFoundError(f"Thiếu model laser {path.name}. Chạy python docker/prepare_laser_model.py hoặc khởi động lại container.")
         extra = {"config.json": ""}
         self.model: Any = torch.jit.load(str(path), map_location=device, _extra_files=extra).eval()
         meta = json.loads(extra["config.json"])
@@ -129,3 +131,36 @@ class LaserModel:
             prediction = rows.detach().cpu().numpy()
         return select_spot(prediction, frame.shape[:2], gain, padding, self.confidence, hint,
                            hint_radius=hint_radius)
+
+
+class YoloLaserModel:
+    """Custom Ultralytics detector trained with one class: the laser spot."""
+    def __init__(self, path: Path, device: str, size: int, confidence: float):
+        from ultralytics import YOLO
+
+        self.model = YOLO(str(path))
+        if self.model.task != "detect" or len(self.model.names) != 1:
+            raise ValueError("Model laser .pt phải là YOLO detect được huấn luyện với đúng một lớp chấm laser.")
+        self.device, self.size, self.confidence = device, size, confidence
+
+    def warm_up(self) -> None:
+        self.detect(np.zeros((480, 640, 3), dtype=np.uint8))
+
+    def detect(self, frame: np.ndarray, hint: tuple[int, int] | None = None) -> LaserSpot | None:
+        result = self.model.predict(frame, device=self.device, imgsz=self.size,
+                                    conf=self.confidence, verbose=False)[0]
+        boxes = result.boxes.cpu()
+        if not len(boxes):
+            return None
+        centers = (boxes.xyxy.numpy()[:, :2] + boxes.xyxy.numpy()[:, 2:]) / 2
+        scores = boxes.conf.numpy()
+        indices = np.arange(len(scores))
+        if hint is not None:
+            near = indices[np.linalg.norm(centers - np.array(hint), axis=1) <= HINT_RADIUS * max(frame.shape[:2]) / 640]
+            if len(near):
+                indices = near
+        winner = indices[np.argmax(scores[indices])]
+        height, width = frame.shape[:2]
+        x, y = np.rint(centers[winner]).astype(int)
+        return LaserSpot(point=[int(np.clip(x, 0, width - 1)), int(np.clip(y, 0, height - 1))],
+                         score=round(float(scores[winner]), 4))

@@ -1,16 +1,16 @@
 # Toan bo thu vien Python cua du an - cai mot lan: pip install -r requirements.txt
-# Dung chung cho web backend (backend/), ban desktop (desktop/finger_select.py, segment.py), test va Docker.
+# Dung chung cho web backend (backend/), test va Docker.
 # Chu thich khong dau: pip tren Windows doc file nay theo cp1252.
-# torch: ultralytics tu keo ve; scripts/setup.bat cai ban CUDA neu may co GPU NVIDIA.
+# torch: ultralytics tu keo ve; Dockerfile cai ban CUDA (TORCH_INDEX) truoc khi cai file nay.
 
-# --- Nhan dien (web + desktop) ---
+# --- Nhan dien ---
 numpy
 opencv-contrib-python
 mediapipe
 ultralytics>=8.4.162   # YOLO26 + tham so quantize (thay half)
 pillow
 
-# Xuat model laser ADVR mot lan (scripts/prepare_laser_model.py).
+# Xuat model laser ADVR mot lan (docker/prepare_laser_model.py).
 # Suy luan laser chi dung torch; cac thu vien nay phuc vu ma YOLOv5 v7.0 khi xuat.
 ipython>=8.32,<9
 seaborn>=0.13,<0.14
@@ -25,7 +25,6 @@ httptools>=0.6                          # bo doc HTTP nhanh cua uvicorn
 uvloop>=0.19; sys_platform != "win32"   # vong lap su kien nhanh tren Linux / Docker
 pydantic>=2.7
 pydantic-settings>=2.3
-cryptography>=42       # chung chi tu ky cho che do --lan
 
 # --- Test (pytest trong backend/) ---
 pytest

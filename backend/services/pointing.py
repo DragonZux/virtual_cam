@@ -1,4 +1,4 @@
-"""Tìm vật thể dưới đầu ngón trỏ (logic của finger_select.py bản desktop, tách ra để test không cần model)."""
+"""Tìm vật thể dưới đầu ngón trỏ / chấm laser (hàm thuần, test không cần model)."""
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -22,7 +22,7 @@ def index_tip(landmarks: Sequence[Any] | None, width: int, height: int) -> tuple
 
 
 def object_at_point(polygons: Sequence[np.ndarray], point: tuple[int, int] | None, tolerance: float) -> int | None:
-    """Chỉ số mask được chỉ vào, hoặc None — cùng quy tắc với find_object_at_point của finger_select.py.
+    """Chỉ số mask được chỉ vào, hoặc None.
 
     Bỏ mask mà đầu ngón tay nằm ngoài mép quá `tolerance` pixel; còn lại ưu tiên mask đầu ngón tay nằm
     sâu bên trong nhất (khoảng cách tới mép lớn nhất), bằng nhau thì vật nhỏ hơn.

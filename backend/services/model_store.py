@@ -1,66 +1,75 @@
-"""File mô hình YOLO tải thêm: đặt tên an toàn, liệt kê, ghi nhớ bật / tắt và bảng lớp.
-
-`models.json` trong thư mục mô hình giữ trạng thái giữa các lần chạy:
-  {"disabled": ["a.pt", "yolo26m-seg.pt"], "meta": {"a.pt": {"task": "detect", "names": {"0": "drone"}}}}
-Nhờ bảng lớp đã lưu, mô hình đang tắt không cần nạp lên GPU mà Cài đặt vẫn biết nó nhận diện được gì.
-File .pt chép tay vào thư mục cũng được nhận ở lần khởi động sau.
-"""
+"""Local model catalog and persisted selection, inside the mounted models directory."""
 from __future__ import annotations
 
 import json
-import re
-import unicodedata
 from pathlib import Path
-from typing import Any
+import re
+from uuid import uuid4
 
+from core.config import Settings
 from core.logging import logger
 
-MODEL_SUFFIX = ".pt"
-STATE_FILE = "models.json"
+KINDS = ("segmentation", "laser")
 
 
-def new_model_path(folder: Path, original: str, reserved: set[str] = frozenset()) -> Path:
-    """Đường dẫn chưa dùng trong `folder` cho file `original`; ValueError nếu không phải .pt."""
-    base = Path(original.replace("\\", "/")).name
-    if Path(base).suffix.lower() != MODEL_SUFFIX:
-        raise ValueError("Chỉ nhận mô hình YOLO dạng .pt (Ultralytics).")
-    stem = unicodedata.normalize("NFC", Path(base).stem)
-    stem = re.sub(r"[^\w\-]+", "_", stem).strip("_-")[:80] or "model"
-    candidate = folder / f"{stem}{MODEL_SUFFIX}"
-    index = 1
-    while candidate.exists() or candidate.name in reserved or candidate.with_name(candidate.name + ".part").exists():
-        candidate = folder / f"{stem}-{index}{MODEL_SUFFIX}"
-        index += 1
-    return candidate
+class ModelStore:
+    def __init__(self, cfg: Settings):
+        self.cfg = cfg
+        self.root = cfg.MODEL_DIR.resolve()
+        self.folder = self.root / "custom"
+        self.state_file = self.folder / "active.json"
 
+    def catalog(self) -> dict[str, tuple[str, Path]]:
+        entries: dict[str, tuple[str, Path]] = {}
+        for kind, path in (("segmentation", self.cfg.yolo_model_path), ("laser", self.cfg.laser_model_path)):
+            entries[self.identifier(path)] = (kind, path)
+        if self.root.is_dir():
+            for path in sorted(self.root.iterdir()):
+                if path.is_file() and path.suffix.lower() in (".pt", ".torchscript"):
+                    kind = "laser" if path.suffix.lower() == ".torchscript" else "segmentation"
+                    entries.setdefault(self.identifier(path), (kind, path))
+        for kind in KINDS:
+            folder = self.folder / kind
+            if folder.is_dir():
+                for path in sorted(folder.iterdir()):
+                    if path.is_file() and path.suffix.lower() in (".pt", ".torchscript"):
+                        entries[self.identifier(path)] = (kind, path)
+        return entries
 
-def model_files(folder: Path) -> list[Path]:
-    """File .pt trong thư mục, cũ nhất trước (thứ tự tải lên)."""
-    if not folder.is_dir():
-        return []
-    files = [path for path in folder.iterdir() if path.is_file() and path.suffix.lower() == MODEL_SUFFIX]
-    return sorted(files, key=lambda path: (path.stat().st_mtime, path.name))
+    def identifier(self, path: Path) -> str:
+        return path.resolve().relative_to(self.root).as_posix()
 
+    def resolve(self, model_id: str) -> tuple[str, Path]:
+        entry = self.catalog().get(model_id)
+        if entry is None or not entry[1].is_file():
+            raise KeyError(model_id)
+        # Do not follow files linked outside the configured model directory.
+        entry[1].resolve().relative_to(self.root)
+        return entry
 
-def load_state(folder: Path) -> dict[str, Any]:
-    state: dict[str, Any] = {"disabled": [], "meta": {}}
-    path = folder / STATE_FILE
-    if path.is_file():
+    def saved(self) -> dict[str, str]:
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            state["disabled"] = [str(name) for name in data.get("disabled", [])]
-            state["meta"] = {str(k): v for k, v in dict(data.get("meta", {})).items()}
-        except (OSError, ValueError, AttributeError, TypeError):
-            logger.warning("Ignoring unreadable %s", path)
-    return state
+            value = json.loads(self.state_file.read_text(encoding="utf-8"))
+            return {kind: model_id for kind, model_id in value.items()
+                    if kind in KINDS and isinstance(model_id, str) and self.resolve(model_id)[0] == kind}
+        except FileNotFoundError:
+            return {}
+        except (OSError, ValueError, KeyError, AttributeError):
+            logger.warning("Ignoring invalid model selection in %s", self.state_file)
+            return {}
 
+    def save(self, active: dict[str, str]) -> None:
+        self.folder.mkdir(parents=True, exist_ok=True)
+        temporary = self.state_file.with_suffix(".tmp")
+        temporary.write_text(json.dumps(active, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporary.replace(self.state_file)
 
-def save_state(folder: Path, state: dict[str, Any]) -> None:
-    folder.mkdir(parents=True, exist_ok=True)
-    tmp = folder / (STATE_FILE + ".tmp")
-    tmp.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(folder / STATE_FILE)
-
-
-def names_from_meta(meta: dict[str, Any]) -> dict[int, str]:
-    return {int(k): str(v) for k, v in dict(meta.get("names", {})).items()}
+    def upload_path(self, kind: str, name: str) -> Path:
+        suffix = Path(name).suffix.lower()
+        allowed = (".pt",) if kind == "segmentation" else (".pt", ".torchscript")
+        if suffix not in allowed:
+            raise ValueError("Segmentation cần file .pt; laser cần .pt (YOLO detect một lớp) hoặc .torchscript (ADVR).")
+        stem = re.sub(r"[^\w-]+", "_", Path(name.replace("\\", "/")).stem).strip("_")[:70] or "model"
+        folder = self.folder / kind
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder / f"{stem}-{uuid4().hex[:8]}{suffix}"

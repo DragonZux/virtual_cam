@@ -1,18 +1,15 @@
-"""Bộ nhận diện dùng chung cho mọi trình duyệt: YOLO (GPU nếu có) + MediaPipe Hand Landmarker (CPU).
+"""Bộ nhận diện dùng chung cho mọi client: YOLO segmentation (GPU nếu có) + MediaPipe Hand Landmarker (CPU)
++ model laser đỏ (YOLOv5l6 ADVR).
 
-- Model nạp ở luồng nền để web mở ngay; giao diện hiện "Đang khởi động" tới khi sẵn sàng.
-- Nhiều mô hình YOLO: YOLO_MODEL mặc định + file .pt tải thêm ở Cài đặt. Mọi mô hình đang bật cùng chạy trên
-  mỗi khung; danh sách vật thể là hợp các lớp của chúng. Cùng tên lớp (không phân biệt hoa / thường, vd. "laptop"
-  của COCO và "Laptop" của Open Images) là một vật thể, hiển thị theo cách viết của mô hình nạp trước.
-- MediaPipe chạy chế độ IMAGE nên không mang trạng thái bám tay từ người dùng này sang người khác.
-- Mỗi lúc chỉ xử lý một khung (`lock`); trình duyệt khác chờ tối đa BUSY_WAIT_SECONDS rồi nhận 429.
+- Model nạp ở luồng nền để API lên ngay; /api/vision/status báo "starting" tới khi sẵn sàng.
+- MediaPipe chạy chế độ IMAGE nên không mang trạng thái bám tay từ client này sang client khác.
+- Mỗi lúc chỉ xử lý một khung (`lock`); request khác chờ tối đa BUSY_WAIT_SECONDS rồi nhận 429.
 """
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, wait
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from io import BytesIO
-from pathlib import Path
 import threading
 import time
 from typing import Any
@@ -24,63 +21,35 @@ from PIL import Image, UnidentifiedImageError
 from core.config import Settings
 from core.logging import logger
 from models import (
-    Detection, DetectionDefaults, DetectorPhase, FrameResult, FrameSize, LaserColor, LaserSpot, ModelInfo, ModelTask,
-    Point, PointerMode, SelectedObject,
+    Detection, DetectionDefaults, DetectorPhase, FrameResult, FrameSize, LaserSpot, Point, PointerMode, SelectedObject,
 )
-from services import model_store
-from services.laser import detect_laser
-from services.laser_model import LaserModel, LaserUnavailable
+from services.laser_model import LaserModel, YoloLaserModel, LaserUnavailable
+from services.model_store import ModelStore
 from services.pointing import index_tip, object_at_point, object_at_laser
 
 # Chỉ vào "person" luôn trúng chính bàn tay người đang chỉ, nên lớp này không bao giờ là mục tiêu
 EXCLUDED_CLASSES = {"person"}
-# Hai mô hình cùng thấy một vật (cùng tên lớp, khung trùng nhiều hơn mức này) → giữ kết quả tin cậy hơn
-DUPLICATE_IOU = 0.6
-SUPPORTED_TASKS = {task.value for task in ModelTask}
 
 
 class DetectorBusy(Exception):
-    """Đang xử lý khung của trình duyệt khác lâu hơn BUSY_WAIT_SECONDS."""
+    """Đang xử lý khung của client khác lâu hơn BUSY_WAIT_SECONDS."""
+
+
+class ModelChanged(Exception):
+    """The frame was captured with settings for a previous model."""
 
 
 @dataclass(frozen=True)
 class FrameOptions:
-    """Cài đặt riêng của trình duyệt, đã kiểm tra hợp lệ."""
+    """Tuỳ chọn client gửi kèm khung, đã kiểm tra hợp lệ."""
 
     targets: tuple[str, ...]
     confidence: float
     tolerance: int
     pointer_mode: PointerMode = PointerMode.hand
-    laser_color: LaserColor = LaserColor.red
-    laser_brightness: int = 200
-    # Vị trí chấm laser ổn định gần nhất trình duyệt đang bám (pixel của khung trước) — ưu tiên ứng viên gần đó
+    # Vị trí chấm laser ổn định gần nhất client đang bám (pixel của khung trước) — ưu tiên ứng viên gần đó
     laser_hint: tuple[int, int] | None = None
-
-
-@dataclass
-class LoadedModel:
-    """Một mô hình YOLO; `model` là None khi đang tắt (không chiếm GPU) hoặc nạp lỗi."""
-
-    id: str
-    builtin: bool
-    names: dict[int, str]
-    task: str = ModelTask.segment.value
-    enabled: bool = True
-    model: Any = None
-    error: str | None = None
-    size: int = 0
-
-    @property
-    def classes(self) -> list[str]:
-        return [name for name in dict.fromkeys(self.names.values()) if not excluded(name)]
-
-    @property
-    def active(self) -> bool:
-        return self.enabled and self.model is not None
-
-    def info(self) -> ModelInfo:
-        return ModelInfo(id=self.id, builtin=self.builtin, enabled=self.enabled, task=self.task,
-                         classes=self.classes, size=self.size, error=self.error)
+    model_revision: int = 0
 
 
 @dataclass
@@ -93,21 +62,8 @@ class ModelOutput:
     laser: LaserSpot | None = None
 
 
-@dataclass
-class _Hit:
-    name: str
-    score: float
-    box: list[float]
-    result: int  # vị trí kết quả (mô hình) trong danh sách
-    index: int  # vị trí box trong kết quả đó
-    order: tuple[int, int] = field(init=False)
-
-    def __post_init__(self):
-        self.order = (self.result, self.index)
-
-
 def class_key(name: str) -> str:
-    """Khoá so khớp tên lớp giữa các mô hình."""
+    """Khoá so khớp tên lớp: không phân biệt hoa / thường, gộp khoảng trắng."""
     return " ".join(name.split()).casefold()
 
 
@@ -132,42 +88,27 @@ def decode_jpeg(payload: bytes, max_side: int) -> np.ndarray:
     return frame
 
 
-def _iou(a: list[float], b: list[float]) -> float:
-    width = min(a[2], b[2]) - max(a[0], b[0])
-    height = min(a[3], b[3]) - max(a[1], b[1])
-    if width <= 0 or height <= 0:
-        return 0.0
-    inter = width * height
-    union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter
-    return inter / union if union > 0 else 0.0
-
-
-def merge_duplicates(hits: list[_Hit]) -> list[_Hit]:
-    """Bỏ vật mà mô hình khác đã thấy (cùng tên lớp, khung trùng) với độ tin cậy cao hơn; giữ thứ tự gốc."""
-    kept: list[_Hit] = []
-    for hit in sorted(hits, key=lambda h: -h.score):
-        if any(k.name == hit.name and k.result != hit.result and _iou(k.box, hit.box) > DUPLICATE_IOU for k in kept):
-            continue
-        kept.append(hit)
-    return sorted(kept, key=lambda h: h.order)
-
-
 class Detector:
     def __init__(self, cfg: Settings):
         self.cfg = cfg
+        self.model_store = ModelStore(cfg)
+        self._active = {"segmentation": self.model_store.identifier(cfg.yolo_model_path),
+                        "laser": self.model_store.identifier(cfg.laser_model_path)}
+        self.model_revision = 0
+        self.model_busy = False
+        self._management_lock = threading.Lock()
         self.lock = threading.Lock()
-        # Tải lên / bật tắt / xoá mô hình lần lượt từng thao tác (nạp model có thể mất vài giây)
-        self._admin_lock = threading.Lock()
         self.ready = threading.Event()
         self.error: str | None = None
         self.device_name: str | None = None
-        self.models: list[LoadedModel] = []
+        self._model: Any = None
+        self._names: dict[int, str] = {}
         self.classes: list[str] = []
-        # class_key → tên hiển thị (cách viết của mô hình nạp trước)
+        # class_key → tên lớp của model
         self._canonical: dict[str, str] = {}
         self.default_targets: list[str] = []
         self._hands: Any = None
-        self._laser: LaserModel | None = None
+        self._laser: LaserModel | YoloLaserModel | None = None
         self.laser_error: str | None = None
         self._mp: Any = None
         self._gpu = False
@@ -190,26 +131,23 @@ class Detector:
             # Import nặng (torch, ultralytics, mediapipe) để trong luồng nền cho server lên ngay
             import mediapipe as mp
             import torch
+            from ultralytics import YOLO
+
+            self._active.update(self.model_store.saved())
 
             hand_path = self.cfg.hand_model_path
             if not hand_path.is_file():
-                raise RuntimeError(f"Thiếu model bàn tay {hand_path.name}. Hãy chạy scripts\\setup.bat rồi mở lại web.")
+                raise RuntimeError(f"Thiếu model bàn tay {hand_path.name} trong {hand_path.parent}. Khởi động lại container để tự tải.")
             self._gpu = self.cfg.DEVICE.lower() != "cpu" and torch.cuda.is_available()
             if self.cfg.DEVICE.lower() not in ("auto", "cpu") and not self._gpu:
                 logger.warning("DEVICE=%s but CUDA is unavailable - running YOLO on CPU", self.cfg.DEVICE)
             self.device_name = torch.cuda.get_device_name(0) if self._gpu else "CPU"
 
             # Tên model chuẩn (yolo26n-seg.pt…) chưa có file thì ultralytics tự tải về MODEL_DIR
-            model, task, names = self._open_model(self.cfg.yolo_model_path)
-            builtin = LoadedModel(id=self.cfg.YOLO_MODEL, builtin=True, names=names, task=task, model=model,
-                                  size=self._file_size(self.cfg.yolo_model_path))
-            self.models = [builtin, *self._load_custom_models()]
-            if not any(m.enabled for m in self.models):
-                builtin.enabled = True
-            if not builtin.enabled:
-                builtin.model = None
-            self._refresh_classes()
-            self._save_state()
+            self._model = YOLO(str(self.cfg.MODEL_DIR / self._active["segmentation"]))
+            if self._model.task != "segment":
+                raise ValueError("Mô hình vật thể phải là YOLO segmentation.")
+            self._set_classes({int(k): str(v) for k, v in dict(self._model.names).items()})
             options = mp.tasks.vision.HandLandmarkerOptions(
                 base_options=mp.tasks.BaseOptions(model_asset_path=str(hand_path)),
                 running_mode=mp.tasks.vision.RunningMode.IMAGE,
@@ -221,103 +159,37 @@ class Detector:
             self._mp = mp
             self._load_laser()
             # Chạy thử các cỡ khung hay gặp (webcam 4:3 / 16:9, điện thoại dọc): mỗi cỡ mới lần đầu mất vài giây
-            # để GPU chọn kernel — làm sẵn ở đây thì khung đầu tiên của người dùng không bị đứng hình
-            for entry in self.models:
-                if entry.active:
-                    self._warm_up(entry)
+            # để GPU chọn kernel — làm sẵn ở đây thì khung đầu tiên không bị chậm
+            for height, width in ((480, 640), (360, 640), (640, 480), (640, 360)):
+                self._predict(np.zeros((height, width, 3), dtype=np.uint8), self.classes, self.cfg.DEFAULT_CONFIDENCE)
             self.ready.set()
-            active = ", ".join(m.id for m in self.models if m.active)
-            logger.info("Detector ready: %s / %s / imgsz %d", self.device_name, active, self.cfg.IMAGE_SIZE)
+            logger.info("Detector ready: %s / %s / imgsz %d", self.device_name, self.cfg.YOLO_MODEL, self.cfg.IMAGE_SIZE)
         except Exception as exc:
             self.error = str(exc) or type(exc).__name__
             logger.exception("Detector initialization failed")
 
     def _load_laser(self) -> None:
         try:
-            laser = LaserModel(self.cfg.laser_model_path, "cuda:0" if self._gpu else "cpu",
-                               self.cfg.LASER_IMAGE_SIZE, self.cfg.LASER_CONFIDENCE, self.cfg.LASER_CROP_SIZE)
-            laser.warm_up()
+            laser = self._prepare_model("laser", self.cfg.MODEL_DIR / self._active["laser"])
             self._laser = laser
             self.laser_error = None
             logger.info("Red laser model ready: %s / imgsz %d", self.cfg.LASER_MODEL, self.cfg.LASER_IMAGE_SIZE)
         except Exception as exc:
             self._laser = None
             self.laser_error = str(exc) or type(exc).__name__
-            logger.exception("Red laser unavailable; hand and green laser remain available")
-
-    def _open_model(self, path: Path) -> tuple[Any, str, dict[int, str]]:
-        """Nạp một file YOLO; chỉ nhận mô hình phân đoạn / phát hiện vật thể (cần khung + tên lớp)."""
-        from ultralytics import YOLO
-
-        model = YOLO(str(path))
-        task = str(getattr(model, "task", ""))
-        if task not in SUPPORTED_TASKS:
-            raise ValueError(f"Chỉ hỗ trợ mô hình YOLO phân đoạn (segment) hoặc phát hiện (detect); file này là '{task}'.")
-        names = {int(k): str(v) for k, v in dict(model.names).items()}
-        if not [name for name in names.values() if not excluded(name)]:
-            raise ValueError("Mô hình không có lớp vật thể nào dùng được.")
-        return model, task, names
-
-    def _load_custom_models(self) -> list[LoadedModel]:
-        folder = self.cfg.custom_model_dir
-        state = model_store.load_state(folder)
-        entries = []
-        for path in model_store.model_files(folder):
-            if path.name == self.cfg.YOLO_MODEL:
-                continue
-            meta = state["meta"].get(path.name, {})
-            entry = LoadedModel(id=path.name, builtin=False, names=model_store.names_from_meta(meta),
-                                task=str(meta.get("task", ModelTask.segment.value)),
-                                enabled=path.name not in state["disabled"], size=self._file_size(path))
-            if entry.enabled or not entry.names:
-                try:
-                    entry.model, entry.task, entry.names = self._open_model(path)
-                except Exception as exc:
-                    entry.error = str(exc) or type(exc).__name__
-                    logger.warning("Could not load model %s: %s", path.name, entry.error)
-                if not entry.enabled:
-                    entry.model = None
-            entries.append(entry)
-        return entries
-
-    @staticmethod
-    def _file_size(path: Path) -> int:
-        try:
-            return path.stat().st_size
-        except OSError:
-            return 0
+            logger.exception("Red laser unavailable; hand pointing remains available")
 
     def _set_classes(self, names: dict[int, str]) -> None:
-        """Chỉ biết bảng lớp của mô hình mặc định (test không nạp model thật)."""
-        self.models = [LoadedModel(id=self.cfg.YOLO_MODEL, builtin=True, names=dict(names))]
-        self._refresh_classes()
-
-    def _refresh_classes(self) -> None:
+        """Bảng lớp của model YOLO (test gọi trực tiếp, không nạp model thật)."""
+        self._names = dict(names)
         canonical: dict[str, str] = {}
-        for entry in self.models:
-            if entry.enabled and entry.error is None:
-                for name in entry.classes:
-                    canonical.setdefault(class_key(name), name)
+        for name in self._names.values():
+            if not excluded(name):
+                canonical.setdefault(class_key(name), name)
         self._canonical = canonical
-        classes = list(canonical.values())
-        self.classes = classes
-        # So như tên lớp giữa các mô hình: "laptop" của DEFAULT_TARGETS vẫn khớp "Laptop" khi tắt mô hình mặc định
+        self.classes = list(canonical.values())
         defaults = [canonical[key] for key in map(class_key, self.cfg.default_targets) if key in canonical]
-        self.default_targets = list(dict.fromkeys(defaults)) or classes[:1]
-
-    def _model_path(self, entry: LoadedModel) -> Path:
-        return self.cfg.yolo_model_path if entry.builtin else self.cfg.custom_model_dir / entry.id
-
-    def _save_state(self) -> None:
-        state = {
-            "disabled": [m.id for m in self.models if not m.enabled],
-            "meta": {m.id: {"task": m.task, "names": {str(k): v for k, v in m.names.items()}}
-                     for m in self.models if not m.builtin and m.names},
-        }
-        try:
-            model_store.save_state(self.cfg.custom_model_dir, state)
-        except OSError:
-            logger.warning("Could not save model state to %s", self.cfg.custom_model_dir, exc_info=True)
+        self.default_targets = list(dict.fromkeys(defaults)) or self.classes[:1]
 
     def status(self) -> dict[str, Any]:
         ready = self.ready.is_set()
@@ -325,9 +197,11 @@ class Detector:
             "phase": self.phase,
             "error": self.error,
             "device": self.device_name,
-            "model": self.cfg.YOLO_MODEL,
-            "laser_model": self.cfg.LASER_MODEL if self._laser is not None else None,
+            "model": self._active["segmentation"],
+            "laser_model": self._active["laser"] if self._laser is not None else None,
             "laser_error": self.laser_error,
+            "model_revision": self.model_revision,
+            "model_busy": self.model_busy,
             "image_size": self.cfg.IMAGE_SIZE,
             "classes": list(self.classes) if ready else [],
             "defaults": DetectionDefaults(
@@ -335,92 +209,19 @@ class Detector:
                 confidence=self.cfg.DEFAULT_CONFIDENCE,
                 tolerance=self.cfg.DEFAULT_TOLERANCE_PX,
             ),
-            "models": self.model_infos() if ready else [],
         }
-
-    def model_infos(self) -> list[ModelInfo]:
-        return [entry.info() for entry in self.models]
-
-    # ===== Quản lý mô hình (router /models) =====
-
-    def _find(self, model_id: str) -> LoadedModel:
-        for entry in self.models:
-            if entry.id == model_id:
-                return entry
-        raise KeyError(model_id)
-
-    def reserved_names(self) -> set[str]:
-        return {entry.id for entry in self.models}
-
-    def add_model(self, path: Path) -> ModelInfo:
-        """Nạp file .pt vừa tải lên và cho chạy cùng các mô hình khác. ValueError nếu không dùng được."""
-        with self._admin_lock:
-            model, task, names = self._open_model(path)
-            entry = LoadedModel(id=path.name, builtin=False, names=names, task=task, model=model,
-                                size=self._file_size(path))
-            self._warm_up(entry)
-            with self.lock:
-                self.models = [*self.models, entry]
-                self._refresh_classes()
-            self._save_state()
-            logger.info("Model added: %s (%s, %d classes)", entry.id, entry.task, len(entry.classes))
-            return entry.info()
-
-    def set_enabled(self, model_id: str, enabled: bool) -> ModelInfo:
-        with self._admin_lock:
-            entry = self._find(model_id)
-            if not enabled and not any(m.enabled for m in self.models if m is not entry):
-                raise ValueError("Cần bật ít nhất một mô hình.")
-            model = entry.model
-            if enabled and model is None:
-                try:
-                    model, entry.task, entry.names = self._open_model(self._model_path(entry))
-                except Exception as exc:
-                    raise ValueError(f"Không nạp được {entry.id}: {exc}") from exc
-                entry.error = None
-                self._warm_up(LoadedModel(id=entry.id, builtin=entry.builtin, names=entry.names, model=model))
-            with self.lock:
-                entry.enabled = enabled
-                entry.model = model if enabled else None
-                self._refresh_classes()
-            if not enabled:
-                self._free_gpu()
-            self._save_state()
-            return entry.info()
-
-    def remove_model(self, model_id: str) -> None:
-        with self._admin_lock:
-            entry = self._find(model_id)
-            if entry.builtin:
-                raise ValueError("Không xoá được mô hình mặc định của máy chủ; có thể tắt nó.")
-            if entry.enabled and not any(m.enabled for m in self.models if m is not entry):
-                raise ValueError("Cần bật ít nhất một mô hình khác trước khi xoá mô hình này.")
-            with self.lock:
-                self.models = [m for m in self.models if m is not entry]
-                self._refresh_classes()
-            entry.model = None
-            self._free_gpu()
-            self._model_path(entry).unlink(missing_ok=True)
-            self._save_state()
-            logger.info("Model removed: %s", entry.id)
-
-    def _free_gpu(self) -> None:
-        if self._gpu:
-            import torch
-
-            torch.cuda.empty_cache()
 
     # ===== Nhận diện =====
 
     def options(self, targets: str | None, confidence: float | None, tolerance: int | None,
-                pointer_mode: PointerMode = PointerMode.hand, laser_color: LaserColor = LaserColor.red,
-                laser_brightness: int = 200, laser_hint: tuple[int, int] | None = None) -> FrameOptions:
-        """Kiểm tra cài đặt trình duyệt gửi kèm khung hình; bỏ trống = mặc định máy chủ."""
+                pointer_mode: PointerMode = PointerMode.hand,
+                laser_hint: tuple[int, int] | None = None, model_revision: int | None = None) -> FrameOptions:
+        """Kiểm tra tuỳ chọn client gửi kèm khung hình; bỏ trống = mặc định máy chủ."""
+        revision = self.model_revision if model_revision is None else model_revision
         names = list(dict.fromkeys(n.strip() for n in targets.split(",") if n.strip())) if targets else self.default_targets
         if not names:
             raise ValueError("Cần chọn ít nhất một vật thể.")
-        # Tên so không phân biệt hoa / thường như giữa các mô hình. Lớp máy chủ không còn (mô hình vừa tắt / xoá mà
-        # trình duyệt chưa kịp hỏi lại trạng thái) thì bỏ qua; chỉ báo lỗi khi không còn lớp nào nhận diện được.
+        # Tên so không phân biệt hoa / thường; lớp model không có thì bỏ qua, chỉ báo lỗi khi không còn lớp nào
         canonical = self._canonical
         wanted = {canonical[key] for key in map(class_key, names) if key in canonical}
         if not wanted:
@@ -430,17 +231,18 @@ class Detector:
             confidence=self.cfg.DEFAULT_CONFIDENCE if confidence is None else confidence,
             tolerance=self.cfg.DEFAULT_TOLERANCE_PX if tolerance is None else tolerance,
             pointer_mode=pointer_mode,
-            laser_color=laser_color,
-            laser_brightness=laser_brightness,
             laser_hint=laser_hint if pointer_mode == PointerMode.laser else None,
+            model_revision=revision,
         )
 
     def analyze(self, payload: bytes, options: FrameOptions) -> FrameResult:
-        """Một khung JPEG → bàn tay, đầu ngón trỏ và vật thể được chỉ (toạ độ pixel của chính khung đó)."""
+        """Một khung JPEG → bàn tay / chấm laser và vật thể được chỉ (toạ độ pixel của chính khung đó)."""
         frame = decode_jpeg(payload, self.cfg.MAX_FRAME_SIDE)
         if not self.lock.acquire(timeout=self.cfg.BUSY_WAIT_SECONDS):
             raise DetectorBusy
         try:
+            if options.model_revision != self.model_revision:
+                raise ModelChanged
             tick = time.perf_counter()
             output = self._run_models(frame, options)
         finally:
@@ -471,13 +273,13 @@ class Detector:
             resolution=FrameSize(width=width, height=height),
         )
 
-    def _predict(self, entry: LoadedModel, frame: np.ndarray, targets: tuple[str, ...] | list[str], confidence: float):
-        """Một mô hình trên một khung, chỉ các lớp đang chọn mà mô hình này có; None nếu không có lớp nào."""
+    def _predict(self, frame: np.ndarray, targets: tuple[str, ...] | list[str], confidence: float):
+        """YOLO trên một khung, chỉ các lớp đang chọn; None nếu không có lớp nào."""
         wanted = {class_key(name) for name in targets}
-        class_ids = [class_id for class_id, name in entry.names.items() if class_key(name) in wanted and not excluded(name)]
+        class_ids = [class_id for class_id, name in self._names.items() if class_key(name) in wanted and not excluded(name)]
         if not class_ids:
             return None
-        return entry.model.predict(
+        return self._model.predict(
             frame,
             classes=class_ids,
             conf=confidence,
@@ -487,98 +289,125 @@ class Detector:
             verbose=False,
         )[0]
 
-    def _warm_up(self, entry: LoadedModel) -> None:
-        for height, width in ((480, 640), (360, 640), (640, 480), (640, 360)):
-            self._predict(entry, np.zeros((height, width, 3), dtype=np.uint8), entry.classes, self.cfg.DEFAULT_CONFIDENCE)
-
     def _run_models(self, frame: np.ndarray, options: FrameOptions) -> ModelOutput:
         # Laser đỏ dùng cùng GPU với YOLO vật thể: chạy lần lượt dưới Detector.lock.
-        # Bàn tay / laser xanh chạy CPU song song với YOLO như trước.
+        # Bàn tay chạy CPU song song với YOLO.
         laser = None
-        side_job = None
+        hand_job = None
         if options.pointer_mode == PointerMode.laser:
-            if options.laser_color == LaserColor.red:
-                if self._laser is None:
-                    raise LaserUnavailable(self.laser_error or "Model laser đỏ chưa sẵn sàng.")
-                laser = self._laser.detect(frame, options.laser_hint)
-            else:
-                side_job = self._hand_pool.submit(detect_laser, frame, options.laser_brightness, options.laser_hint)
+            if self._laser is None:
+                raise LaserUnavailable(self.laser_error or "Model laser đỏ chưa sẵn sàng.")
+            laser = self._laser.detect(frame, options.laser_hint)
         else:
-            side_job = self._hand_pool.submit(self._detect_hand, frame)
-        results = []
+            hand_job = self._hand_pool.submit(self._detect_hand, frame)
         try:
-            # GPU chạy lần lượt từng mô hình
-            for entry in self.models:
-                if entry.active:
-                    result = self._predict(entry, frame, options.targets, options.confidence)
-                    if result is not None:
-                        results.append(result)
+            result = self._predict(frame, options.targets, options.confidence)
         finally:
             # Không để luồng CPU chạy tiếp sau khi đã nhả khoá
-            if side_job is not None:
-                wait([side_job])
-        if options.pointer_mode == PointerMode.laser and side_job is not None:
-            laser = side_job.result()
-        landmarks = side_job.result() if options.pointer_mode == PointerMode.hand else None
+            if hand_job is not None:
+                wait([hand_job])
+        landmarks = hand_job.result() if hand_job is not None else None
 
         tolerance = 4 * max(frame.shape[:2]) / 640 if options.pointer_mode == PointerMode.laser else options.tolerance
-        output = self._extract_output(results, landmarks, tolerance, tuple(laser.point) if laser else None,
-                                      frame.shape[:2], self._canonical)
+        output = self._extract_output(result, landmarks, tolerance, tuple(laser.point) if laser else None)
         output.laser = laser
         return output
 
     @staticmethod
-    def _extract_output(results: Any, landmarks: list[Any] | None, tolerance: float,
-                        point: tuple[int, int] | None = None, shape: tuple[int, int] | None = None,
-                        canonical: dict[str, str] | None = None) -> ModelOutput:
-        """Gộp kết quả các mô hình; chỉ lấy viền vật ở gần điểm chỉ (mô hình detect: viền = khung).
-        `canonical` đổi tên lớp của từng mô hình về tên chung (class_key → tên hiển thị)."""
-        if not isinstance(results, (list, tuple)):
-            results = [results]
-        hits: list[_Hit] = []
-        for r, result in enumerate(results):
-            # One small GPU -> CPU transfer for boxes. Dense masks stay on the GPU unless needed.
-            boxes = result.boxes.cpu() if result.boxes is not None else None
-            if boxes is None:
-                continue
-            for i, (cls, score, box) in enumerate(zip(boxes.cls.tolist(), boxes.conf.tolist(), boxes.xyxy.tolist())):
-                raw = result.names[int(cls)]
-                name = canonical.get(class_key(raw), raw) if canonical else raw
-                hits.append(_Hit(name=name, score=float(score), box=list(box), result=r, index=i))
-        if len(results) > 1:
-            hits = merge_duplicates(hits)
+    def _extract_output(result: Any, landmarks: list[Any] | None, tolerance: float,
+                        point: tuple[int, int] | None = None) -> ModelOutput:
+        """Đổi kết quả YOLO thành detections; chỉ lấy viền mask của vật ở gần điểm chỉ (ngón trỏ hoặc laser)."""
+        # One small GPU -> CPU transfer for boxes. Dense masks stay on the GPU unless needed.
+        boxes = result.boxes.cpu() if result is not None and result.boxes is not None else None
+        if boxes is None:
+            return ModelOutput(landmarks=landmarks, detections=[], polygons=[])
         detections = [
-            Detection(name=h.name, confidence=round(h.score, 3), box=[round(v, 1) for v in h.box]) for h in hits
+            Detection(name=result.names[int(cls)], confidence=round(float(score), 3), box=[round(v, 1) for v in box])
+            for cls, score, box in zip(boxes.cls.tolist(), boxes.conf.tolist(), boxes.xyxy.tolist())
         ]
         polygons = [np.empty((0, 2), dtype=np.float32) for _ in detections]
-        height, width = results[0].orig_shape if results else (shape or (0, 0))
+        height, width = result.orig_shape
         tip = point if point is not None else index_tip(landmarks, width, height)
-        if tip is not None and hits:
+        if tip is not None and detections and result.masks is not None:
             x, y = tip
             # Masks are cropped to their boxes. Keep a 2px rasterization margin near the edge.
             margin = tolerance + 2
             near = [
-                k for k, h in enumerate(hits)
-                if h.box[0] - margin <= x <= h.box[2] + margin and h.box[1] - margin <= y <= h.box[3] + margin
+                k for k, d in enumerate(detections)
+                if d.box[0] - margin <= x <= d.box[2] + margin and d.box[1] - margin <= y <= d.box[3] + margin
             ]
-            for r, result in enumerate(results):
-                picked = [k for k in near if hits[k].result == r]
-                if not picked:
-                    continue
-                if result.masks is not None:
-                    # masks.xy already transfers compact uint8 masks to CPU for contour extraction.
-                    for k, polygon in zip(picked, result.masks[[hits[k].index for k in picked]].xy):
-                        polygons[k] = np.asarray(polygon, dtype=np.float32)
-                else:
-                    for k in picked:
-                        x1, y1, x2, y2 = hits[k].box
-                        polygons[k] = np.array([[x1, y1], [x2, y1], [x2, y2], [x1, y2]], dtype=np.float32)
+            if near:
+                # masks.xy already transfers compact uint8 masks to CPU for contour extraction.
+                for k, polygon in zip(near, result.masks[near].xy):
+                    polygons[k] = np.asarray(polygon, dtype=np.float32)
         return ModelOutput(landmarks=landmarks, detections=detections, polygons=polygons)
 
     def _detect_hand(self, frame: np.ndarray) -> list[Any] | None:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = self._hands.detect(self._mp.Image(image_format=self._mp.ImageFormat.SRGB, data=rgb))
         return result.hand_landmarks[0] if result.hand_landmarks else None
+
+    def model_infos(self) -> list[dict[str, Any]]:
+        return [{"id": model_id, "name": path.name, "kind": kind,
+                 "size_bytes": path.stat().st_size if path.is_file() else 0,
+                 "available": path.is_file(), "active": self._active[kind] == model_id}
+                for model_id, (kind, path) in self.model_store.catalog().items()]
+
+    def _prepare_model(self, kind, path):
+        """Load and run a candidate before committing a selection."""
+        if kind == "laser":
+            device = "cuda:0" if self._gpu else "cpu"
+            if path.suffix.lower() == ".pt":
+                model = YoloLaserModel(path, device, self.cfg.LASER_IMAGE_SIZE, self.cfg.LASER_CONFIDENCE)
+            else:
+                model = LaserModel(path, device, self.cfg.LASER_IMAGE_SIZE,
+                                   self.cfg.LASER_CONFIDENCE, self.cfg.LASER_CROP_SIZE)
+            model.warm_up()
+        else:
+            from ultralytics import YOLO
+            model = YOLO(str(path))
+            if model.task != "segment" or not any(not excluded(str(n)) for n in model.names.values()):
+                raise ValueError("Cần mô hình YOLO segmentation có ít nhất một lớp vật thể (ngoài person).")
+            model.predict(np.zeros((480, 640, 3), dtype=np.uint8), imgsz=self.cfg.IMAGE_SIZE,
+                          device=0 if self._gpu else "cpu", verbose=False)
+        return model
+
+    def validate_model(self, kind, path) -> None:
+        if not self._management_lock.acquire(blocking=False):
+            raise DetectorBusy
+        self.model_busy = True
+        try:
+            with self.lock:
+                self._prepare_model(kind, path)
+        finally:
+            self.model_busy = False
+            self._management_lock.release()
+
+    def activate_model(self, model_id: str) -> dict[str, Any]:
+        if not self._management_lock.acquire(blocking=False):
+            raise DetectorBusy
+        self.model_busy = True
+        try:
+            kind, path = self.model_store.resolve(model_id)
+            with self.lock:
+                if self._active[kind] == model_id and (kind != "laser" or self._laser is not None):
+                    return {**self.status(), "model_busy": False}
+                candidate = self._prepare_model(kind, path)
+                active = {**self._active, kind: model_id}
+                # Persist first: failure must leave the running model and classes intact.
+                self.model_store.save(active)
+                if kind == "segmentation":
+                    self._model = candidate
+                    self._set_classes({int(k): str(v) for k, v in dict(candidate.names).items()})
+                else:
+                    self._laser = candidate
+                    self.laser_error = None
+                self._active = active
+                self.model_revision += 1
+            return {**self.status(), "model_busy": False}
+        finally:
+            self.model_busy = False
+            self._management_lock.release()
 
     def close(self) -> None:
         if self._loader:

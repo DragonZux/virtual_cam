@@ -14,7 +14,7 @@ def test_object_at_point_needs_a_point():
 
 
 def test_object_at_point_inside_picks_deepest():
-    # Giống finger_select.py: đầu ngón tay nằm sâu trong mask nào hơn thì chọn mask đó
+    # Đầu ngón tay nằm sâu trong mask nào hơn thì chọn mask đó
     laptop, mouse = rectangle(0, 0, 400, 300), rectangle(180, 130, 220, 170)
     assert object_at_point([laptop, mouse], (200, 150), 0) == 0
     assert object_at_point([laptop, mouse], (50, 50), 0) == 0

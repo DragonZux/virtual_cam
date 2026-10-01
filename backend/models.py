@@ -17,51 +17,17 @@ class PointerMode(str, Enum):
     laser = "laser"
 
 
-class LaserColor(str, Enum):
-    red = "red"
-    green = "green"
-
-
 class LaserSpot(BaseModel):
-    point: list[int] = Field(min_length=2, max_length=2, description="Tâm điểm laser [x, y] (pixel)")
-    color: LaserColor
-    score: float = Field(ge=0, le=1, description="Laser đỏ: confidence của model; xanh: điểm màu/độ sáng. Không phải xác suất hiệu chuẩn.")
+    point: list[int] = Field(min_length=2, max_length=2, description="Tâm chấm laser đỏ [x, y] (pixel)")
+    score: float = Field(ge=0, le=1, description="Confidence của model laser đỏ, không phải xác suất hiệu chuẩn")
 
 
 class DetectionDefaults(BaseModel):
-    """Mặc định của máy chủ; trình duyệt chưa chỉnh gì ở Cài đặt thì dùng các giá trị này."""
+    """Mặc định của máy chủ; request không gửi targets / conf / tolerance thì dùng các giá trị này."""
 
     targets: list[str]
     confidence: float
     tolerance: int
-
-
-class ModelTask(str, Enum):
-    segment = "segment"
-    detect = "detect"
-
-
-class ModelInfo(BaseModel):
-    """Một mô hình YOLO: mô hình mặc định (YOLO_MODEL) hoặc file .pt tải thêm ở Cài đặt."""
-
-    id: str = Field(description="Tên file .pt")
-    builtin: bool = Field(description="Mô hình mặc định của máy chủ (không xoá được)")
-    enabled: bool
-    task: ModelTask = Field(description="segment: có viền vật thể; detect: chỉ có khung, viền lấy theo khung")
-    classes: list[str] = Field(default_factory=list, description="Lớp nhận diện được (không có 'person')")
-    size: int = Field(0, description="Dung lượng file (byte)")
-    error: str | None = Field(None, description="Lý do không nạp được")
-
-
-class ModelList(BaseModel):
-    can_manage: bool = Field(description="Trình duyệt này được tải / bật tắt / xoá mô hình (MODEL_ADMIN)")
-    folder: str = Field(description="Thư mục lưu mô hình tải thêm")
-    max_bytes: int
-    items: list[ModelInfo]
-
-
-class ModelUpdate(BaseModel):
-    enabled: bool
 
 
 class StatusOut(BaseModel):
@@ -72,15 +38,33 @@ class StatusOut(BaseModel):
     image_size: int
     laser_model: str | None = None
     laser_error: str | None = None
+    model_revision: int = 0
+    model_busy: bool = False
     classes: list[str] = Field(default_factory=list, description="Lớp chọn làm mục tiêu được (không có 'person')")
     defaults: DetectionDefaults
-    share_urls: list[str] = Field(default_factory=list, description="Địa chỉ HTTPS cho thiết bị khác (serve.py --lan)")
-    models: list[ModelInfo] = Field(default_factory=list, description="Các mô hình YOLO; classes là hợp của mô hình đang bật")
 
 
 class Point(BaseModel):
     x: float
     y: float
+
+
+class ModelInfo(BaseModel):
+    id: str
+    name: str
+    kind: str
+    size_bytes: int
+    active: bool
+    available: bool
+
+
+class ModelList(BaseModel):
+    items: list[ModelInfo]
+    max_bytes: int
+
+
+class ModelSelection(BaseModel):
+    id: str = Field(min_length=1, max_length=255)
 
 
 class FrameSize(BaseModel):
@@ -111,23 +95,3 @@ class FrameResult(BaseModel):
     detections: list[Detection]
     processing_ms: int
     resolution: FrameSize
-
-
-class MediaKind(str, Enum):
-    image = "image"
-    video = "video"
-
-
-class MediaItem(BaseModel):
-    """Một ảnh / video đã tải lên thư mục UPLOAD_DIR."""
-
-    name: str = Field(description="Tên file trong thư mục lưu (dùng cho GET /media/{name})")
-    kind: MediaKind
-    size: int = Field(description="Dung lượng (byte)")
-    modified: int = Field(description="Thời điểm lưu (epoch ms)")
-
-
-class MediaList(BaseModel):
-    folder: str = Field(description="Thư mục lưu trên máy chủ (đường dẫn phía host khi chạy Docker)")
-    max_bytes: int = Field(description="Dung lượng tối đa mỗi file")
-    items: list[MediaItem]

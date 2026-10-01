@@ -1,14 +1,21 @@
 """Coordinates/confidence and API routing for the trained red-laser detector."""
 from types import SimpleNamespace
 
+import cv2
 import numpy as np
 import pytest
 
-from models import LaserColor, LaserSpot, PointerMode
+from models import LaserSpot, PointerMode
 from services.detector import Detector
 from services.laser_model import LaserModel, prepare_frame, select_spot
-from tests.test_laser import encode, scene
 from tests.test_vision_api import post_frame
+
+
+def scene():
+    """Nền xám với một chấm đỏ ở giữa khung 640x480."""
+    frame = np.full((480, 640, 3), 75, dtype=np.uint8)
+    cv2.circle(frame, (320, 240), 4, (30, 35, 255), -1)
+    return frame
 
 
 def test_letterbox_uses_rgb_and_keeps_portrait_coordinate_mapping():
@@ -48,28 +55,28 @@ def test_invalid_or_padded_predictions_are_not_selected(row):
     assert select_spot(np.array([row]), (480, 640), 1, (0, 0), 0.55) is None
 
 
-def test_missing_red_model_returns_503_but_green_still_works(client, detector, monkeypatch):
+def test_missing_red_model_returns_503_but_hand_still_works(client, detector, monkeypatch):
     monkeypatch.setattr(detector, "_run_models", Detector._run_models.__get__(detector))
     monkeypatch.setattr(detector, "_predict", lambda *args: None)
+    monkeypatch.setattr(detector, "_detect_hand", lambda frame: None)
     detector.laser_error = "Missing trained laser model"
-    response = post_frame(client, params={"pointer_mode": "laser", "laser_color": "red"})
+    response = post_frame(client, params={"pointer_mode": "laser"})
     assert response.status_code == 503 and response.json()["detail"] == detector.laser_error
     status = client.get("/api/vision/status").json()
     assert status["phase"] == "ready" and status["laser_model"] is None
     assert status["laser_error"] == detector.laser_error
-    response = post_frame(client, body=encode(scene("green", white_core=True)),
-                          params={"pointer_mode": "laser", "laser_color": "green"})
-    assert response.status_code == 200 and response.json()["laser"]["color"] == "green"
+    response = post_frame(client)
+    assert response.status_code == 200 and response.json()["laser"] is None
 
 
-def test_red_model_receives_hint_without_object_confidence_or_brightness(detector, monkeypatch):
+def test_red_model_receives_hint_without_object_confidence(detector, monkeypatch):
     calls = []
     def detect(frame, hint):
         calls.append(hint)
-        return LaserSpot(point=[320, 240], color=LaserColor.red, score=0.72)
+        return LaserSpot(point=[320, 240], score=0.72)
     detector._laser = SimpleNamespace(detect=detect)
     monkeypatch.setattr(detector, "_predict", lambda *args: None)
-    options = detector.options(None, 0.95, None, PointerMode.laser, LaserColor.red, 250, (320, 240))
+    options = detector.options(None, 0.95, None, PointerMode.laser, (320, 240))
     result = Detector._run_models(detector, scene(), options)
     assert result.laser.score == 0.72 and calls == [(320, 240)]
     assert result.landmarks is None
@@ -108,7 +115,7 @@ def crop_model(monkeypatch, responses, size=1280, crop_size=384):
 def test_crop_preserves_scale_coordinates_and_only_returns_current_detection(monkeypatch, shape, hint, region):
     frame = np.arange(shape[0] * shape[1] * 3, dtype=np.uint8).reshape(*shape, 3)
     left, top, side = region
-    local = LaserSpot(point=[hint[0] - left + 1, hint[1] - top + 1], color=LaserColor.red, score=0.73)
+    local = LaserSpot(point=[hint[0] - left + 1, hint[1] - top + 1], score=0.73)
     model, calls = crop_model(monkeypatch, [local])
     spot = model.detect(frame, hint)
     assert spot.point == [hint[0] + 1, hint[1] + 1] and spot.score == 0.73
@@ -120,10 +127,10 @@ def test_crop_preserves_scale_coordinates_and_only_returns_current_detection(mon
     assert radius == 40 * max(shape) / 640
 
 
-@pytest.mark.parametrize("local", [None, LaserSpot(point=[10, 10], color=LaserColor.red, score=0.99)])
+@pytest.mark.parametrize("local", [None, LaserSpot(point=[10, 10], score=0.99)])
 def test_missed_crop_or_distant_led_reacquires_on_same_full_frame(monkeypatch, local):
     frame = np.zeros((720, 1280, 3), np.uint8)
-    moved = LaserSpot(point=[1100, 600], color=LaserColor.red, score=0.8)
+    moved = LaserSpot(point=[1100, 600], score=0.8)
     model, calls = crop_model(monkeypatch, [local, moved])
     assert model.detect(frame, (640, 360)) == moved
     assert len(calls) == 2
