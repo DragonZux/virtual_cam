@@ -1,4 +1,4 @@
-import type { Preferences } from "./types";
+import type { LaserColor, Preferences } from "./types";
 
 export const ROUTES = {
   live: "/",
@@ -13,7 +13,11 @@ export type RouteKey = keyof typeof ROUTES;
 export const UPLOAD_MAX_SIDE = 640;
 /** Preserve small coloured laser spots before YOLO resizes its own input. */
 export const LASER_UPLOAD_MAX_SIDE = 1280;
-export const LASER_JPEG_QUALITY = 0.94;
+/**
+ * Chất lượng JPEG ở chế độ laser: laser đỏ (mô hình AI) vẫn bắt đúng chấm ở 0.8 mà khung nhẹ đi khoảng một nửa;
+ * laser xanh (lọc màu) cần 0.94 vì nén mạnh làm mất màu quanh chấm.
+ */
+export const LASER_JPEG_QUALITY: Record<LaserColor, number> = { red: 0.8, green: 0.94 };
 /** Cạnh dài khung hiển thị / ảnh chụp (nét hơn khung gửi đi) */
 export const DISPLAY_MAX_SIDE = 1280;
 export const JPEG_QUALITY = 0.82;

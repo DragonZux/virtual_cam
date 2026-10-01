@@ -115,7 +115,7 @@ export const useFrameLoop = ({ videoRef, active, mirror, options }: Params) => {
         const laser = opts.pointer_mode === "laser";
         if (captureFrame(video, upload, mirror, laser ? LASER_UPLOAD_MAX_SIDE : undefined)) {
           lastMediaTime = mediaTime;
-          image = await canvasToJpeg(upload, laser ? LASER_JPEG_QUALITY : undefined);
+          image = await canvasToJpeg(upload, laser ? LASER_JPEG_QUALITY[opts.laser_color] : undefined);
         }
       } catch {
         // The camera can disappear during drawImage/toBlob; retry without breaking the loop.

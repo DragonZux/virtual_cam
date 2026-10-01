@@ -18,7 +18,7 @@ Chuẩn bị model laser đỏ một lần: cài `requirements.txt`, chạy `pyt
 
 Laser xanh vẫn dùng `backend/services/laser.py`: lọc HSV, độ sáng, tương phản và hình dạng; lõi trắng cần quầng xanh rõ. Thanh ngưỡng sáng chỉ điều chỉnh nhánh này. Model ADVR được huấn luyện cho laser đỏ, chưa dùng để suy luận laser xanh.
 
-Laser gửi JPEG cạnh dài tối đa 1280px, chất lượng 0.94 để giữ chấm nhỏ; chỉ tay giữ 640px/0.82. Chế độ laser bỏ qua suy luận MediaPipe cho từng khung, vẫn dùng YOLO hiện tại. Chuyển chế độ/màu/ngưỡng sáng sẽ huỷ khung đang chờ và đặt lại xác nhận. Cài đặt lưu riêng trên trình duyệt.
+Laser gửi JPEG cạnh dài tối đa 1280px để giữ chấm nhỏ: laser đỏ chất lượng 0.8 (mô hình AI vẫn bắt đúng chấm, khung nhẹ khoảng một nửa so với 0.94), laser xanh 0.94 vì bộ lọc màu cần giữ màu quanh chấm; chỉ tay giữ 640px/0.82. Chế độ laser bỏ qua suy luận MediaPipe cho từng khung, vẫn dùng YOLO hiện tại. Chuyển chế độ/màu/ngưỡng sáng sẽ huỷ khung đang chờ và đặt lại xác nhận. Cài đặt lưu riêng trên trình duyệt.
 
 Giới hạn: model đỏ vẫn có thể nhận nhầm LED/phản sáng. Trên ba ảnh thử, bản YOLOv5l6 ở 1280 chọn đúng chấm laser cả ba, nhưng trên bàn phím LED có confidence gần chấm thật (0.754 so với 0.787); đây không phải phép đo độ chính xác tổng quát. CPU chạy model lớn chậm hơn đáng kể. Chỉ gọi tên các lớp model đồ vật hỗ trợ và đang bật; tìm thấy laser trên tủ không đồng nghĩa model đồ vật nhận ra loại tủ đó.
 
