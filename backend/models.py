@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -83,6 +84,18 @@ class SelectedObject(BaseModel):
     name: str
     confidence: float
     polygon: list[list[float]] = Field(description="Viền mask [[x, y], ...] (pixel)")
+
+
+class SelectionSummary(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    confidence: float = Field(ge=0, le=1, allow_inf_nan=False)
+
+
+class SelectionUpdate(BaseModel):
+    """Confirmed frontend selection, after dwell and laser stabilization."""
+    selected: SelectionSummary | None
+    pointer_mode: PointerMode
+    source: Literal["camera", "media"] = "camera"
 
 
 class FrameResult(BaseModel):

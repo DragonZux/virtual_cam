@@ -6,8 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
 from core.logging import logger
 from core.spa import mount_frontend
-from routers import vision, models
+from routers import vision, models, selection
 from services.detector import Detector
+from services.selection_stream import SelectionHub
 
 # CSP cho trang React (không áp cho /api, /docs): antd chèn <style> lúc chạy nên style cần 'unsafe-inline'
 SPA_CSP = (
@@ -22,6 +23,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting %s v%s", settings.API_TITLE, settings.API_VERSION)
     detector = Detector(settings)
     app.state.detector = detector
+    app.state.selection_hub = SelectionHub()
     # Nạp model ở luồng nền: web mở được ngay, giao diện hiện "Đang khởi động" tới khi sẵn sàng
     detector.start()
     logger.info("=" * 60)
@@ -54,13 +56,19 @@ async def security_headers(request: Request, call_next):
     # Trang chỉ dùng camera của chính nó, không dùng micro
     response.headers.setdefault("Permissions-Policy", "camera=(self), microphone=()")
     if not request.url.path.startswith(("/api", "/docs", "/redoc", "/openapi.json")):
-        response.headers.setdefault("Content-Security-Policy", SPA_CSP)
+        # Some browsers do not include WebSockets in connect-src 'self'.
+        ws_scheme = "wss" if request.url.scheme == "https" else "ws"
+        ws_origin = f"{ws_scheme}://{request.url.netloc}"
+        response.headers.setdefault("Content-Security-Policy", SPA_CSP.replace(
+            "connect-src 'self'", f"connect-src 'self' {ws_origin}",
+        ))
     return response
 
 
 API_PREFIX = "/api"
 app.include_router(vision.router, prefix=API_PREFIX)
 app.include_router(models.router, prefix=API_PREFIX)
+app.include_router(selection.router, prefix=API_PREFIX)
 
 
 @app.get("/api", tags=["Health"])
