@@ -121,6 +121,13 @@ export type CameraStatus = "off" | "starting" | "on" | "error";
 /** Nguồn hình của khung camera: camera của trình duyệt hoặc ảnh / video thử */
 export type FrameSource = "camera" | "media";
 
+/** Confirmed selection shared over WebSocket; confidence matches the displayed percentage. */
+export interface SelectionUpdate {
+  selected: Pick<SelectedObject, "name" | "confidence"> | null;
+  pointer_mode: PointerMode;
+  source: FrameSource;
+}
+
 /** Ảnh / video đang phát trong khung camera — url là blob: của file vừa chọn trên máy */
 export interface MediaSource {
   url: string;

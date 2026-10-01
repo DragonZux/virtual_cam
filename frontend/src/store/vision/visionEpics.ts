@@ -12,6 +12,7 @@ import { errorMessage } from "../epicHelpers";
 import { historyActions } from "../history/historySlice";
 import type { RootEpic } from "../types";
 import { visionActions } from "./visionSlice";
+import { selectionEpic } from "./selectionEpic";
 
 /** Hỏi trạng thái máy chủ định kỳ; exhaustMap để request treo vẫn kịp báo lỗi (timeout) thay vì bị huỷ */
 const statusPolling$: RootEpic = (action$) =>
@@ -121,4 +122,4 @@ const analyzeFrame$: RootEpic = (action$, state$) => {
   );
 };
 
-export const visionEpics = [statusPolling$, analyzeFrame$];
+export const visionEpics = [statusPolling$, analyzeFrame$, selectionEpic];

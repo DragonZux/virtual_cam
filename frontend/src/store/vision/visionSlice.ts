@@ -87,6 +87,8 @@ const visionSlice = createSlice({
     /** Hỏi GET /vision/status định kỳ (MainLayout) */
     startStatusPolling: () => {},
     stopStatusPolling: () => {},
+    startSelectionStream: () => {},
+    stopSelectionStream: () => {},
     getStatusSuccess: (state, action: PayloadAction<VisionStatus>) => {
       if (state.status && state.status.model_revision !== action.payload.model_revision) {
         state.lastFrameId = state.lastRequestId;
