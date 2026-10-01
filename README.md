@@ -88,6 +88,8 @@ Khung camera chỉ dùng để nhận diện rồi bỏ, không lưu. Cài đặ
 |---|---|---|
 | `GET` | `/api/vision/status` | Trạng thái (`starting` / `ready` / `error`), thiết bị, model, danh sách lớp, mặc định, tình trạng model laser |
 | `POST` | `/api/vision/frame` | Body là ảnh JPEG thô (`Content-Type: image/jpeg`), trả kết quả nhận diện |
+| `WebSocket` | `/api/vision/ws` | Nhận trạng thái vật thể đã xác nhận từ các phiên trình duyệt |
+| `WebSocket` | `/api/vision/ws/publish` | Frontend tự gửi lựa chọn sau bước giữ để xác nhận |
 | `GET` / `POST` | `/api/models` | Danh sách mô hình / tải lên mô hình mới |
 | `POST` | `/api/models/activate` | Chọn mô hình segmentation hoặc laser đang chạy |
 | `GET` | `/api/models` | Danh sách mô hình, loại, dung lượng, lựa chọn hiện tại và giới hạn tải |
@@ -97,6 +99,64 @@ Khung camera chỉ dùng để nhận diện rồi bỏ, không lưu. Cài đặ
 Query của `POST /api/vision/frame` (đều không bắt buộc): `targets` (tên lớp, cách nhau dấu phẩy, không phân biệt hoa / thường; `person` luôn bị loại), `conf` (0.05–0.95), `tolerance` (0–100 px), `pointer_mode` (`hand` | `laser`), `laser_hint` (`x,y` chấm laser đang bám ở khung trước), `model_revision` (phiên bản mô hình client đang dùng; lệch thì máy chủ bỏ khung).
 
 Kết quả: `selected` (vật được chỉ: tên, độ tin cậy, viền `polygon`), `detections`, `tip` + `landmarks` (chế độ tay), `laser: {point, score}` (chế độ laser), `processing_ms`, `resolution`. Mã lỗi: 400 / 413 / 415 dữ liệu không hợp lệ, 429 đang xử lý khung khác, 503 đang khởi động hoặc thiếu model laser đỏ.
+
+### Nhận vật thể đang chọn qua WebSocket
+
+Ứng dụng khác kết nối **`wss://<IP máy chủ>:8033/api/vision/ws`** để nhận vật thể **đã xác nhận** trên thẻ “Vật thể đang chọn”. Khi phát triển bằng HTTP, dùng `ws://localhost:8030/api/vision/ws`. Đây là WebSocket chuẩn, dùng client WebSocket (không dùng giao thức Socket.IO). Trình duyệt camera tự gửi trạng thái từ `tracking.held`, sau bước giữ tay / ổn định laser; không cần thay đổi luồng gửi ảnh JPEG.
+
+Ngay khi kết nối, server gửi trạng thái của tất cả phiên đang phát:
+
+```json
+{"type":"selection.snapshot","sessions":[]}
+```
+
+`sessions` chứa các bản tin theo mẫu dưới đây nếu đã có phiên trình duyệt kết nối. Bản tin tiếp theo được gửi khi tên vật thể, độ tin cậy hiển thị, chế độ chỉ hoặc nguồn hình thay đổi:
+
+```json
+{
+  "type": "selection.changed",
+  "session_id": "8cbb5965-c15f-4db9-a746-3f7efb3e6cac",
+  "selected": {"name": "bottle", "confidence": 0.94},
+  "pointer_mode": "hand",
+  "source": "camera",
+  "connected": true,
+  "timestamp": 1790816400000
+}
+```
+
+- `name`: tên lớp gốc của mô hình; `confidence`: 0–1, làm tròn theo phần trăm hiển thị. `pointer_mode`: `hand` hoặc `laser`; `source`: `camera` hoặc `media` (ảnh / video thử).
+- `selected: null`: chưa xác nhận, lựa chọn đã hết thời gian giữ, camera dừng, hoặc giao diện xóa kết quả khi đổi mô hình / ẩn tab. Ảnh tĩnh xác nhận ngay sau một lần phân tích.
+- `session_id`: riêng cho mỗi kết nối phát của trình duyệt; thay đổi khi kết nối lại. Theo dõi theo mã này để nhiều camera không ghi đè nhau.
+- `connected: false` kèm `selected: null`: server đã phát hiện phiên trình duyệt ngắt kết nối; bên nhận xóa phiên đó. `timestamp` là thời gian server, Unix milliseconds.
+- Khi nhận `selection.snapshot`, **thay toàn bộ trạng thái đang giữ** bằng `sessions`. Snapshot cũng có thể xuất hiện để đồng bộ lại nếu bên nhận xử lý chậm.
+
+Ví dụ chạy trong console của trang Virtual Cam (kết nối cùng máy chủ và cổng):
+
+```js
+const socket = new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/api/vision/ws`);
+const sessions = new Map();
+socket.onmessage = ({ data }) => {
+  const event = JSON.parse(data);
+  if (event.type === "selection.snapshot") {
+    sessions.clear();
+    for (const session of event.sessions) sessions.set(session.session_id, session);
+  } else if (event.type === "selection.changed") {
+    if (event.connected) sessions.set(event.session_id, event);
+    else sessions.delete(event.session_id);
+  }
+  console.table([...sessions.values()].map((s) => ({
+    session: s.session_id,
+    object: s.selected?.name ?? "Chưa chọn",
+    confidence: s.selected?.confidence ?? null,
+    source: s.source,
+  })));
+};
+socket.onclose = () => { sessions.clear(); console.log("Đã ngắt kết nối WebSocket"); };
+```
+
+Frontend tự kết nối lại (đợi 0,5 giây, tăng dần tối đa 10 giây) và gửi trạng thái mới nhất. Ứng dụng nhận bên ngoài cần tự kết nối lại khi socket đóng, xóa trạng thái cũ và nhận snapshot mới. Với chứng chỉ tự ký, trình duyệt cần chấp nhận chứng chỉ ở trang HTTPS trước; client Python / thiết bị cần tin cậy chứng chỉ máy chủ.
+
+WebSocket dùng chung cổng và phạm vi mạng với API hiện tại, không có đăng nhập. Trạng thái chỉ lưu trong bộ nhớ của **một tiến trình server**, đúng với `serve.py` / Docker hiện tại; nếu chạy nhiều worker hoặc nhiều máy chủ thì cần thêm cơ chế chia sẻ trạng thái và phát sự kiện giữa các tiến trình. Gọi riêng `POST /api/vision/frame` không phát sự kiện lựa chọn đã xác nhận vì bước xác nhận hiện nằm ở trình duyệt.
 
 ## Model laser đỏ
 
