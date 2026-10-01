@@ -1,6 +1,7 @@
 """Download the published ADVR red-laser weights and export a standalone TorchScript.
 
-Run once from any directory: python scripts/prepare_laser_model.py
+Run once from any directory: python docker/prepare_laser_model.py (the container's init_models.py runs it
+when models/ has no laser model)
 Runtime inference uses only PyTorch; the legacy YOLOv5 code is confined to this
 export process. Source model: https://zenodo.org/records/10471835 (CC BY 4.0).
 """

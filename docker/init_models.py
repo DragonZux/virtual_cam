@@ -1,7 +1,7 @@
 """Chuẩn bị model còn thiếu trong MODEL_DIR rồi chạy web (entrypoint của container).
 
 Máy host không cần cài gì: lần đầu container tự tải model bàn tay + YOLO và xuất model laser đỏ
-(scripts/prepare_laser_model.py) vào thư mục models/ của máy host; các lần sau thấy đủ file thì chạy luôn.
+(docker/prepare_laser_model.py) vào thư mục models/ của máy host; các lần sau thấy đủ file thì chạy luôn.
 Model nào chuẩn bị lỗi chỉ in cảnh báo, web vẫn chạy (tính năng cần model đó báo lỗi khi dùng).
 """
 import os

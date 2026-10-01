@@ -1,0 +1,39 @@
+# Virtual Cam bằng Docker trên PC có GPU NVIDIA — một container, chạy ở thư mục gốc:
+#   docker compose up -d --build
+#   http://localhost:8032          — chỉ máy này (máy khác / điện thoại không truy cập được)
+# Cần NVIDIA driver ≥ 570 + Docker Desktop có WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
+# Tuỳ chọn trong .env ở thư mục gốc (xem .env.example): WEB_PORT, YOLO_MODEL, IMAGE_SIZE…
+# Lần chạy đầu container tự tải model còn thiếu vào models/ (docker/init_models.py).
+name: virtual_cam
+services:
+  virtual-cam:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - TORCH_INDEX=${TORCH_INDEX:-cu128}
+    image: virtual-cam:latest
+    container_name: virtual-cam
+    environment:
+      # Model YOLO (file trong models/) và cạnh ảnh đưa vào YOLO (640 chính xác nhất; 480 / 320 nhanh hơn)
+      YOLO_MODEL: ${YOLO_MODEL:-yolo26m-seg.pt}
+      IMAGE_SIZE: ${IMAGE_SIZE:-640}
+      LASER_MODEL: ${LASER_MODEL:-laser-advr-yolov5l6.torchscript}
+      LASER_IMAGE_SIZE: ${LASER_IMAGE_SIZE:-1280}
+      LASER_CONFIDENCE: ${LASER_CONFIDENCE:-0.55}
+      LASER_CROP_SIZE: ${LASER_CROP_SIZE:-384}
+      MAX_MODEL_MB: ${MAX_MODEL_MB:-1024}
+    ports:
+      # Chỉ 127.0.0.1: web chỉ mở được trên chính máy này (IPv4 — cổng IPv6 của Docker Desktop chậm hơn ~30 ms mỗi request)
+      - "127.0.0.1:${WEB_PORT:-8032}:8030"
+    volumes:
+      # models/ ghi được: container tự tải model bàn tay / YOLO và xuất model laser vào đây ở lần chạy đầu
+      - ./models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
