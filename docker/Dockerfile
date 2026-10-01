@@ -27,13 +27,16 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY requirements.txt .
-# Bỏ dòng ultralytics (image đã có) và khoá torch / torchvision theo bản có sẵn để pip không thay bằng bản CPU.
+# Bỏ dòng ultralytics (image đã có) và khoá torch / torchvision / numpy theo bản có sẵn để pip không thay bằng bản CPU
+# (hay numpy 2 mà torch Jetson không chạy được). Dùng `pip list --format=freeze`: `pip freeze` in torch Jetson dạng
+# "torch @ file:///..." (cài từ wheel) nên không có "torch==".
 # Cache pip nằm ngoài image (cache mount): build hỏng giữa chừng thì lần sau không phải tải lại.
 RUN --mount=type=cache,target=/root/.cache/pip \
     grep -viE '^\s*ultralytics' requirements.txt > /tmp/requirements.txt \
-    && pip freeze 2>/dev/null | grep -iE '^(torch|torchvision)==' > /tmp/constraints.txt \
-    && cat /tmp/constraints.txt \
-    && pip install --retries 10 --timeout 60 -r /tmp/requirements.txt -c /tmp/constraints.txt
+    && pip list --format=freeze 2>/dev/null | grep -iE '^(torch|torchvision|numpy)==' > /tmp/constraints.txt || true; \
+    echo "Constraints from the base image:" && cat /tmp/constraints.txt \
+    && grep -qi '^torch==' /tmp/constraints.txt || { echo "PyTorch not found in the base image"; exit 1; }; \
+    pip install --retries 10 --timeout 60 -r /tmp/requirements.txt -c /tmp/constraints.txt
 
 COPY backend/ .
 COPY docker/init_models.py /app/init_models.py
