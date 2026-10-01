@@ -25,6 +25,7 @@ httptools>=0.6                          # bo doc HTTP nhanh cua uvicorn
 uvloop>=0.19; sys_platform != "win32"   # vong lap su kien nhanh tren Linux / Docker
 pydantic>=2.7
 pydantic-settings>=2.3
+cryptography>=42                       # chung chi tu ky cho cong HTTPS (camera tren may khac)
 
 # --- Test (pytest trong backend/) ---
 pytest

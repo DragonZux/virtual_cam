@@ -188,7 +188,7 @@
       "offlineText": "Giữ trang này mở. Hệ thống sẽ tự kết nối lại."
     },
     "errors": {
-      "insecure": "Camera của trình duyệt chỉ mở được qua localhost. Hãy mở web trên chính máy chạy máy chủ (http://localhost).",
+      "insecure": "Camera của trình duyệt chỉ mở được qua localhost hoặc HTTPS. Từ máy khác, hãy mở https://<IP máy chủ>:8033 (chứng chỉ tự ký: chọn Nâng cao › Tiếp tục).",
       "NotAllowedError": "Quyền camera chưa được cấp. Cho phép camera trong cài đặt trang của trình duyệt rồi thử lại.",
       "NotFoundError": "Không tìm thấy camera. Hãy kết nối webcam hoặc thử trên thiết bị có camera.",
       "NotReadableError": "Không mở được camera. Hãy đóng ứng dụng khác đang dùng camera rồi thử lại.",

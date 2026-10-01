@@ -15,9 +15,14 @@ class Settings(BaseSettings):
     API_VERSION: str = "1.0.0"
     LOG_LEVEL: str = "INFO"
 
-    # serve.py: web chỉ cho chính máy này
+    # serve.py: cổng HTTP (localhost mở được camera) — chạy trực tiếp mặc định chỉ cho chính máy này
     HOST: str = "127.0.0.1"
     PORT: int = 8030
+    # Cổng HTTPS tự ký cho máy khác trong mạng (camera cần HTTPS khi không phải localhost); 0 = tắt
+    HTTPS_PORT: int = Field(0, ge=0, le=65535)
+    CERT_DIR: Path = BACKEND_DIR / "data" / "certs"
+    # IP / tên máy thêm vào chứng chỉ, cách nhau dấu phẩy (không bắt buộc: chứng chỉ tự ký vẫn phải bấm "Tiếp tục")
+    CERT_HOSTS: str = ""
 
     # Chỉ cần khi chạy frontend dev (vite) ở origin khác; bình thường vite proxy /api nên cùng origin
     CORS_ORIGINS: str = "http://localhost:5180,http://127.0.0.1:5180"
@@ -56,6 +61,10 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def cert_hosts(self) -> list[str]:
+        return [h.strip() for h in self.CERT_HOSTS.split(",") if h.strip()]
 
     @property
     def default_targets(self) -> list[str]:

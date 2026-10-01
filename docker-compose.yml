@@ -1,6 +1,7 @@
 # Virtual Cam bằng Docker trên PC có GPU NVIDIA — một container, chạy ở thư mục gốc:
 #   docker compose up -d --build
-#   http://localhost:8032  hoặc  http://<IP máy>:8032 từ máy khác trong mạng
+#   https://localhost:8033  hoặc  https://<IP máy>:8033 từ máy khác trong mạng
+#   (chứng chỉ tự ký: lần đầu chọn Nâng cao › Tiếp tục; camera của trình duyệt cần HTTPS khi không phải localhost)
 # Cần NVIDIA driver ≥ 570 + Docker Desktop có WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
 # Tuỳ chọn trong .env ở thư mục gốc (xem .env.example): WEB_PORT, YOLO_MODEL, IMAGE_SIZE…
 # Lần chạy đầu container tự tải model còn thiếu vào models/ (docker/init_models.py).
@@ -23,12 +24,16 @@ services:
       LASER_CONFIDENCE: ${LASER_CONFIDENCE:-0.55}
       LASER_CROP_SIZE: ${LASER_CROP_SIZE:-384}
       MAX_MODEL_MB: ${MAX_MODEL_MB:-1024}
+      # Không bắt buộc: IP máy host ghi thêm vào chứng chỉ HTTPS (vd 10.0.10.62)
+      CERT_HOSTS: ${CERT_HOSTS:-}
     ports:
-      # Mở trên mọi IP của máy (giống các dự án khác): localhost hoặc IP LAN đều vào được
-      - "${WEB_PORT:-8032}:8030"
+      # Một cổng HTTPS mở trên mọi IP của máy (giống các dự án khác); HTTP 8030 chỉ dùng trong container (healthcheck)
+      - "${WEB_PORT:-8033}:8031"
     volumes:
       # models/ ghi được: container tự tải model bàn tay / YOLO và xuất model laser vào đây ở lần chạy đầu
       - ./models:/models
+      # Giữ chứng chỉ qua các lần tạo lại container (trình duyệt không phải xác nhận lại)
+      - certs:/app/data/certs
     deploy:
       resources:
         reservations:
@@ -37,3 +42,7 @@ services:
               count: all
               capabilities: [gpu]
     restart: unless-stopped
+
+volumes:
+  certs:
+    name: virtual-cam-certs

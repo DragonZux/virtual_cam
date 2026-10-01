@@ -186,7 +186,7 @@
       "offlineText": "Keep this page open. It will reconnect automatically."
     },
     "errors": {
-      "insecure": "Browser cameras only open on localhost. Open the web app on the computer running the server (http://localhost).",
+      "insecure": "Browser cameras only open on localhost or HTTPS. From another computer, open https://<server IP>:8033 (self-signed certificate: choose Advanced › Proceed).",
       "NotAllowedError": "Camera permission was not granted. Allow the camera in your browser's site settings and try again.",
       "NotFoundError": "No camera found. Connect a webcam or try a device with a camera.",
       "NotReadableError": "The camera could not be opened. Close other apps using the camera and try again.",

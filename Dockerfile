@@ -41,8 +41,10 @@ COPY --from=web /web/dist /app/frontend/dist
 
 # Thư mục models/ mount vào /models (xem docker-compose.yml)
 ENV MODEL_DIR=/models \
-    FRONTEND_DIST=/app/frontend/dist
-EXPOSE 8030
+    FRONTEND_DIST=/app/frontend/dist \
+    HTTPS_PORT=8031
+# 8031 HTTPS tự ký — cổng duy nhất compose map ra ngoài; 8030 HTTP chỉ cho healthcheck trong container
+EXPOSE 8030 8031
 # start-period dài: lần chạy đầu tải model và xuất model laser (vài phút)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=900s \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8030/health', timeout=4)"

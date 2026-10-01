@@ -1,6 +1,6 @@
 # Virtual Cam
 
-Chỉ ngón trỏ hoặc chiếu chấm **laser đỏ** vào vật thể trước camera → web hiện tên và viền vật thể (YOLO26 segmentation). Web chạy trên một máy, mở bằng `localhost` hoặc IP của máy đó từ máy khác trong mạng (camera ở máy khác cần HTTPS — xem dưới).
+Chỉ ngón trỏ hoặc chiếu chấm **laser đỏ** vào vật thể trước camera → web hiện tên và viền vật thể (YOLO26 segmentation). Web chạy trên một máy, mở bằng `https://localhost:8033` trên máy đó hoặc `https://<IP máy>:8033` từ máy khác trong mạng.
 
 - **Chỉ tay**: MediaPipe Hand Landmarker (CPU) tìm đầu ngón trỏ, chạy song song với YOLO.
 - **Laser đỏ**: model ADVR YOLOv5l6 đã huấn luyện chuyên cho chấm laser (GPU nếu có).
@@ -19,18 +19,54 @@ docker compose logs -f        # chờ dòng "Detector ready"
 
 | Địa chỉ | Dùng cho |
 |---|---|
-| http://localhost:8032 | Giao diện web (máy khác: `http://<IP máy>:8032`) |
-| http://localhost:8032/settings | Tải thêm và chọn mô hình segmentation / laser |
-| http://localhost:8032/test | Thử mô hình bằng ảnh hoặc video |
-| http://localhost:8032/docs | Tài liệu API (Swagger) |
+| https://localhost:8033 | Giao diện web (máy khác: `https://<IP máy>:8033`) |
+| https://localhost:8033/settings | Tải thêm và chọn mô hình segmentation / laser |
+| https://localhost:8033/test | Thử mô hình bằng ảnh hoặc video |
+| https://localhost:8033/docs | Tài liệu API (Swagger) |
 
 - Cần NVIDIA driver ≥ 570 + Docker Desktop bật WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
 - Lần chạy đầu container tự tải model còn thiếu vào `models/` và xuất model laser đỏ (vài phút, cần internet).
 - Tuỳ chọn: sao chép `.env.example` thành `.env` ở thư mục gốc để đổi cổng `WEB_PORT`, `YOLO_MODEL`, `IMAGE_SIZE`… Không có `.env` vẫn chạy với mặc định.
-- Cổng mở trên mọi IP của máy host (`<IP máy>:8032`). Mở cổng trong firewall nếu máy khác không vào được.
-- Trình duyệt chỉ cho mở camera ở `localhost` hoặc `https://`. Vào bằng `http://<IP máy>` thì ảnh / video ở trang Test vẫn chạy, còn camera cần HTTPS hoặc bật `chrome://flags/#unsafely-treat-insecure-origin-as-secure` cho địa chỉ đó.
+- Một cổng duy nhất **8033** (`WEB_PORT`), chỉ HTTPS (gõ `https://`, không phải `http://`), mở trên mọi IP của máy host — trình duyệt chỉ cho mở camera ở `localhost` hoặc `https://`. Chứng chỉ tự ký, tạo lần đầu và giữ trong volume `virtual-cam-certs`; mỗi trình duyệt chọn **Nâng cao › Tiếp tục** một lần.
+- Máy khác không vào được: xem hướng dẫn mạng nội bộ bên dưới.
 - Image ~13 GB (thư viện CUDA): xem ổ chứa dữ liệu Docker còn ≥ 20 GB trước khi build.
 - Lệnh khác: `docker compose down` (tắt), `docker compose logs -f` (xem log).
+
+## Truy cập từ máy khác trong mạng nội bộ
+
+Dùng **IP của máy chạy Docker**, không phải IP của máy đang mở trình duyệt. Xem IPv4 của Wi-Fi / Ethernet bằng `ipconfig`. Ví dụ máy chủ có IP `10.0.9.41` thì mọi máy khách mở `https://10.0.9.41:8033`; trang mô hình là `/settings`, trang thử ảnh là `/test`. Chỉ dùng `https://10.0.10.62:8033` nếu máy chạy Docker thực sự có IP `10.0.10.62`.
+
+Trên Windows, với mạng Wi-Fi / Ethernet tin cậy đã đặt là **Private**, mở **PowerShell → Run as administrator** trên máy chủ rồi chạy một lần:
+
+```powershell
+New-NetFirewallRule -Name 'VirtualCam-LAN-HTTPS' -DisplayName 'Virtual Cam LAN HTTPS' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8033 -Profile Private -RemoteAddress LocalSubnet,10.0.10.0/24
+```
+
+Quy tắc cho phép cổng HTTPS từ cùng subnet và từ dải nội bộ `10.0.10.0/24`. Nếu đổi `WEB_PORT`, thay `8033` tương ứng. Lỗi `Access is denied` nghĩa là PowerShell chưa có quyền Administrator.
+
+Với subnet mask `255.255.255.0`, `10.0.9.x` và `10.0.10.x` là hai subnet khác nhau: router phải cho phép kết nối giữa chúng, hoặc máy khách cần nối vào cùng mạng với máy chủ. Mở firewall không tự tạo đường kết nối giữa hai subnet. Không cần mở cổng trên router ra Internet.
+
+Kiểm tra từ **máy khách** bằng `Test-NetConnection 10.0.9.41 -Port 8033` (thay IP thực tế). Nếu `TcpTestSucceeded` là `True`, mở URL HTTPS và chấp nhận chứng chỉ tự ký của máy chủ bằng **Nâng cao → Tiếp tục** nếu trình duyệt hiển thị lựa chọn này. Kiểm tra `/health` trên chính máy chủ chỉ xác nhận ứng dụng đang chạy, chưa xác nhận được kết nối từ máy khác.
+
+### Máy chủ LAN `10.0.10.62`
+
+Máy chủ hiện tại là NVIDIA Jetson Orin (Linux ARM64), truy cập SSH bằng `hicas@10.0.10.62`. Dự án trên máy chủ nằm ở `/home/hicas/vu_nl/virtual_cam`; đây là bản chạy riêng với Docker Desktop trên máy Windows.
+
+- Camera: `https://10.0.10.62:8033/`
+- Quản lý mô hình: `https://10.0.10.62:8033/settings`
+- Thử ảnh / video: `https://10.0.10.62:8033/test`
+
+Cổng 8033 trên Jetson dùng HTTPS. Chứng chỉ có IP `10.0.10.62` và lưu trong volume `virtual-cam-certs`; mô hình vẫn lưu trong thư mục `models/` trên máy chủ.
+
+Bản triển khai HTTPS dùng lại image Jetson đang hoạt động để giữ các thư viện CUDA tương thích, bổ sung hỗ trợ TLS và giao diện đã build. Cấu hình Compose trên máy chủ trỏ tới bản triển khai tại `/home/hicas/vu_nl/virtual_cam-deployments/lan-https-20261001-085420`; thư mục này có Dockerfile, mã đóng gói, bản sao cấu hình cũ và `compose.rollback.yml`. Dockerfile ở gốc kho mã dành cho PC; quy trình cập nhật Jetson được ghi trong `DEPLOYMENT.md` trên máy chủ.
+
+Xem trạng thái trên máy chủ:
+
+```bash
+cd /home/hicas/vu_nl/virtual_cam
+docker compose ps
+docker compose logs --tail 60 virtual-cam
+```
 
 ## Tính năng
 
@@ -104,5 +140,5 @@ npm run lint && npx tsc -b && npm run build
 | Cổng | Dùng cho |
 |---|---|
 | 8030 | Backend khi phát triển (uvicorn) |
-| 8032 | Docker (map vào 8030 trong container) |
+| 8033 | Docker, HTTPS (map vào 8031 trong container) |
 | 5180 | Vite dev |
