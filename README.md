@@ -159,7 +159,7 @@ Luồng khung hình: `useFrameLoop` chụp khi camera có khung mới (`requestV
 
 Khi thời gian xử lý trung bình vượt 250 ms, vòng gửi chỉ giữ một request để tránh tích ảnh cũ trong hàng chờ; khi máy chủ nhanh trở lại, tự cho phép hai request để gửi gối đầu. Timer bỏ qua các khung chưa đến lượt gửi và dùng bộ đếm khung video để ước lượng nhịp camera. Phần số liệu FPS được tách khỏi trang Tổng quan, nên mỗi kết quả không render lại thẻ ảnh/video, lịch sử và các điều khiển bên cạnh.
 
-Video hiển thị trực tiếp theo tốc độ camera. `useOverlay` vẽ bàn tay và vòng tiến độ theo nhịp màn hình, nội suy ngắn giữa các kết quả; viền/nhãn vật thể ở canvas riêng, chỉ vẽ lại khi thay đổi. Nội suy chỉ tác động hình hiển thị, không đổi quyết định chọn vật thể; kết quả quá cũ tự ẩn. Chụp ảnh ghép video và hai lớp vẽ đang thấy, cạnh dài tối đa 1280px. FPS trên bảng là tốc độ **nhận diện**, không phải FPS video.
+Video hiển thị trực tiếp theo tốc độ camera. `useOverlay` vẽ bàn tay, chấm laser và vòng tiến độ theo nhịp màn hình, nội suy ngắn giữa các kết quả (bàn tay xuất hiện lại hoặc chấm nhảy xa thì vẽ ngay chỗ mới); viền/nhãn vật thể ở canvas riêng, chỉ vẽ lại khi thay đổi. Nội suy chỉ tác động hình hiển thị, không đổi quyết định chọn vật thể; kết quả quá cũ tự ẩn. Chụp ảnh ghép video và hai lớp vẽ đang thấy, cạnh dài tối đa 1280px. FPS trên bảng là tốc độ **nhận diện**, không phải FPS video.
 
 Backend giữ nguyên model, kích thước suy luận YOLO và độ chính xác tính toán. Chỉ chuyển bounding box về CPU một lần; mask chỉ lấy đường viền khi có điểm chỉ (ngón trỏ hoặc laser) ở gần vật thể, kể cả sai số mép tương ứng. Luật chọn bằng ngón tay được giữ nguyên; laser ưu tiên mask nhỏ nhất chứa điểm.
 

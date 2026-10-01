@@ -3,7 +3,7 @@ import { useEffect, useRef, type RefObject } from "react";
 import { DISPLAY_MAX_SIDE } from "@/common/constants";
 import type { FrameResult, Preferences } from "@/common/types";
 import { drawResult } from "@/utils/overlay";
-import { smoothHand } from "@/utils/smoothing";
+import { smoothPointer } from "@/utils/smoothing";
 import { dwellProgress, type Tracking } from "@/utils/tracking";
 
 interface Params {
@@ -55,7 +55,7 @@ export const useOverlay = ({ videoRef, canvasRef, objectsRef, active, ...state }
         if (displayed) clear();
         displayed = null;
       } else {
-        displayed = smoothHand(displayed, result, lastPaint ? now - lastPaint : 100);
+        displayed = smoothPointer(displayed, result, lastPaint ? now - lastPaint : 100);
         const scale = Math.min(1, DISPLAY_MAX_SIDE / Math.max(video.videoWidth, video.videoHeight));
         const size = { width: Math.round(video.videoWidth * scale), height: Math.round(video.videoHeight * scale) };
         const opts = {
