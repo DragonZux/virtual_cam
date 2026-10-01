@@ -20,5 +20,9 @@ export const formatDuration = (ms: number): string => {
 /** Hậu tố tên file tải về: 20260925-114012 */
 export const fileStamp = (ms: number = Date.now()): string => dayjs(ms).format("YYYYMMDD-HHmmss");
 
-/** Tên lớp đã dịch; lớp của model tuỳ chỉnh chưa có bản dịch thì giữ nguyên tên */
-export const objectLabel = (t: TFunction, name: string): string => t(`classes.${name}`, { defaultValue: name });
+/** Khoá so tên lớp giữa các mô hình, như class_key của backend: " Cell  Phone" → "cell phone" */
+export const classKey = (name: string): string => name.trim().split(/\s+/).join(" ").toLowerCase();
+
+/** Tên lớp đã dịch ("Laptop" của mô hình khác vẫn dịch như "laptop"); chưa có bản dịch thì giữ nguyên tên */
+export const objectLabel = (t: TFunction, name: string): string =>
+  t(`classes.${classKey(name)}`, { defaultValue: name });

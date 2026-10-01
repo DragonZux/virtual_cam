@@ -42,7 +42,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-/** Biểu tượng theo lớp COCO; lớp chưa có biểu tượng riêng dùng hình hộp */
+import { classKey } from "@/utils/format";
+
+/** Biểu tượng theo lớp COCO (tên so không phân biệt hoa / thường); lớp chưa có biểu tượng riêng dùng hình hộp */
 const ICONS: Record<string, LucideIcon> = {
   laptop: Laptop,
   mouse: Mouse,
@@ -97,6 +99,6 @@ interface Props {
 }
 
 export const ObjectIcon = ({ name, size = 18, strokeWidth = 1.7 }: Props) => {
-  const Icon = (name && ICONS[name]) || Box;
+  const Icon = (name && ICONS[classKey(name)]) || Box;
   return <Icon size={size} strokeWidth={strokeWidth} aria-hidden />;
 };

@@ -8,7 +8,7 @@ import { ObjectIcon } from "@/components";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getActiveTargets, settingActions } from "@/store/setting";
 import { getVisionStatus } from "@/store/vision";
-import { objectLabel } from "@/utils/format";
+import { classKey, objectLabel } from "@/utils/format";
 import { notify } from "@/utils/notify";
 import styles from "./settings.module.less";
 
@@ -22,15 +22,15 @@ const normalize = (text: string) =>
     .toLowerCase()
     .trim();
 
-/** Chia lớp của model theo nhóm COCO; lớp lạ (model tuỳ chỉnh) vào nhóm "other" */
+/** Chia lớp của model theo nhóm COCO (so tên không phân biệt hoa / thường); lớp lạ (model tuỳ chỉnh) vào nhóm "other" */
 const groupClasses = (classes: string[]) => {
-  const available = new Set(classes);
+  const byKey = new Map(classes.map((name) => [classKey(name), name]));
   const known = new Set(CLASS_GROUPS.flatMap((group) => group.classes));
   const groups = CLASS_GROUPS.map((group) => ({
     key: group.key,
-    classes: group.classes.filter((name) => available.has(name)),
+    classes: group.classes.flatMap((name) => byKey.get(name) ?? []),
   })).filter((group) => group.classes.length);
-  const other = classes.filter((name) => !known.has(name));
+  const other = classes.filter((name) => !known.has(classKey(name)));
   return other.length ? [...groups, { key: "other", classes: other }] : groups;
 };
 
