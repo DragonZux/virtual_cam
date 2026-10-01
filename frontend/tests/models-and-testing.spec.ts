@@ -113,13 +113,19 @@ test("camera selects models; separate image workspace releases camera and sends 
   });
   const before = requests.length;
   await page.locator('input[type="file"]').setInputFiles({ name: "sample.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
-  await expect.poll(() => requests.length).toBeGreaterThan(before + 2);
+  await expect.poll(() => requests.length).toBe(before + 1);
   await expect(page.getByText("95%", { exact: true })).toBeVisible();
   expect(requests.at(-1)?.get("targets")).toBe("custom object");
-  await page.getByRole("button", { name: "Tạm dừng", exact: true }).click();
-  await page.getByRole("button", { name: "Tiếp tục", exact: true }).click();
-  const resumed = requests.length;
-  await expect.poll(() => requests.length).toBeGreaterThan(resumed + 1);
+  await expect(page.getByRole("button", { name: "Tạm dừng", exact: true })).toHaveCount(0);
+  // Wait past both the old overlay expiry and a status polling interval.
+  await page.waitForTimeout(3500);
+  expect(requests.length).toBe(before + 1);
+  expect(await page.locator("canvas").first().evaluate((canvas: HTMLCanvasElement) => {
+    const pixels = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
+    return pixels.some((value, index) => index % 4 === 3 && value > 0);
+  })).toBe(true);
+  await page.getByRole("button", { name: "Phân tích lại", exact: true }).click();
+  await expect.poll(() => requests.length).toBe(before + 2);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.screenshot({ path: testInfo.outputPath("testing-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });

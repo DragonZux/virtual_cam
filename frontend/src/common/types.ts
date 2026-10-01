@@ -135,6 +135,8 @@ export interface CameraDevice {
 
 /** Trạng thái tổng hợp hiện ở nhãn trạng thái và trên khung camera */
 export type LiveState =
+  | "analyzing"
+  | "complete"
   | "connecting"
   | "offline"
   | "error"

@@ -1,5 +1,5 @@
 import { Button, Card, Select, Tooltip } from "antd";
-import { Aperture, Camera, Film, FlaskConical, Maximize, Minimize, Pause, Play, Power } from "lucide-react";
+import { Aperture, Camera, Film, FlaskConical, Maximize, Minimize, Pause, Play, Power, RotateCcw } from "lucide-react";
 import { useEffect, useRef, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { DISPLAY_MAX_SIDE, ROUTES } from "@/common/constants";
 import { ModelControls } from "@/components/ModelControls/ModelControls";
 import { PointerControls } from "@/components/PointerControls/PointerControls";
-import { useDocumentVisible, useFrameLoop, useFullscreen, useOverlay, useShortcuts, type useCamera } from "@/hooks";
+import { useDocumentVisible, useFrameLoop, useImageFrame, useFullscreen, useOverlay, useShortcuts, type useCamera } from "@/hooks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getFrameOptions, getPreferences } from "@/store/setting";
 import {
@@ -71,12 +71,21 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
 
   const cameraOn = camera.status === "on";
   const media = camera.source === "media";
+  const imageFile = media && camera.media?.kind === "image";
   const mirror = selectMirror(prefs.mirror, camera);
-  const interrupted = !!frameError && frameError.status !== 429;
+  const interrupted = !!frameError && (imageFile || frameError.status !== 429);
   useFrameLoop({
     videoRef,
-    active: cameraOn && !paused && pageVisible && ready && options !== null && !modelBusy && !status?.model_busy,
+    active: !imageFile && cameraOn && !paused && pageVisible && ready && options !== null && !modelBusy && !status?.model_busy,
     mirror,
+    options,
+  });
+
+  const analyzeImage = useImageFrame({
+    videoRef,
+    // Changing browser tabs or a status poll must not resubmit a still image.
+    active: imageFile && cameraOn && status?.phase === "ready" && !modelBusy && !status?.model_busy,
+    source: camera.media,
     options,
   });
 
@@ -85,6 +94,7 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
     canvasRef: outputRef,
     objectsRef,
     active: cameraOn && !paused && pageVisible && visible && !interrupted,
+    staticImage: imageFile,
     result,
     receivedAt,
     capturedAt,
@@ -103,7 +113,7 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
   }, [paused, videoFile, videoRef]);
 
   const startCamera = () => start(camera.status === "error" ? undefined : (camera.deviceId ?? undefined));
-  const togglePause = () => cameraOn && dispatch(visionActions.setPaused(!paused));
+  const togglePause = () => cameraOn && !imageFile && dispatch(visionActions.setPaused(!paused));
 
   const snapshot = async () => {
     const overlayCanvas = outputRef.current;
@@ -152,6 +162,8 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
       return { title: t("camera.overlay.introTitle"), text: t("camera.overlay.introText"), action: true };
     }
     if (paused) return { title: t("camera.overlay.pausedTitle"), text: t(media ? "media.pausedText" : "camera.overlay.pausedText") };
+    if (imageFile && frameError) return { title: t("test.imageFailed"), text: frameError.message || t("test.imageError") };
+    if (imageFile && result) return null;
     if (connection === "offline") return { title: t("camera.overlay.offlineTitle"), text: t("camera.overlay.offlineText") };
     if (status?.phase === "error") return { title: t("camera.overlay.serverErrorTitle"), text: status.error ?? "" };
     if (interrupted) {
@@ -178,7 +190,9 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
 
   const streamLabel = !cameraOn
     ? t("camera.stream.off")
-    : paused
+    : imageFile
+      ? t(frameError ? "test.imageFailed" : result ? "test.imageDone" : "test.imageProcessing", { ms: result?.processing_ms })
+      : paused
       ? t("camera.stream.paused")
       : !pageVisible
         ? t("camera.stream.hidden")
@@ -276,7 +290,10 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
           {streamLabel}
         </div>
         <div className={styles.actions}>
-          <Button
+          {imageFile ? <Button size="small" type="text" icon={<RotateCcw size={14} />}
+            disabled={!cameraOn || !ready || !!modelBusy || status?.model_busy}
+            loading={cameraOn && ready && !result && !frameError && !modelBusy && !status?.model_busy}
+            onClick={analyzeImage}>{t("test.analyzeAgain")}</Button> : <Button
             size="small"
             type="text"
             icon={paused ? <Play size={14} /> : <Pause size={14} />}
@@ -284,12 +301,12 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
             onClick={togglePause}
           >
             {paused ? t("camera.resume") : t("camera.pause")}
-          </Button>
+          </Button>}
           <Button size="small" type="text" icon={<Aperture size={14} />} disabled={!result} onClick={snapshot}>
             {t("camera.snapshot")}
           </Button>
           <Button size="small" type="text" icon={<Power size={14} />} disabled={!cameraOn} onClick={() => stop()}>
-            {t(media ? "media.stop" : "camera.stop")}
+            {t(imageFile ? "test.clearImage" : media ? "media.stop" : "camera.stop")}
           </Button>
           <Tooltip title={fullscreen.active ? t("camera.exitFullscreen") : t("camera.fullscreen")}>
             <Button

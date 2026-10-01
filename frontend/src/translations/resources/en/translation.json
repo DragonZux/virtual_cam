@@ -19,9 +19,15 @@
     "storage": "New models are stored in models/custom; duplicate names create separate files. Only upload models from sources you trust."
   },
   "test": {
+    "analyzeAgain": "Analyze again",
+    "clearImage": "Clear image",
+    "imageProcessing": "Analyzing image…",
+    "imageDone": "Image analyzed · {{ms}} ms",
+    "imageFailed": "Image analysis failed",
+    "imageError": "Could not analyze the image. Choose Analyze again to retry.",
     "open": "Test images / videos",
     "uploadTitle": "Drop or select an image / video to test your model",
-    "uploadHelp": "JPG, PNG, WebP, BMP, GIF · MP4, WebM, MOV. Files play in your browser; frames are sent to the server for detection. Choose another file at any time.",
+    "uploadHelp": "JPG, PNG, WebP, BMP, GIF · MP4, WebM, MOV. Images are analyzed once; changing the image or detection settings runs a new analysis. Videos are analyzed frame by frame.",
     "emptyTitle": "Ready to test",
     "emptyText": "Choose an image or video above, select your models and hand / laser mode to see results.",
     "results": "Detection results", "timing": "{{count}} objects · {{ms}} ms / frame",
@@ -99,6 +105,8 @@
     "viewer": "Viewer"
   },
   "status": {
+    "analyzing": "Analyzing image",
+    "complete": "Image analyzed",
     "connecting": "Connecting",
     "offline": "Server unreachable",
     "error": "Detector error",

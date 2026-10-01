@@ -117,7 +117,7 @@ const visionSlice = createSlice({
       state.sessionStartedAt ??= startedAt;
       resetLive(state);
     },
-    /** Ảnh / video thử đã phát trong khung camera — vòng gửi khung chạy như với camera */
+    /** Ảnh đã sẵn sàng để gửi một lần, hoặc video đã sẵn sàng phát liên tục. */
     mediaStarted: (state, action: PayloadAction<{ name: string; kind: MediaKind; startedAt: number }>) => {
       const { startedAt, name, kind } = action.payload;
       state.camera = { ...state.camera, status: "on", error: null, ended: false, source: "media", media: { name, kind } };
@@ -147,7 +147,7 @@ const visionSlice = createSlice({
     /** Khung đã chụp (id tăng dần) → epic gửi lên máy chủ; tạm dừng / tắt camera huỷ các request đang chờ */
     analyzeFrameRequest: (
       state,
-      action: PayloadAction<{ id: number; image: Blob; options: FrameOptions; capturedAt: number; laserHint?: LaserPoint | null }>,
+      action: PayloadAction<{ id: number; image: Blob; options: FrameOptions; capturedAt: number; laserHint?: LaserPoint | null; singleImage?: boolean }>,
     ) => {
       state.lastRequestId = action.payload.id;
     },

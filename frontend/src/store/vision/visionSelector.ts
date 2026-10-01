@@ -31,6 +31,9 @@ export const getLiveState = createSelector(
     if (connection === "offline") return "offline";
     if (status?.phase === "error") return "error";
     if (camera.status === "on") {
+      if (camera.source === "media" && camera.media?.kind === "image") {
+        return frameError ? "error" : result ? "complete" : "analyzing";
+      }
       if (paused) return "paused";
       if (frameError && frameError.status !== 429) return "reconnecting";
       if (result) return "live";

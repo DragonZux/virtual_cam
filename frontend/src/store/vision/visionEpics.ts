@@ -69,7 +69,7 @@ const analyzeFrame$: RootEpic = (action$, state$) => {
   const isStale = (id: number) => id <= state$.value.vision.lastFrameId;
   return action$.pipe(
     filter(visionActions.analyzeFrameRequest.match),
-    mergeMap(({ payload: { id, image, options, capturedAt, laserHint } }) =>
+    mergeMap(({ payload: { id, image, options, capturedAt, laserHint, singleImage } }) =>
       VisionService.Post.frame(image, options, laserHint).pipe(
         mergeMap((result) => {
           if (isStale(id)) return of(visionActions.analyzeFrameSkipped());
@@ -83,7 +83,10 @@ const analyzeFrame$: RootEpic = (action$, state$) => {
           let shown = result;
           let step: TrackingStep;
           let laserTrack;
-          if (options.pointer_mode === "laser") {
+          if (singleImage) {
+            // A still image has no future frames to confirm dwell or stabilize a laser point.
+            step = { tracking: { held: result.selected, heldAt: at, pending: null }, confirmed: null };
+          } else if (options.pointer_mode === "laser") {
             const laser = advanceLaser(vision.laserTrack, result.laser?.point ?? null,
               Math.max(result.resolution.width, result.resolution.height));
             ({ shown, step } = stabilizeLaser(result, vision.result, laser, vision.tracking, advance));

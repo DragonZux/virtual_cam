@@ -11,6 +11,7 @@ interface Params {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   objectsRef: RefObject<HTMLCanvasElement | null>;
   active: boolean;
+  staticImage?: boolean;
   result: FrameResult | null;
   receivedAt: number | null;
   capturedAt: number | null;
@@ -47,15 +48,15 @@ export const useOverlay = ({ videoRef, canvasRef, objectsRef, active, ...state }
     let cachedLabel: Params["label"] | null = null;
     let handWasVisible = false;
     const paint = (now: number) => {
-      const { result, receivedAt, capturedAt, tracking, prefs, label } = latest.current;
+      const { result, receivedAt, capturedAt, tracking, prefs, label, staticImage } = latest.current;
       const age = receivedAt === null ? Infinity : Date.now() - receivedAt;
       const latency = receivedAt !== null && capturedAt !== null ? receivedAt - capturedAt : 0;
       const staleAfter = Math.min(1500, Math.max(500, latency * 2));
-      if (!result || age > staleAfter || !video.videoWidth || !video.videoHeight) {
+      if (!result || (!staticImage && age > staleAfter) || !video.videoWidth || !video.videoHeight) {
         if (displayed) clear();
         displayed = null;
       } else {
-        displayed = smoothPointer(displayed, result, lastPaint ? now - lastPaint : 100);
+        displayed = staticImage ? result : smoothPointer(displayed, result, lastPaint ? now - lastPaint : 100);
         const scale = Math.min(1, DISPLAY_MAX_SIDE / Math.max(video.videoWidth, video.videoHeight));
         const size = { width: Math.round(video.videoWidth * scale), height: Math.round(video.videoHeight * scale) };
         const opts = {

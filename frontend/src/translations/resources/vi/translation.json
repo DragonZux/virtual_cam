@@ -20,9 +20,15 @@
     "storage": "Mô hình mới được lưu trong models/custom; tải cùng tên sẽ tạo một bản riêng. Chỉ tải mô hình từ nguồn bạn tin cậy."
   },
   "test": {
+    "analyzeAgain": "Phân tích lại",
+    "clearImage": "Bỏ ảnh",
+    "imageProcessing": "Đang phân tích ảnh…",
+    "imageDone": "Đã phân tích ảnh · {{ms}} ms",
+    "imageFailed": "Chưa phân tích được ảnh",
+    "imageError": "Không phân tích được ảnh. Bấm Phân tích lại để thử lại.",
     "open": "Thử ảnh / video",
     "uploadTitle": "Kéo thả hoặc chọn ảnh / video để thử mô hình",
-    "uploadHelp": "JPG, PNG, WebP, BMP, GIF · MP4, WebM, MOV. File phát trên trình duyệt; các khung hình được gửi tới máy chủ để nhận diện. Có thể chọn file khác bất cứ lúc nào.",
+    "uploadHelp": "JPG, PNG, WebP, BMP, GIF · MP4, WebM, MOV. Ảnh chỉ gửi nhận diện một lần; đổi ảnh hoặc thông số sẽ phân tích lại. Video nhận diện theo từng khung hình.",
     "emptyTitle": "Sẵn sàng thử nghiệm",
     "emptyText": "Chọn ảnh hoặc video ở phía trên, chọn mô hình và cách chỉ tay / laser để xem kết quả.",
     "results": "Kết quả nhận diện",
@@ -101,6 +107,8 @@
     "viewer": "Người xem"
   },
   "status": {
+    "analyzing": "Đang phân tích ảnh",
+    "complete": "Đã phân tích ảnh",
     "connecting": "Đang kết nối",
     "offline": "Mất kết nối máy chủ",
     "error": "Lỗi bộ nhận diện",

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 
-import { IMAGE_MAX_SIDE, IMAGE_STREAM_FPS } from "@/common/constants";
+import { IMAGE_MAX_SIDE } from "@/common/constants";
 import type { CameraDevice, MediaSource } from "@/common/types";
 import { useAppDispatch } from "@/store/hooks";
 import { visionActions } from "@/store/vision";
@@ -108,8 +108,8 @@ export const useCamera = (videoRef: RefObject<HTMLVideoElement | null>) => {
   );
 
   /**
-   * Phát ảnh / video thử thay cho camera. Video lặp lại liên tục; ảnh tĩnh được vẽ lại IMAGE_STREAM_FPS lần/giây
-   * qua canvas.captureStream để có khung hình mới như camera. blob: URL được thu hồi khi đổi nguồn / tắt.
+   * Video lặp lại; ảnh chỉ vẽ một khung vào video để dùng chung phần hiển thị / chụp ảnh.
+   * Không vẽ lại ảnh theo timer. blob: URL được thu hồi khi đổi nguồn / tắt.
    */
   const playMedia = useCallback(
     async (media: MediaSource) => {
@@ -151,16 +151,11 @@ export const useCamera = (videoRef: RefObject<HTMLVideoElement | null>) => {
           canvas.height = Math.max(16, Math.round(image.naturalHeight * scale));
           const ctx = canvas.getContext("2d", { alpha: false });
           if (!ctx) throw new Error("canvas");
-          const draw = () => ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-          draw();
-          const stream = canvas.captureStream(IMAGE_STREAM_FPS);
-          const timer = window.setInterval(draw, 1000 / IMAGE_STREAM_FPS);
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          const stream = canvas.captureStream(0);
           streamRef.current = stream;
-          cleanupRef.current = () => {
-            window.clearInterval(timer);
-            revoke();
-          };
           video.srcObject = stream;
+          (stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack).requestFrame();
           await video.play();
         }
         if (run !== runRef.current) return;

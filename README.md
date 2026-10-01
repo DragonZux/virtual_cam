@@ -34,7 +34,7 @@ docker compose logs -f        # chờ dòng "Detector ready"
 ## Tính năng
 
 - **Tổng quan**: camera trực tiếp với lựa chọn riêng mô hình segmentation và laser, khung xương bàn tay, vòng "giữ để xác nhận", viền vật thể đang chọn và khung các vật thể khác; FPS, trạng thái bàn tay / laser, số vật thể, số lượt chọn; chụp ảnh, toàn màn hình, phím tắt (Space tạm dừng, S chụp ảnh, F toàn màn hình).
-- **Thử nghiệm** (`/test`): chọn / kéo thả ảnh hoặc video, đổi mô hình, chỉnh confidence và lớp vật thể, xem độ tin cậy, điểm laser, thời gian xử lý. File phát trên trình duyệt, chỉ gửi từng khung để nhận diện. Camera dừng khi vào trang thử; kết quả thử không ghi vào lịch sử camera.
+- **Thử nghiệm** (`/test`): chọn / kéo thả ảnh hoặc video, đổi mô hình, chỉnh confidence và lớp vật thể, xem độ tin cậy, điểm laser, thời gian xử lý. Ảnh chỉ gửi nhận diện **một lần**, giữ nguyên kết quả; đổi ảnh / mô hình / thông số hoặc bấm **Phân tích lại** mới gửi lại. Video gửi theo từng khung. Camera dừng khi vào trang thử; kết quả thử không ghi vào lịch sử camera.
 - **Quản lý mô hình** (`/settings`): tải YOLO segmentation `.pt`, YOLO laser detect `.pt` (một lớp chấm laser) hoặc ADVR `.torchscript` đúng định dạng Virtual Cam. File được nạp thử trước khi thêm; tải trùng tên tạo bản riêng. Giới hạn mặc định 1024 MB (`MAX_MODEL_MB`). Chỉ tải trọng số từ nguồn tin cậy.
 - **Chọn bằng laser**: chọn **Laser** phía trên khung camera, chiếu chấm laser đỏ lên vật thể để camera thấy cả vật lẫn chấm, giữ yên để xác nhận.
 - **Thử nghiệm**: kéo thả ảnh / video để thử mô hình; file phát trên trình duyệt, các khung được gửi tới máy chủ để nhận diện.

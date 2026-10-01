@@ -22,6 +22,8 @@ const NAV_ITEMS: { key: RouteKey; icon: LucideIcon }[] = [
 ];
 
 const PILL_TONE: Record<LiveState, "live" | "error" | "neutral"> = {
+  analyzing: "neutral",
+  complete: "live",
   connecting: "neutral",
   offline: "error",
   error: "error",

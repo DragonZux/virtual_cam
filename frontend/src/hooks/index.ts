@@ -1,6 +1,7 @@
 export * from "./useCamera";
 export * from "./useDocumentVisible";
 export * from "./useFrameLoop";
+export * from "./useImageFrame";
 export * from "./useFullscreen";
 export * from "./useNow";
 export * from "./useOverlay";
