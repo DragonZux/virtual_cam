@@ -200,7 +200,7 @@
     "confidence": "Detection confidence"
   },
   "targets": {
-    "title": "Object types",
+    "title": "Objects being recognised",
     "count": "{{count}} in view",
     "edit": "Change in Settings"
   },

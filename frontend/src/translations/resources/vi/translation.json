@@ -200,7 +200,7 @@
     "confidence": "Độ tin cậy nhận diện"
   },
   "targets": {
-    "title": "Nhóm vật thể",
+    "title": "Vật thể đang nhận diện",
     "count": "{{count}} vật thể",
     "edit": "Chỉnh trong Cài đặt"
   },
