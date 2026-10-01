@@ -1,6 +1,6 @@
 # Virtual Cam
 
-Chỉ ngón trỏ hoặc chiếu chấm **laser đỏ** vào vật thể trước camera → web hiện tên và viền vật thể (YOLO26 segmentation). Web chạy độc lập trên một máy: chỉ mở được bằng `localhost` trên chính máy đó, không cho điện thoại hay máy khác truy cập.
+Chỉ ngón trỏ hoặc chiếu chấm **laser đỏ** vào vật thể trước camera → web hiện tên và viền vật thể (YOLO26 segmentation). Web chạy trên một máy, mở bằng `localhost` hoặc IP của máy đó từ máy khác trong mạng (camera ở máy khác cần HTTPS — xem dưới).
 
 - **Chỉ tay**: MediaPipe Hand Landmarker (CPU) tìm đầu ngón trỏ, chạy song song với YOLO.
 - **Laser đỏ**: model ADVR YOLOv5l6 đã huấn luyện chuyên cho chấm laser (GPU nếu có).
@@ -19,7 +19,7 @@ docker compose logs -f        # chờ dòng "Detector ready"
 
 | Địa chỉ | Dùng cho |
 |---|---|
-| http://localhost:8032 | Giao diện web (chỉ máy chạy Docker) |
+| http://localhost:8032 | Giao diện web (máy khác: `http://<IP máy>:8032`) |
 | http://localhost:8032/settings | Tải thêm và chọn mô hình segmentation / laser |
 | http://localhost:8032/test | Thử mô hình bằng ảnh hoặc video |
 | http://localhost:8032/docs | Tài liệu API (Swagger) |
@@ -27,7 +27,8 @@ docker compose logs -f        # chờ dòng "Detector ready"
 - Cần NVIDIA driver ≥ 570 + Docker Desktop bật WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
 - Lần chạy đầu container tự tải model còn thiếu vào `models/` và xuất model laser đỏ (vài phút, cần internet).
 - Tuỳ chọn: sao chép `.env.example` thành `.env` ở thư mục gốc để đổi cổng `WEB_PORT`, `YOLO_MODEL`, `IMAGE_SIZE`… Không có `.env` vẫn chạy với mặc định.
-- Cổng chỉ gắn vào `127.0.0.1` của máy host, nên máy khác trong mạng không vào được.
+- Cổng mở trên mọi IP của máy host (`<IP máy>:8032`). Mở cổng trong firewall nếu máy khác không vào được.
+- Trình duyệt chỉ cho mở camera ở `localhost` hoặc `https://`. Vào bằng `http://<IP máy>` thì ảnh / video ở trang Test vẫn chạy, còn camera cần HTTPS hoặc bật `chrome://flags/#unsafely-treat-insecure-origin-as-secure` cho địa chỉ đó.
 - Image ~13 GB (thư viện CUDA): xem ổ chứa dữ liệu Docker còn ≥ 20 GB trước khi build.
 - Lệnh khác: `docker compose down` (tắt), `docker compose logs -f` (xem log).
 
