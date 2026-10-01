@@ -2,36 +2,11 @@
 
 export type DetectorPhase = "starting" | "ready" | "error";
 export type PointerMode = "hand" | "laser";
-export type LaserColor = "red" | "green";
 
 export interface DetectionDefaults {
   targets: string[];
   confidence: number;
   tolerance: number;
-}
-
-export type ModelTask = "segment" | "detect";
-
-/** Một mô hình YOLO: mặc định của máy chủ hoặc file .pt tải thêm ở Cài đặt */
-export interface ModelInfo {
-  /** Tên file .pt */
-  id: string;
-  builtin: boolean;
-  enabled: boolean;
-  /** segment: có viền vật thể; detect: chỉ có khung (viền lấy theo khung) */
-  task: ModelTask;
-  classes: string[];
-  size: number;
-  error: string | null;
-}
-
-/** GET /models */
-export interface ModelList {
-  /** Trình duyệt này được tải / bật tắt / xoá mô hình (chỉ máy chạy máy chủ) */
-  can_manage: boolean;
-  folder: string;
-  max_bytes: number;
-  items: ModelInfo[];
 }
 
 /** GET /vision/status */
@@ -44,13 +19,11 @@ export interface VisionStatus {
   image_size: number;
   laser_model?: string | null;
   laser_error?: string | null;
-  /** Lớp chọn làm mục tiêu được — hợp các mô hình đang bật (máy chủ đã bỏ "person") */
+  model_revision?: number;
+  model_busy?: boolean;
+  /** Lớp chọn làm mục tiêu được (máy chủ đã bỏ "person") */
   classes: string[];
   defaults: DetectionDefaults;
-  /** Địa chỉ HTTPS cho thiết bị khác — chỉ có khi máy chủ chạy `serve.py --lan` */
-  share_urls: string[];
-  /** Các mô hình YOLO; máy chủ cũ không có trường này */
-  models?: ModelInfo[];
 }
 
 export interface Point {
@@ -77,7 +50,7 @@ export interface SelectedObject {
 export interface FrameResult {
   /** Optional for compatibility with older hand-only servers. */
   pointer_mode?: PointerMode;
-  laser?: { point: [number, number]; color: LaserColor; score: number } | null;
+  laser?: { point: [number, number]; score: number } | null;
   hand_detected: boolean;
   /** 21 điểm bàn tay, toạ độ chuẩn hoá 0..1 */
   landmarks: Point[];
@@ -91,33 +64,28 @@ export interface FrameResult {
 
 /** Cài đặt gửi kèm từng khung hình (query của POST /vision/frame) */
 export interface FrameOptions {
+  model_revision?: number;
   pointer_mode: PointerMode;
-  laser_color: LaserColor;
-  laser_brightness: number;
   targets: string[];
   conf: number;
   tolerance: number;
 }
 
-export type MediaKind = "image" | "video";
-
-/** Ảnh / video đã tải lên thư mục lưu của máy chủ */
-export interface MediaItem {
+export type ModelKind = "segmentation" | "laser";
+export interface ModelInfo {
+  id: string;
   name: string;
-  kind: MediaKind;
-  /** byte */
-  size: number;
-  /** epoch ms */
-  modified: number;
+  kind: ModelKind;
+  size_bytes: number;
+  active: boolean;
+  available: boolean;
+}
+export interface ModelList {
+  items: ModelInfo[];
+  max_bytes: number;
 }
 
-/** GET /media */
-export interface MediaList {
-  /** Thư mục lưu trên máy chủ (đường dẫn máy host khi chạy Docker) */
-  folder: string;
-  max_bytes: number;
-  items: MediaItem[];
-}
+export type MediaKind = "image" | "video";
 
 /* ===== Chỉ ở frontend ===== */
 
@@ -126,8 +94,6 @@ export type MirrorMode = "auto" | "on" | "off";
 /** Cài đặt riêng của trình duyệt (localStorage). targets/confidence/tolerance trống = mặc định máy chủ */
 export interface Preferences {
   pointerMode: PointerMode;
-  laserColor: LaserColor;
-  laserBrightness: number;
   targets?: string[];
   confidence?: number;
   tolerance?: number;
@@ -155,7 +121,7 @@ export type CameraStatus = "off" | "starting" | "on" | "error";
 /** Nguồn hình của khung camera: camera của trình duyệt hoặc ảnh / video thử */
 export type FrameSource = "camera" | "media";
 
-/** Ảnh / video đang phát trong khung camera — url là blob: (file vừa chọn) hoặc /api/media/<name> */
+/** Ảnh / video đang phát trong khung camera — url là blob: của file vừa chọn trên máy */
 export interface MediaSource {
   url: string;
   name: string;

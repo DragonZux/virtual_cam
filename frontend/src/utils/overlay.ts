@@ -141,7 +141,7 @@ export const drawResult = (
   if (opts.showTip && result.laser) {
     const [x, y] = result.laser.point.map((value) => value * scale);
     drawTip(ctx, result.laser.point, scale, unit, opts.progress);
-    ctx.strokeStyle = result.laser.color === "red" ? "#ff6464" : "#64ff91";
+    ctx.strokeStyle = "#ff6464";
     ctx.lineWidth = 2 * unit;
     ctx.beginPath();
     for (const direction of [-1, 1]) {

@@ -1,65 +1,40 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { ModelKind, ModelList } from "@/common/types";
 
-import type { ModelInfo, ModelList } from "@/common/types";
-
-/** Danh sách mô hình lấy từ /vision/status (tự cập nhật); slice này giữ quyền quản lý và thao tác đang chạy */
 interface ModelState {
-  canManage: boolean;
-  folder: string | null;
-  maxBytes: number | null;
-  /** Tên file .pt đang tải lên / nạp */
-  uploading: string | null;
-  /** id mô hình đang bật tắt / xoá */
-  busy: string[];
+  catalog: ModelList | null;
+  loading: boolean;
+  busy: "upload" | "activate" | null;
+  error: string | null;
+  success: "upload" | "activate" | null;
 }
-
-const initialState: ModelState = {
-  canManage: false,
-  folder: null,
-  maxBytes: null,
-  uploading: null,
-  busy: [],
-};
-
-const done = (state: ModelState, id: string) => {
-  state.busy = state.busy.filter((item) => item !== id);
-};
-
-const modelSlice = createSlice({
-  name: "model",
-  initialState,
+const initialState: ModelState = { catalog: null, loading: false, busy: null, error: null, success: null };
+const slice = createSlice({
+  name: "model", initialState,
   reducers: {
-    fetchListRequest: () => {},
-    fetchListSuccess: (state, action: PayloadAction<ModelList>) => {
-      state.canManage = action.payload.can_manage;
-      state.folder = action.payload.folder;
-      state.maxBytes = action.payload.max_bytes;
+    listRequest: (state) => { state.loading = true; },
+    listSuccess: (state, action: PayloadAction<ModelList>) => {
+      state.catalog = action.payload;
+      state.loading = false;
     },
-    fetchListFailure: (_state, _action: PayloadAction<string>) => {},
-
-    uploadRequest: (state, action: PayloadAction<File>) => {
-      state.uploading = action.payload.name;
+    listFailure: (state, action: PayloadAction<string>) => {
+      state.loading = false;
+      if (!state.catalog) state.error = action.payload;
     },
-    uploadSuccess: (state, _action: PayloadAction<ModelInfo>) => {
-      state.uploading = null;
+    uploadRequest: (state, _action: PayloadAction<{ kind: ModelKind; file: File }>) => {
+      state.busy = "upload"; state.error = null; state.success = null;
     },
-    uploadFailure: (state, _action: PayloadAction<string>) => {
-      state.uploading = null;
+    activateRequest: (state, _action: PayloadAction<string>) => {
+      state.busy = "activate"; state.error = null; state.success = null;
     },
-
-    setEnabledRequest: (state, action: PayloadAction<{ id: string; enabled: boolean }>) => {
-      state.busy.push(action.payload.id);
+    mutationSuccess: (state, action: PayloadAction<"upload" | "activate">) => {
+      state.busy = null; state.error = null; state.success = action.payload;
     },
-    setEnabledSuccess: (state, action: PayloadAction<ModelInfo>) => done(state, action.payload.id),
-    setEnabledFailure: (state, action: PayloadAction<{ id: string; message: string }>) => done(state, action.payload.id),
-
-    removeRequest: (state, action: PayloadAction<string>) => {
-      state.busy.push(action.payload);
+    mutationFailure: (state, action: PayloadAction<string>) => {
+      state.busy = null; state.error = action.payload;
     },
-    removeSuccess: (state, action: PayloadAction<string>) => done(state, action.payload),
-    removeFailure: (state, action: PayloadAction<{ id: string; message: string }>) => done(state, action.payload.id),
+    dismiss: (state) => { state.error = null; state.success = null; },
   },
 });
-
-export const modelActions = modelSlice.actions;
-export const modelReducer = modelSlice.reducer;
+export const modelActions = slice.actions;
+export const modelReducer = slice.reducer;

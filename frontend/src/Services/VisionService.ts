@@ -20,7 +20,8 @@ class VisionController extends ApiReduxHelpers {
       HttpClient.post<FrameResult>(`${this.base()}/frame`, image, {
         search: {
           targets: options.targets.join(","), conf: options.conf, tolerance: options.tolerance,
-          pointer_mode: options.pointer_mode, laser_color: options.laser_color, laser_brightness: options.laser_brightness,
+          pointer_mode: options.pointer_mode,
+          model_revision: options.model_revision,
           // Chấm laser đang bám ở khung trước: máy chủ ưu tiên ứng viên gần đó thay vì đốm sáng khác
           laser_hint: laserHint ? laserHint.join(",") : undefined,
         },

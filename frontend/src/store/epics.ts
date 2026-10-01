@@ -1,11 +1,10 @@
 import { combineEpics } from "redux-observable";
 
 import { historyEpics } from "./history";
-import { mediaEpics } from "./media";
-import { modelEpics } from "./model";
 import { settingEpics } from "./setting";
 import { visionEpics } from "./vision";
+import { modelEpics } from "./model";
 
-const rootEpics = combineEpics(...visionEpics, ...historyEpics, ...settingEpics, ...mediaEpics, ...modelEpics);
+const rootEpics = combineEpics(...visionEpics, ...historyEpics, ...settingEpics, ...modelEpics);
 
 export default rootEpics;

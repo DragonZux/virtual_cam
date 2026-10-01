@@ -10,6 +10,7 @@ import { ROUTES } from "@/common/constants";
 import { GuidePage } from "@/page/Guide";
 import { HistoryPage } from "@/page/History";
 import { SettingsPage } from "@/page/Settings";
+import { TestPage } from "@/page/Test/TestPage";
 import store from "@/store";
 import { antdTheme } from "@/theme/antdTheme";
 import { AntdHolder } from "./AntdHolder";
@@ -33,6 +34,7 @@ const LocalizedApp = () => {
             {/* Trang Tổng quan do MainLayout giữ mount liên tục (camera không tắt khi chuyển trang) */}
             <Route element={<MainLayout />}>
               <Route index element={null} />
+              <Route path={ROUTES.test} element={<TestPage />} />
               <Route path={ROUTES.history} element={<HistoryPage />} />
               <Route path={ROUTES.settings} element={<SettingsPage />} />
               <Route path={ROUTES.guide} element={<GuidePage />} />

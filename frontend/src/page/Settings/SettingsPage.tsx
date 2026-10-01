@@ -1,20 +1,20 @@
-import { Button, Card, Popconfirm, Segmented, Slider, Switch, Typography } from "antd";
-import { Eye, SlidersHorizontal, Smartphone, Volume2, RotateCcw } from "lucide-react";
+import { Button, Card, Popconfirm, Segmented, Slider, Switch } from "antd";
+import { Eye, SlidersHorizontal, Volume2, RotateCcw } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { CONFIDENCE_RANGE, DWELL_RANGE, TOLERANCE_RANGE, LASER_BRIGHTNESS_RANGE, DEFAULT_PREFERENCES } from "@/common/constants";
+import { CONFIDENCE_RANGE, DWELL_RANGE, TOLERANCE_RANGE, DEFAULT_PREFERENCES } from "@/common/constants";
 import { PointerControls } from "@/components/PointerControls/PointerControls";
 import type { MirrorMode, Preferences } from "@/common/types";
 import { useVoiceAvailable } from "@/hooks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getPreferences, settingActions } from "@/store/setting";
-import { getShareUrls, getVisionStatus, visionActions } from "@/store/vision";
+import { getVisionStatus, visionActions } from "@/store/vision";
 import { formatPercent } from "@/utils/format";
 import { notify } from "@/utils/notify";
 import { speak, speechLang, speechSupported } from "@/utils/speech";
-import { ModelsCard } from "./ModelsCard";
 import { TargetPicker } from "./TargetPicker";
+import { ModelsCard } from "./ModelsCard";
 import styles from "./settings.module.less";
 
 interface FieldProps {
@@ -58,44 +58,30 @@ export const SettingsPage = () => {
   const dispatch = useAppDispatch();
   const prefs = useAppSelector(getPreferences);
   const status = useAppSelector(getVisionStatus);
-  const shareUrls = useAppSelector(getShareUrls);
   const voiceLang = speechLang(i18n.language ?? "vi");
   const voiceAvailable = useVoiceAvailable(voiceLang);
   const defaults = status?.defaults;
   const confidence = prefs.confidence ?? defaults?.confidence ?? 0.2;
   const tolerance = prefs.tolerance ?? defaults?.tolerance ?? 30;
 
-  const update = (patch: Partial<Preferences>) => {
-    if (patch.laserBrightness !== undefined && patch.laserBrightness !== prefs.laserBrightness) {
-      dispatch(visionActions.cancelFrames());
-    }
-    dispatch(settingActions.updatePreferences(patch));
-  };
+  const update = (patch: Partial<Preferences>) => dispatch(settingActions.updatePreferences(patch));
   const reset = () => {
-    if (prefs.pointerMode !== DEFAULT_PREFERENCES.pointerMode ||
-        prefs.laserColor !== DEFAULT_PREFERENCES.laserColor ||
-        prefs.laserBrightness !== DEFAULT_PREFERENCES.laserBrightness) {
+    if (prefs.pointerMode !== DEFAULT_PREFERENCES.pointerMode) {
       dispatch(visionActions.cancelFrames());
     }
     dispatch(settingActions.resetPreferences());
     notify.success(t("settings.resetDone"));
   };
-  const [primaryUrl, ...otherUrls] = shareUrls;
 
   return (
     <div className={styles.page}>
+      <ModelsCard />
       <div className={styles.grid}>
         <TargetPicker />
 
         <div className={styles.column}>
           <Card title={<CardTitle icon={<SlidersHorizontal size={17} />}>{t("settings.detection.title")}</CardTitle>}>
             <PointerControls />
-            {prefs.pointerMode === "laser" && prefs.laserColor === "green" && (
-              <RangeField label={t("pointer.brightness")} value={String(prefs.laserBrightness)} help={t("pointer.brightnessHelp")}>
-                <Slider {...LASER_BRIGHTNESS_RANGE} value={prefs.laserBrightness}
-                  onChange={(laserBrightness: number) => update({ laserBrightness })} />
-              </RangeField>
-            )}
             <RangeField
               label={t("settings.detection.confidence")}
               value={formatPercent(confidence)}
@@ -162,8 +148,6 @@ export const SettingsPage = () => {
         </div>
 
         <div className={styles.column}>
-          <ModelsCard />
-
           <Card title={<CardTitle icon={<Volume2 size={17} />}>{t("settings.voice.title")}</CardTitle>}>
             {speechSupported() ? (
               <>
@@ -177,28 +161,6 @@ export const SettingsPage = () => {
               </>
             ) : (
               <span className={styles.help}>{t("settings.voice.unsupported")}</span>
-            )}
-          </Card>
-
-          <Card title={<CardTitle icon={<Smartphone size={17} />}>{t("settings.share.title")}</CardTitle>}>
-            {primaryUrl ? (
-              <div className={styles.share}>
-                <p>{t("settings.share.intro")}</p>
-                <Typography.Text
-                  className={styles.shareUrl}
-                  copyable={{ text: primaryUrl, tooltips: [t("settings.share.copy"), t("settings.share.copied")] }}
-                >
-                  {primaryUrl}
-                </Typography.Text>
-                {otherUrls.length > 0 && (
-                  <div className={styles.otherUrls}>
-                    {t("settings.share.others")}: {otherUrls.join(" · ")}
-                  </div>
-                )}
-                <p className={styles.help}>{t("settings.share.certNote")}</p>
-              </div>
-            ) : (
-              <p className={styles.help}>{t("settings.share.disabled")}</p>
             )}
           </Card>
         </div>

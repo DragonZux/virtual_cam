@@ -1,15 +1,41 @@
 {
+  "models": {
+    "title": "AI model management",
+    "segmentation": "Segmentation model",
+    "laser": "Laser model",
+    "select": "Select a model",
+    "manage": "Add / manage models",
+    "shared": "Runs one segmentation model plus one laser model in Laser mode. Selection is shared by the server and saved across restarts.",
+    "refresh": "Refresh", "upload": "Upload new model",
+    "uploadBusy": "Uploading and validating the model. Detection will resume when complete…",
+    "activateBusy": "Loading the selected model. Please wait…",
+    "uploadSuccess": "Model added. Select Use or choose it from the list to run it.",
+    "activateSuccess": "Model switched. Available object classes have been updated.",
+    "segmentHelp": "Ultralytics YOLO segmentation .pt file with object masks.",
+    "laserHelp": "YOLO detect .pt trained with a single laser-spot class, or ADVR .torchscript exported for Virtual Cam.",
+    "tooLarge": "File exceeds the {{size}} MB limit.",
+    "name": "Model name", "kind": "Type", "size": "Size", "state": "Status",
+    "active": "Selected", "missing": "Missing file", "activate": "Use", "empty": "Model list is not available yet.",
+    "storage": "New models are stored in models/custom; duplicate names create separate files. Only upload models from sources you trust."
+  },
+  "test": {
+    "open": "Test images / videos",
+    "uploadTitle": "Drop or select an image / video to test your model",
+    "uploadHelp": "JPG, PNG, WebP, BMP, GIF · MP4, WebM, MOV. Files play in your browser; frames are sent to the server for detection. Choose another file at any time.",
+    "emptyTitle": "Ready to test",
+    "emptyText": "Choose an image or video above, select your models and hand / laser mode to see results.",
+    "results": "Detection results", "timing": "{{count}} objects · {{ms}} ms / frame",
+    "laserResult": "Laser ({{x}}, {{y}}) · {{score}}",
+    "waiting": "Results appear after you select a file.",
+    "noDetections": "No objects found. Try a lower confidence threshold or select more object classes."
+  },
   "pointer": {
     "mode": "Pointing mode",
     "hand": "Finger",
     "laser": "Laser",
-    "color": "Laser colour",
-    "red": "Red laser",
-    "green": "Green laser",
     "redModelReady": "Red laser: AI model ready",
     "redModelLoading": "Checking the red laser model…",
-    "modelUnavailable": "Red laser model unavailable. Check the model on the server; hand pointing and green laser are still available.",
-    "greenMethod": "Green laser: colour and brightness detection",
+    "modelUnavailable": "Red laser model unavailable. Check the model on the server; hand pointing is still available.",
     "caption": "Shine the laser spot onto an object in view and hold to select",
     "status": "Laser spot",
     "idle": "Waiting",
@@ -21,10 +47,8 @@
     "confirming": "HOLD LASER TO CONFIRM",
     "hint": "Shine the laser on an enabled object type within the camera view.",
     "selectedHint": "The object at the laser spot.",
-    "brightness": "Laser brightness threshold",
-    "brightnessHelp": "Lower for dim spots; increase to reduce false detections. Select the correct laser colour. Similar LEDs or reflections can still cause false detections.",
     "guideTitle": "Select with a laser",
-    "guideText": "Choose Laser above the camera, select red or green, and point at an object. Red laser uses a trained AI model; green laser uses colour and brightness, adjustable in Settings. Both the object and the spot must be visible. Hold to confirm its name. Only enabled object types supported by the object model can be recognised. If the spot is missing, bring the object closer. LEDs and reflections can still cause false detections."
+    "guideText": "Choose Laser above the camera and point a red laser at an object. Red laser uses a trained AI model. Both the object and the spot must be visible. Hold to confirm its name. Only enabled object types supported by the object model can be recognised. If the spot is missing, bring the object closer. LEDs and reflections can still cause false detections."
   },
   "app": {
     "title": "Virtual Cam",
@@ -35,12 +59,17 @@
     "section": "WORKSPACE",
     "main": "Main navigation",
     "live": "Overview",
+    "test": "Model testing",
     "history": "Selection history",
     "settings": "Settings",
     "guide": "Guide"
   },
   "page": {
     "eyebrow": "CAMERA INTELLIGENCE",
+    "test": {
+      "title": "Test your models",
+      "description": "Choose an image or video, switch models and inspect detections. The camera stops when you enter this screen."
+    },
     "live": {
       "title": "Tracking space",
       "description": "Recognise objects with your index finger or a laser spot."
@@ -51,7 +80,7 @@
     },
     "settings": {
       "title": "Tune the recognition",
-      "description": "Pick objects, sensitivity and display options for this browser only."
+      "description": "Manage AI models, choose objects, sensitivity and display options."
     },
     "guide": {
       "title": "Point with your finger or a laser",
@@ -149,7 +178,7 @@
       "offlineText": "Keep this page open. It will reconnect automatically."
     },
     "errors": {
-      "insecure": "Browser cameras need HTTPS or localhost. On a phone or another computer, open the server's HTTPS address (run with --lan, see Settings › Use on other devices).",
+      "insecure": "Browser cameras only open on localhost. Open the web app on the computer running the server (http://localhost).",
       "NotAllowedError": "Camera permission was not granted. Allow the camera in your browser's site settings and try again.",
       "NotFoundError": "No camera found. Connect a webcam or try a device with a camera.",
       "NotReadableError": "The camera could not be opened. Close other apps using the camera and try again.",
@@ -163,28 +192,15 @@
     "fullscreenUnsupported": "This browser does not support full screen."
   },
   "media": {
-    "title": "Test image / video",
     "stageTitle": "Test image / video",
-    "drop": "Drop or click to choose an image or video",
-    "formats": "JPG, PNG, WEBP, BMP, GIF · MP4, WEBM, MOV — up to {{mb}} MB",
     "open": "Use image / video",
-    "savedTo": "Saved to",
-    "folderUnknown": "server not connected",
-    "saving": "Saving {{name}}…",
-    "saved": "Saved {{name}} to {{folder}}",
-    "empty": "No files yet. Uploaded files appear here so you can test them again.",
-    "playing": "Playing",
-    "play": "Play {{name}}",
-    "image": "Image",
-    "video": "Video",
     "stop": "Stop playback",
     "caption": "Testing: {{name}}",
     "unsupported": "Only images (JPG, PNG, WEBP, BMP, GIF) or videos (MP4, WEBM, MOV, M4V, OGV) are accepted.",
-    "tooLarge": "The file is larger than {{mb}} MB.",
     "startingTitle": "Opening image / video",
     "startingText": "Frames are analysed like the camera: a finger or laser dot in the image / video selects objects.",
     "stoppedTitle": "Image / video stopped",
-    "stoppedText": "Pick a file again under Test image / video, or start the camera.",
+    "stoppedText": "Pick an image / video again, or start the camera.",
     "errorTitle": "Cannot play the image / video",
     "pausedText": "The video is paused. Press Resume to play and keep detecting."
   },
@@ -288,37 +304,6 @@
       "sample": "Laptop",
       "noVoice": "No English voice installed; the browser will use its default voice.",
       "unsupported": "This browser cannot read text aloud."
-    },
-    "share": {
-      "title": "Use on other devices",
-      "intro": "Phones or computers on the same Wi-Fi can open this address to use their own camera:",
-      "others": "Other addresses",
-      "certNote": "Self-signed certificate: when the browser warns, choose Advanced → Proceed.",
-      "disabled": "LAN mode is off. Start the server with --lan (e.g. scripts\\run_web.bat --lan) so phones can open their camera over HTTPS.",
-      "copy": "Copy",
-      "copied": "Address copied"
-    },
-    "models": {
-      "title": "Detection models",
-      "summary": "{{on}}/{{total}} on",
-      "builtin": "Default",
-      "task": {
-        "segment": "Segmentation",
-        "detect": "Bounding boxes"
-      },
-      "classes": "{{count}} classes",
-      "toggle": "Turn model {{name}} on / off",
-      "remove": "Delete model {{name}}",
-      "removeConfirm": "Delete model {{name}} and its .pt file?",
-      "lastOn": "At least one model must stay on",
-      "drop": "Drop or click to add a YOLO model (.pt)",
-      "dropHint": "Ultralytics segmentation or detection model — up to {{mb}} MB",
-      "loading": "Loading {{name}}…",
-      "added": "Added {{name}} ({{count}} classes) — the object list is updated",
-      "onlyPt": "Only YOLO .pt model files are accepted.",
-      "tooLarge": "The model is larger than {{mb}} MB.",
-      "localOnly": "Adding, switching and deleting models only works on the computer running the server (open it via http://localhost). A .pt file can contain code that runs on the server.",
-      "note": "Every enabled model runs on each frame and their object lists are merged (the same class name is the same object). More enabled models make each frame slower."
     }
   },
   "guide": {
@@ -334,9 +319,7 @@
     "shortcutsTitle": "Keyboard shortcuts",
     "shortcutSpace": "Pause / resume recognition",
     "shortcutSnapshot": "Take a snapshot",
-    "shortcutFullscreen": "Toggle full screen",
-    "devicesTitle": "Use on a phone",
-    "devicesText": "Browsers only open cameras over HTTPS or localhost. Start the server with scripts\\run_web.bat --lan, then open the HTTPS address shown in Settings › Use on other devices."
+    "shortcutFullscreen": "Toggle full screen"
   },
   "httpError": {
     "default": "Something went wrong, please try again",

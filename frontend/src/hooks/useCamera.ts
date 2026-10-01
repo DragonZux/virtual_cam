@@ -177,9 +177,9 @@ export const useCamera = (videoRef: RefObject<HTMLVideoElement | null>) => {
     window.addEventListener("pagehide", release);
     return () => {
       window.removeEventListener("pagehide", release);
-      release();
+      stop();
     };
-  }, [release]);
+  }, [release, stop]);
 
   return { start, stop, playMedia };
 };

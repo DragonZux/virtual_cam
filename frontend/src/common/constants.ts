@@ -1,7 +1,8 @@
-import type { LaserColor, Preferences } from "./types";
+import type { Preferences } from "./types";
 
 export const ROUTES = {
   live: "/",
+  test: "/test",
   history: "/history",
   settings: "/settings",
   guide: "/guide",
@@ -11,13 +12,10 @@ export type RouteKey = keyof typeof ROUTES;
 
 /** Cạnh dài khung gửi lên máy chủ — YOLO chạy imgsz 640 nên gửi lớn hơn không chính xác hơn */
 export const UPLOAD_MAX_SIDE = 640;
-/** Preserve small coloured laser spots before YOLO resizes its own input. */
+/** Preserve small laser spots before YOLO resizes its own input. */
 export const LASER_UPLOAD_MAX_SIDE = 1280;
-/**
- * Chất lượng JPEG ở chế độ laser: laser đỏ (mô hình AI) vẫn bắt đúng chấm ở 0.8 mà khung nhẹ đi khoảng một nửa;
- * laser xanh (lọc màu) cần 0.94 vì nén mạnh làm mất màu quanh chấm.
- */
-export const LASER_JPEG_QUALITY: Record<LaserColor, number> = { red: 0.8, green: 0.94 };
+/** Chất lượng JPEG ở chế độ laser đỏ: mô hình AI vẫn bắt đúng chấm ở 0.8 mà khung nhẹ đi khoảng một nửa so với 0.94 */
+export const LASER_JPEG_QUALITY = 0.8;
 /** Cạnh dài khung hiển thị / ảnh chụp (nét hơn khung gửi đi) */
 export const DISPLAY_MAX_SIDE = 1280;
 export const JPEG_QUALITY = 0.82;
@@ -27,13 +25,13 @@ export const MIN_FRAME_INTERVAL_MS = 33;
  * Giới hạn cứng số request đang chờ; nhịp gửi còn được điều tiết theo thời gian xử lý của máy chủ.
  */
 export const MAX_FRAMES_IN_FLIGHT = 2;
-/** Giữ tên vật thể thêm một chút sau khi ngón tay rời đi để không nhấp nháy (HOLD_TIME bản desktop) */
+/** Giữ tên vật thể thêm một chút sau khi ngón tay rời đi để không nhấp nháy */
 export const HOLD_MS = 500;
 export const STATUS_POLL_MS = 3000;
 export const MAX_HISTORY = 200;
 export const RECENT_COUNT = 4;
 
-/** Đuôi ảnh / video máy chủ nhận (khớp CONTENT_TYPES của backend/services/media.py) */
+/** Đuôi ảnh / video phát được trong khung camera */
 export const MEDIA_EXTENSIONS = {
   image: [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"],
   video: [".mp4", ".m4v", ".webm", ".mov", ".ogv"],
@@ -45,8 +43,6 @@ export const IMAGE_MAX_SIDE = 1920;
 
 export const DEFAULT_PREFERENCES: Preferences = {
   pointerMode: "hand",
-  laserColor: "red",
-  laserBrightness: 200,
   dwellMs: 300,
   showHand: true,
   showTip: true,
@@ -60,9 +56,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
 export const CONFIDENCE_RANGE = { min: 0.05, max: 0.9, step: 0.05 };
 export const TOLERANCE_RANGE = { min: 0, max: 80, step: 5 };
 export const DWELL_RANGE = { min: 0, max: 1500, step: 50 };
-export const LASER_BRIGHTNESS_RANGE = { min: 160, max: 250, step: 5 };
 
-/** Nhóm lớp COCO để chọn vật thể; lớp của model tuỳ chỉnh không có ở đây vào nhóm "other" */
+/** Nhóm lớp COCO để chọn vật thể; lớp không có ở đây vào nhóm "other" */
 export const CLASS_GROUPS: { key: string; classes: string[] }[] = [
   { key: "electronic", classes: ["laptop", "mouse", "keyboard", "cell phone", "remote", "tv"] },
   { key: "indoor", classes: ["book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"] },

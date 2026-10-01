@@ -1,51 +1,33 @@
-import i18next from "i18next";
-import { filter, ignoreElements, tap } from "rxjs/operators";
-
+import type { Action } from "@reduxjs/toolkit";
+import { concat, of, type Observable } from "rxjs";
+import { catchError, exhaustMap, filter, mergeMap } from "rxjs/operators";
 import { ModelService } from "@/Services/ModelService";
-import { notify } from "@/utils/notify";
-import { requestEpic } from "../epicHelpers";
+import { errorMessage, requestEpic } from "../epicHelpers";
 import type { RootEpic } from "../types";
-import { visionActions } from "../vision/visionSlice";
+import { visionActions } from "../vision";
 import { modelActions } from "./modelSlice";
 
-const fetchList$ = requestEpic(
-  modelActions.fetchListRequest,
-  () => ModelService.Get.list(),
-  (result) => modelActions.fetchListSuccess(result),
-  (message) => modelActions.fetchListFailure(message),
+const list$ = requestEpic(modelActions.listRequest, ModelService.list, modelActions.listSuccess, modelActions.listFailure);
+const refresh$: RootEpic = (action$) => action$.pipe(
+  filter(visionActions.getStatusSuccess.match),
+  mergeMap(() => of(modelActions.listRequest())),
 );
-
-// Sau mỗi thay đổi hỏi lại /vision/status ngay (startStatusPolling khởi động lại nhịp hỏi) để danh sách vật thể
-// ở Cài đặt / Tổng quan cập nhật tức thì thay vì chờ tới lượt hỏi kế tiếp
-const upload$ = requestEpic(
-  modelActions.uploadRequest,
-  (file) => ModelService.Post.upload(file),
-  (item) => [modelActions.uploadSuccess(item), visionActions.startStatusPolling()],
-  (message) => modelActions.uploadFailure(message),
-  { mode: "merge" },
+const mutate$: RootEpic = (action$) => action$.pipe(
+  filter((action) => modelActions.activateRequest.match(action) || modelActions.uploadRequest.match(action)),
+  exhaustMap((action) => {
+    const operation: Observable<Action> = modelActions.activateRequest.match(action)
+      ? ModelService.activate(action.payload).pipe(mergeMap((status) => of(
+        visionActions.getStatusSuccess(status), modelActions.mutationSuccess("activate"),
+      )))
+      : modelActions.uploadRequest.match(action)
+        ? ModelService.upload(action.payload.kind, action.payload.file).pipe(mergeMap((list) => of(
+          modelActions.listSuccess(list), modelActions.mutationSuccess("upload"),
+        ))) : of();
+    return concat(
+      of(visionActions.stopStatusPolling(), visionActions.cancelFrames()),
+      operation.pipe(catchError((err) => of(modelActions.mutationFailure(errorMessage(err))))),
+      of(visionActions.startStatusPolling()),
+    );
+  }),
 );
-
-const setEnabled$ = requestEpic(
-  modelActions.setEnabledRequest,
-  ({ id, enabled }) => ModelService.Patch.enabled(id, enabled),
-  (item) => [modelActions.setEnabledSuccess(item), visionActions.startStatusPolling()],
-  (message, { id }) => modelActions.setEnabledFailure({ id, message }),
-  { mode: "merge" },
-);
-
-const remove$ = requestEpic(
-  modelActions.removeRequest,
-  (id) => ModelService.Delete.remove(id),
-  (_result, id) => [modelActions.removeSuccess(id), visionActions.startStatusPolling()],
-  (message, id) => modelActions.removeFailure({ id, message }),
-  { mode: "merge" },
-);
-
-const uploaded$: RootEpic = (action$) =>
-  action$.pipe(
-    filter(modelActions.uploadSuccess.match),
-    tap(({ payload }) => notify.success(i18next.t("settings.models.added", { name: payload.id, count: payload.classes.length }))),
-    ignoreElements(),
-  );
-
-export const modelEpics = [fetchList$, upload$, setEnabled$, remove$, uploaded$];
+export const modelEpics = [list$, refresh$, mutate$];

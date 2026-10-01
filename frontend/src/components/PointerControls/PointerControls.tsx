@@ -1,7 +1,7 @@
-import { Segmented, Select, Typography } from "antd";
+import { Segmented, Typography } from "antd";
 import { useTranslation } from "react-i18next";
 
-import type { LaserColor, PointerMode } from "@/common/types";
+import type { PointerMode } from "@/common/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getPreferences, settingActions } from "@/store/setting";
 import { getVisionStatus, visionActions } from "@/store/vision";
@@ -12,7 +12,7 @@ export const PointerControls = () => {
   const dispatch = useAppDispatch();
   const prefs = useAppSelector(getPreferences);
   const status = useAppSelector(getVisionStatus);
-  const update = (patch: { pointerMode?: PointerMode; laserColor?: LaserColor }) => {
+  const update = (patch: { pointerMode?: PointerMode }) => {
     dispatch(visionActions.cancelFrames());
     dispatch(settingActions.updatePreferences(patch));
   };
@@ -29,22 +29,9 @@ export const PointerControls = () => {
         ]}
       />
       {prefs.pointerMode === "laser" && (
-        <Select<LaserColor>
-          className={styles.color}
-          aria-label={t("pointer.color")}
-          value={prefs.laserColor}
-          onChange={(laserColor) => update({ laserColor })}
-          options={[
-            { value: "red", label: t("pointer.red") },
-            { value: "green", label: t("pointer.green") },
-          ]}
-        />
-      )}
-      {prefs.pointerMode === "laser" && (
-        <Typography.Text className={styles.note} type={prefs.laserColor === "red" && status?.laser_error ? "danger" : "secondary"}>
-          {prefs.laserColor === "green" ? t("pointer.greenMethod")
-            : status?.laser_error ? t("pointer.modelUnavailable")
-              : status?.laser_model ? t("pointer.redModelReady") : t("pointer.redModelLoading")}
+        <Typography.Text className={styles.note} type={status?.laser_error ? "danger" : "secondary"}>
+          {status?.laser_error ? t("pointer.modelUnavailable")
+            : status?.laser_model ? t("pointer.redModelReady") : t("pointer.redModelLoading")}
         </Typography.Text>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { Button, Layout, Menu } from "antd";
-import { BookOpenText, History, LayoutGrid, Settings, Target, type LucideIcon } from "lucide-react";
+import { BookOpenText, FlaskConical, History, LayoutGrid, Settings, Target, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -15,6 +15,7 @@ import styles from "./layout.module.less";
 
 const NAV_ITEMS: { key: RouteKey; icon: LucideIcon }[] = [
   { key: "live", icon: LayoutGrid },
+  { key: "test", icon: FlaskConical },
   { key: "history", icon: History },
   { key: "settings", icon: Settings },
   { key: "guide", icon: BookOpenText },
@@ -155,9 +156,9 @@ export const MainLayout = () => {
             </span>
           </section>
 
-          <div className={isLive ? undefined : styles.hidden}>
+          {current !== "test" && <div className={isLive ? undefined : styles.hidden}>
             <LivePage visible={isLive} />
-          </div>
+          </div>}
           {!isLive && <Outlet />}
 
           <footer className={styles.footer}>

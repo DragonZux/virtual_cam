@@ -1,9 +1,11 @@
-import { Button, Card, Select, Tooltip, Upload } from "antd";
-import { Aperture, Camera, Film, Maximize, Minimize, Pause, Play, Power, Upload as UploadIcon } from "lucide-react";
+import { Button, Card, Select, Tooltip } from "antd";
+import { Aperture, Camera, Film, FlaskConical, Maximize, Minimize, Pause, Play, Power } from "lucide-react";
 import { useEffect, useRef, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
-import { DISPLAY_MAX_SIDE } from "@/common/constants";
+import { DISPLAY_MAX_SIDE, ROUTES } from "@/common/constants";
+import { ModelControls } from "@/components/ModelControls/ModelControls";
 import { PointerControls } from "@/components/PointerControls/PointerControls";
 import { useDocumentVisible, useFrameLoop, useFullscreen, useOverlay, useShortcuts, type useCamera } from "@/hooks";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -24,17 +26,16 @@ import {
 import { canvasToPng, captureFrame } from "@/utils/capture";
 import { downloadBlob } from "@/utils/download";
 import { fileStamp, objectLabel } from "@/utils/format";
-import { MEDIA_ACCEPT } from "@/utils/media";
 import { notify } from "@/utils/notify";
 import styles from "./live.module.less";
 
 interface Props {
   /** Đang ở trang Tổng quan (trang được giữ mount khi chuyển trang) — chỉ bắt phím tắt lúc hiện */
   visible: boolean;
-  /** <video> dùng chung với thẻ Ảnh / video thử (LivePage giữ) */
+  /** <video> dùng chung cho camera và ảnh / video chọn từ máy (LivePage giữ) */
   videoRef: RefObject<HTMLVideoElement | null>;
   source: ReturnType<typeof useCamera>;
-  onOpenFile: (file: File) => void;
+  testMode?: boolean;
 }
 
 interface OverlayContent {
@@ -43,7 +44,7 @@ interface OverlayContent {
   action?: boolean;
 }
 
-export const CameraPanel = ({ visible, videoRef, source, onOpenFile }: Props) => {
+export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Props) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const outputRef = useRef<HTMLCanvasElement>(null);
@@ -55,6 +56,7 @@ export const CameraPanel = ({ visible, videoRef, source, onOpenFile }: Props) =>
   const ready = useAppSelector(isDetectorReady);
   const connection = useAppSelector(getConnection);
   const status = useAppSelector(getVisionStatus);
+  const modelBusy = useAppSelector((state) => state.model.busy);
   const result = useAppSelector(getFrameResult);
   const receivedAt = useAppSelector((state) => state.vision.lastResultAt);
   const capturedAt = useAppSelector((state) => state.vision.lastCaptureAt);
@@ -73,7 +75,7 @@ export const CameraPanel = ({ visible, videoRef, source, onOpenFile }: Props) =>
   const interrupted = !!frameError && frameError.status !== 429;
   useFrameLoop({
     videoRef,
-    active: cameraOn && !paused && pageVisible && ready && options !== null,
+    active: cameraOn && !paused && pageVisible && ready && options !== null && !modelBusy && !status?.model_busy,
     mirror,
     options,
   });
@@ -143,6 +145,7 @@ export const CameraPanel = ({ visible, videoRef, source, onOpenFile }: Props) =>
       return { title: t(camera.error === "media" ? "media.errorTitle" : "camera.overlay.errorTitle"), text, action: true };
     }
     if (camera.status === "off") {
+      if (testMode) return { title: t("test.emptyTitle"), text: t("test.emptyText") };
       if (media && sessionStarted) return { title: t("media.stoppedTitle"), text: t("media.stoppedText"), action: true };
       if (camera.ended) return { title: t("camera.overlay.endedTitle"), text: t("camera.overlay.endedText"), action: true };
       if (sessionStarted) return { title: t("camera.overlay.stoppedTitle"), text: t("camera.overlay.stoppedText"), action: true };
@@ -190,12 +193,12 @@ export const CameraPanel = ({ visible, videoRef, source, onOpenFile }: Props) =>
       className={styles.cameraCard}
       title={
         <span className={styles.cardTitle}>
-          {media ? <Film size={17} /> : <Camera size={17} />}
-          {t(media ? "media.stageTitle" : "camera.title")}
+          {testMode ? <Film size={17} /> : <Camera size={17} />}
+          {t(testMode ? "media.stageTitle" : "camera.title")}
         </span>
       }
       extra={
-        <Select
+        !testMode && <Select
           size="small"
           className={styles.cameraSelect}
           aria-label={t("camera.select")}
@@ -211,6 +214,7 @@ export const CameraPanel = ({ visible, videoRef, source, onOpenFile }: Props) =>
         />
       }
     >
+      <ModelControls />
       <PointerControls />
       <div ref={stageRef} className={styles.stage}>
         {/* Video chạy trực tiếp theo camera; canvas trong suốt đè lên vẽ kết quả (toạ độ đã theo chế độ gương) */}
@@ -239,23 +243,12 @@ export const CameraPanel = ({ visible, videoRef, source, onOpenFile }: Props) =>
             </div>
             <strong>{overlay.title}</strong>
             <p>{overlay.text}</p>
-            {overlay.action && (
+            {overlay.action && !testMode && (
               <div className={styles.overlayActions}>
                 <Button type="primary" icon={<Camera size={16} />} onClick={startCamera}>
                   {t("camera.start")}
                 </Button>
-                <Upload
-                  accept={MEDIA_ACCEPT}
-                  showUploadList={false}
-                  beforeUpload={(file) => {
-                    onOpenFile(file);
-                    return Upload.LIST_IGNORE;
-                  }}
-                >
-                  <Button ghost icon={<UploadIcon size={16} />}>
-                    {t("media.open")}
-                  </Button>
-                </Upload>
+                <Link to={ROUTES.test}><Button ghost icon={<FlaskConical size={16} />}>{t("test.open")}</Button></Link>
               </div>
             )}
           </div>

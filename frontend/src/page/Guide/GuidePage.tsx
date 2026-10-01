@@ -1,5 +1,5 @@
 import { Card, Col, Row } from "antd";
-import { Info, Keyboard, ShieldCheck, Smartphone } from "lucide-react";
+import { Info, Keyboard, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import styles from "./guide.module.less";
@@ -67,13 +67,6 @@ export const GuidePage = () => {
                     </div>
                   ))}
                 </dl>
-              </div>
-            </div>
-            <div className={styles.noteRow}>
-              <Smartphone size={20} />
-              <div>
-                <h2>{t("guide.devicesTitle")}</h2>
-                <p>{t("guide.devicesText")}</p>
               </div>
             </div>
           </Card>

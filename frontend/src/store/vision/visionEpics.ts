@@ -75,10 +75,8 @@ const analyzeFrame$: RootEpic = (action$, state$) => {
           if (isStale(id)) return of(visionActions.analyzeFrameSkipped());
           const at = Date.now();
           const { vision, setting } = state$.value;
-          // A mode/colour change may precede the capture effect's cleanup.
-          if (options.pointer_mode !== setting.prefs.pointerMode ||
-              options.laser_color !== setting.prefs.laserColor ||
-              options.laser_brightness !== setting.prefs.laserBrightness) {
+          // A mode change may precede the capture effect's cleanup.
+          if (options.pointer_mode !== setting.prefs.pointerMode || options.model_revision !== vision.status?.model_revision) {
             return of(visionActions.analyzeFrameSkipped());
           }
           const advance = (selected: FrameResult["selected"]) => advanceTracking(vision.tracking, selected, at, setting.prefs.dwellMs);
@@ -96,7 +94,7 @@ const analyzeFrame$: RootEpic = (action$, state$) => {
           const out: Action[] = [
             visionActions.analyzeFrameSuccess({ id, result: shown, tracking: step.tracking, laserTrack, at, capturedAt }),
           ];
-          if (step.confirmed) {
+          if (step.confirmed && vision.camera.source !== "media") {
             const { name, confidence } = step.confirmed;
             out.push(historyActions.addSelection({ name, confidence, time: at, pointerMode: options.pointer_mode }));
           }

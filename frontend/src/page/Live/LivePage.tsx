@@ -1,20 +1,18 @@
-import { Col, Row } from "antd";
-import { Activity, Hand, History, Target } from "lucide-react";
+import { Col, Row, Upload } from "antd";
+import { Activity, Hand, History, Target, Upload as UploadIcon } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { MediaItem } from "@/common/types";
 import { StatCard } from "@/components";
 import { useCamera } from "@/hooks";
 import { getSelectionTotal } from "@/store/history";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { getMediaMaxBytes, mediaActions } from "@/store/media";
+import { useAppSelector } from "@/store/hooks";
 import { getPreferences } from "@/store/setting";
 import { getCamera, getFps, getFrameResult } from "@/store/vision";
-import { mediaKindOf, mediaUrl } from "@/utils/media";
+import { MEDIA_ACCEPT, mediaKindOf } from "@/utils/media";
+import { TestResults } from "@/page/Test/TestResults";
 import { notify } from "@/utils/notify";
 import { CameraPanel } from "./CameraPanel";
-import { MediaCard } from "./MediaCard";
 import { RecentSelections } from "./RecentSelections";
 import { SelectionCard } from "./SelectionCard";
 import { TargetsCard } from "./TargetsCard";
@@ -22,9 +20,10 @@ import styles from "./live.module.less";
 
 interface Props {
   visible: boolean;
+  testMode?: boolean;
 }
 
-/** Per-frame counters must not render the media picker, history and controls. */
+/** Per-frame counters must not render the history and controls. */
 const LiveMetrics = () => {
   const { t } = useTranslation();
   const fps = useAppSelector(getFps);
@@ -85,47 +84,42 @@ const LiveMetrics = () => {
   );
 };
 
-export const LivePage = ({ visible }: Props) => {
+export const LivePage = ({ visible, testMode = false }: Props) => {
   const { t } = useTranslation();
-  const dispatch = useAppDispatch();
-  // Khung camera và thẻ Ảnh / video thử dùng chung một <video>: camera hoặc file đều phát vào đây
+  // Camera hoặc ảnh / video chọn từ máy đều phát vào chung một <video>
   const videoRef = useRef<HTMLVideoElement>(null);
   const source = useCamera(videoRef);
-  const maxBytes = useAppSelector(getMediaMaxBytes);
 
-  /** File mới: phát ngay từ máy (không chờ tải lên) và lưu song song vào thư mục của máy chủ */
+  /** Phát ảnh / video ngay trên trình duyệt (không tải lên máy chủ) */
   const openFile = (file: File) => {
     const kind = mediaKindOf(file.name);
     if (!kind) {
       notify.error(t("media.unsupported"));
       return;
     }
-    if (maxBytes !== null && file.size > maxBytes) {
-      notify.error(t("media.tooLarge", { mb: Math.round(maxBytes / 1024 / 1024) }));
-      return;
-    }
     void source.playMedia({ url: URL.createObjectURL(file), name: file.name, kind });
-    dispatch(mediaActions.uploadRequest(file));
-  };
-
-  const openSaved = (item: MediaItem) => {
-    void source.playMedia({ url: mediaUrl(item.name), name: item.name, kind: item.kind });
   };
 
   return (
     <div className={styles.page}>
-      <LiveMetrics />
+      {testMode ? <Upload.Dragger accept={MEDIA_ACCEPT} showUploadList={false} beforeUpload={(file) => {
+        openFile(file);
+        return Upload.LIST_IGNORE;
+      }}>
+        <UploadIcon size={28} />
+        <p className="ant-upload-text">{t("test.uploadTitle")}</p>
+        <p className="ant-upload-hint">{t("test.uploadHelp")}</p>
+      </Upload.Dragger> : <LiveMetrics />}
 
       <div className={styles.monitor}>
-        <CameraPanel visible={visible} videoRef={videoRef} source={source} onOpenFile={openFile} />
+        <CameraPanel visible={visible} videoRef={videoRef} source={source} testMode={testMode} />
         <div className={styles.side}>
           <SelectionCard />
-          <MediaCard onOpenFile={openFile} onOpenSaved={openSaved} />
-          <TargetsCard />
+          {testMode ? <TestResults /> : <TargetsCard />}
         </div>
       </div>
 
-      <RecentSelections />
+      {!testMode && <RecentSelections />}
     </div>
   );
 };

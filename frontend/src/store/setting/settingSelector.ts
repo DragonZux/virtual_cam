@@ -25,8 +25,7 @@ export const getFrameOptions = createSelector(
     status?.phase === "ready"
       ? {
           pointer_mode: prefs.pointerMode,
-          laser_color: prefs.laserColor,
-          laser_brightness: prefs.laserBrightness,
+          model_revision: status.model_revision,
           targets,
           conf: prefs.confidence ?? status.defaults.confidence,
           tolerance: prefs.tolerance ?? status.defaults.tolerance,

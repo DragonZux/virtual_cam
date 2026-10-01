@@ -1,4 +1,4 @@
-import { CONFIDENCE_RANGE, DEFAULT_PREFERENCES, DWELL_RANGE, TOLERANCE_RANGE, LASER_BRIGHTNESS_RANGE } from "@/common/constants";
+import { CONFIDENCE_RANGE, DEFAULT_PREFERENCES, DWELL_RANGE, TOLERANCE_RANGE } from "@/common/constants";
 import type { MirrorMode, Preferences } from "@/common/types";
 
 const STORAGE_KEY = "virtualcam.preferences";
@@ -22,8 +22,6 @@ export const sanitizePreferences = (raw: unknown): Preferences => {
       : undefined;
   return {
     pointerMode: r.pointerMode === "laser" ? "laser" : "hand",
-    laserColor: r.laserColor === "green" ? "green" : "red",
-    laserBrightness: numberIn(r.laserBrightness, LASER_BRIGHTNESS_RANGE) ?? d.laserBrightness,
     targets,
     confidence: numberIn(r.confidence, CONFIDENCE_RANGE),
     tolerance: numberIn(r.tolerance, TOLERANCE_RANGE),

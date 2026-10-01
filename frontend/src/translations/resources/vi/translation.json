@@ -1,15 +1,43 @@
 {
+  "models": {
+    "title": "Quản lý mô hình AI",
+    "segmentation": "Mô hình segmentation",
+    "laser": "Mô hình laser",
+    "select": "Chọn mô hình",
+    "manage": "Thêm / quản lý mô hình",
+    "shared": "Chạy một mô hình segmentation và một mô hình laser khi dùng chế độ Laser. Lựa chọn áp dụng cho toàn bộ máy chủ và được lưu khi khởi động lại.",
+    "refresh": "Làm mới",
+    "upload": "Tải mô hình mới",
+    "uploadBusy": "Đang tải và kiểm tra mô hình. Nhận diện sẽ tiếp tục khi hoàn tất…",
+    "activateBusy": "Đang nạp mô hình đã chọn. Vui lòng chờ…",
+    "uploadSuccess": "Đã thêm mô hình. Chọn Sử dụng hoặc chọn trong danh sách để chạy.",
+    "activateSuccess": "Đã chuyển mô hình. Danh sách vật thể đã cập nhật.",
+    "segmentHelp": "File .pt của Ultralytics YOLO segmentation. Mô hình phải có mask phân vùng vật thể.",
+    "laserHelp": "File .pt YOLO detect được huấn luyện với một lớp chấm laser, hoặc .torchscript ADVR xuất cho Virtual Cam.",
+    "tooLarge": "File vượt quá giới hạn {{size}} MB.",
+    "name": "Tên mô hình", "kind": "Loại", "size": "Dung lượng", "state": "Trạng thái",
+    "active": "Đang chọn", "missing": "Thiếu file", "activate": "Sử dụng", "empty": "Chưa tải được danh sách mô hình.",
+    "storage": "Mô hình mới được lưu trong models/custom; tải cùng tên sẽ tạo một bản riêng. Chỉ tải mô hình từ nguồn bạn tin cậy."
+  },
+  "test": {
+    "open": "Thử ảnh / video",
+    "uploadTitle": "Kéo thả hoặc chọn ảnh / video để thử mô hình",
+    "uploadHelp": "JPG, PNG, WebP, BMP, GIF · MP4, WebM, MOV. File phát trên trình duyệt; các khung hình được gửi tới máy chủ để nhận diện. Có thể chọn file khác bất cứ lúc nào.",
+    "emptyTitle": "Sẵn sàng thử nghiệm",
+    "emptyText": "Chọn ảnh hoặc video ở phía trên, chọn mô hình và cách chỉ tay / laser để xem kết quả.",
+    "results": "Kết quả nhận diện",
+    "timing": "{{count}} vật thể · {{ms}} ms / khung",
+    "laserResult": "Laser ({{x}}, {{y}}) · {{score}}",
+    "waiting": "Kết quả xuất hiện sau khi chọn file.",
+    "noDetections": "Chưa thấy vật thể. Thử giảm ngưỡng tin cậy hoặc chọn thêm lớp vật thể."
+  },
   "pointer": {
     "mode": "Cách chỉ vật thể",
     "hand": "Chỉ tay",
     "laser": "Laser",
-    "color": "Màu laser",
-    "red": "Laser đỏ",
-    "green": "Laser xanh lá",
     "redModelReady": "Laser đỏ: mô hình AI đã sẵn sàng",
     "redModelLoading": "Đang kiểm tra mô hình laser đỏ…",
-    "modelUnavailable": "Mô hình laser đỏ chưa sẵn sàng. Kiểm tra model trên máy chủ; bạn vẫn có thể dùng chỉ tay hoặc laser xanh.",
-    "greenMethod": "Laser xanh: nhận diện theo màu và độ sáng",
+    "modelUnavailable": "Mô hình laser đỏ chưa sẵn sàng. Kiểm tra model trên máy chủ; bạn vẫn có thể dùng chỉ tay.",
     "caption": "Chiếu chấm laser lên vật thể trong khung hình và giữ yên để chọn",
     "status": "Điểm laser",
     "idle": "Đang chờ",
@@ -21,10 +49,8 @@
     "confirming": "GIỮ LASER ĐỂ XÁC NHẬN",
     "hint": "Chiếu laser lên vật thể thuộc nhóm đã chọn, trong tầm nhìn camera.",
     "selectedHint": "Vật thể tại vị trí chấm laser.",
-    "brightness": "Ngưỡng sáng của laser",
-    "brightnessHelp": "Giảm nếu chấm laser mờ; tăng nếu nhận nhầm điểm sáng. Chọn đúng màu laser. Đèn LED hoặc phản xạ cùng màu vẫn có thể gây nhầm.",
     "guideTitle": "Chọn bằng laser",
-    "guideText": "Chọn Laser phía trên camera, chọn đỏ hoặc xanh lá, rồi chiếu lên vật thể. Laser đỏ dùng mô hình AI; laser xanh dùng màu và độ sáng, có thể chỉnh ngưỡng sáng trong Cài đặt. Camera phải thấy cả vật thể và chấm sáng. Giữ yên để xác nhận tên. Chỉ nhận diện các loại vật thể đã bật và được model đồ vật hỗ trợ. Nếu không thấy chấm, đưa vật thể gần camera hơn. Đèn LED và phản xạ vẫn có thể gây nhận nhầm."
+    "guideText": "Chọn Laser phía trên camera rồi chiếu laser đỏ lên vật thể. Laser đỏ dùng mô hình AI. Camera phải thấy cả vật thể và chấm sáng. Giữ yên để xác nhận tên. Chỉ nhận diện các loại vật thể đã bật và được model đồ vật hỗ trợ. Nếu không thấy chấm, đưa vật thể gần camera hơn. Đèn LED và phản xạ vẫn có thể gây nhận nhầm."
   },
   "app": {
     "title": "Virtual Cam",
@@ -35,12 +61,17 @@
     "section": "KHÔNG GIAN LÀM VIỆC",
     "main": "Điều hướng chính",
     "live": "Tổng quan",
+    "test": "Thử nghiệm",
     "history": "Lịch sử lựa chọn",
     "settings": "Cài đặt",
     "guide": "Hướng dẫn"
   },
   "page": {
     "eyebrow": "CAMERA INTELLIGENCE",
+    "test": {
+      "title": "Thử nghiệm mô hình",
+      "description": "Chọn ảnh hoặc video, đổi mô hình và xem kết quả nhận diện. Camera được tắt khi vào màn hình này."
+    },
     "live": {
       "title": "Không gian theo dõi",
       "description": "Nhận diện vật thể bằng ngón trỏ hoặc chấm laser."
@@ -51,7 +82,7 @@
     },
     "settings": {
       "title": "Tùy chỉnh nhận diện",
-      "description": "Chọn vật thể, độ nhạy và cách hiển thị cho riêng trình duyệt này."
+      "description": "Quản lý mô hình AI, chọn vật thể, độ nhạy và cách hiển thị."
     },
     "guide": {
       "title": "Chỉ tay hoặc dùng laser",
@@ -149,7 +180,7 @@
       "offlineText": "Giữ trang này mở. Hệ thống sẽ tự kết nối lại."
     },
     "errors": {
-      "insecure": "Camera của trình duyệt cần HTTPS hoặc localhost. Trên điện thoại hay máy khác, hãy mở địa chỉ HTTPS của máy chủ (chạy với --lan, xem Cài đặt › Dùng trên thiết bị khác).",
+      "insecure": "Camera của trình duyệt chỉ mở được qua localhost. Hãy mở web trên chính máy chạy máy chủ (http://localhost).",
       "NotAllowedError": "Quyền camera chưa được cấp. Cho phép camera trong cài đặt trang của trình duyệt rồi thử lại.",
       "NotFoundError": "Không tìm thấy camera. Hãy kết nối webcam hoặc thử trên thiết bị có camera.",
       "NotReadableError": "Không mở được camera. Hãy đóng ứng dụng khác đang dùng camera rồi thử lại.",
@@ -163,28 +194,15 @@
     "fullscreenUnsupported": "Trình duyệt này chưa hỗ trợ chế độ toàn màn hình."
   },
   "media": {
-    "title": "Ảnh / video thử",
     "stageTitle": "Ảnh / video thử",
-    "drop": "Kéo thả hoặc bấm để chọn ảnh, video",
-    "formats": "JPG, PNG, WEBP, BMP, GIF · MP4, WEBM, MOV — tối đa {{mb}} MB",
     "open": "Dùng ảnh / video",
-    "savedTo": "Lưu tại",
-    "folderUnknown": "chưa kết nối máy chủ",
-    "saving": "Đang lưu {{name}}…",
-    "saved": "Đã lưu {{name}} vào {{folder}}",
-    "empty": "Chưa có file nào. File tải lên sẽ nằm ở đây để thử lại.",
-    "playing": "Đang phát",
-    "play": "Phát {{name}}",
-    "image": "Ảnh",
-    "video": "Video",
     "stop": "Dừng phát",
     "caption": "Đang thử: {{name}}",
     "unsupported": "Chỉ nhận ảnh (JPG, PNG, WEBP, BMP, GIF) hoặc video (MP4, WEBM, MOV, M4V, OGV).",
-    "tooLarge": "File vượt quá {{mb}} MB.",
     "startingTitle": "Đang mở ảnh / video",
     "startingText": "Khung hình sẽ được nhận diện như camera: chỉ tay hoặc chấm laser trong ảnh / video sẽ chọn vật thể.",
     "stoppedTitle": "Đã dừng ảnh / video",
-    "stoppedText": "Chọn lại file ở mục Ảnh / video thử hoặc bật camera.",
+    "stoppedText": "Chọn lại ảnh / video hoặc bật camera.",
     "errorTitle": "Không phát được ảnh / video",
     "pausedText": "Video đang dừng. Nhấn Tiếp tục để phát và nhận diện tiếp."
   },
@@ -288,37 +306,6 @@
       "sample": "Máy tính xách tay",
       "noVoice": "Máy chưa có giọng đọc tiếng Việt; trình duyệt sẽ dùng giọng mặc định.",
       "unsupported": "Trình duyệt này không hỗ trợ đọc văn bản."
-    },
-    "share": {
-      "title": "Dùng trên thiết bị khác",
-      "intro": "Điện thoại hoặc máy khác cùng mạng Wi-Fi mở địa chỉ sau để dùng camera của chính thiết bị đó:",
-      "others": "Địa chỉ khác",
-      "certNote": "Chứng chỉ tự ký: khi trình duyệt cảnh báo, chọn Nâng cao → Tiếp tục truy cập.",
-      "disabled": "Chưa bật chế độ mạng LAN. Chạy máy chủ với tham số --lan (vd. scripts\\run_web.bat --lan) để điện thoại mở được camera qua HTTPS.",
-      "copy": "Sao chép",
-      "copied": "Đã sao chép địa chỉ"
-    },
-    "models": {
-      "title": "Mô hình nhận diện",
-      "summary": "Bật {{on}}/{{total}}",
-      "builtin": "Mặc định",
-      "task": {
-        "segment": "Phân đoạn",
-        "detect": "Khung vật thể"
-      },
-      "classes": "{{count}} lớp",
-      "toggle": "Bật / tắt mô hình {{name}}",
-      "remove": "Xoá mô hình {{name}}",
-      "removeConfirm": "Xoá mô hình {{name}} và file .pt của nó?",
-      "lastOn": "Cần bật ít nhất một mô hình",
-      "drop": "Kéo thả hoặc bấm để thêm mô hình YOLO (.pt)",
-      "dropHint": "Mô hình phân đoạn hoặc phát hiện vật thể của Ultralytics — tối đa {{mb}} MB",
-      "loading": "Đang nạp {{name}}…",
-      "added": "Đã thêm {{name}} ({{count}} lớp) — danh sách vật thể đã cập nhật",
-      "onlyPt": "Chỉ nhận file mô hình YOLO .pt.",
-      "tooLarge": "Mô hình vượt quá {{mb}} MB.",
-      "localOnly": "Thêm, bật / tắt, xoá mô hình chỉ làm được trên chính máy chạy máy chủ (mở bằng http://localhost). File .pt có thể chứa mã chạy trên máy chủ.",
-      "note": "Mọi mô hình đang bật cùng nhận diện trên mỗi khung hình và gộp chung danh sách vật thể (cùng tên lớp là cùng một vật thể). Bật càng nhiều mô hình, mỗi khung càng chậm."
     }
   },
   "guide": {
@@ -334,9 +321,7 @@
     "shortcutsTitle": "Phím tắt",
     "shortcutSpace": "Tạm dừng / tiếp tục nhận diện",
     "shortcutSnapshot": "Chụp ảnh khung hình",
-    "shortcutFullscreen": "Bật / tắt toàn màn hình",
-    "devicesTitle": "Dùng trên điện thoại",
-    "devicesText": "Trình duyệt chỉ cho mở camera qua HTTPS hoặc localhost. Chạy máy chủ bằng scripts\\run_web.bat --lan, rồi mở địa chỉ HTTPS hiện ở Cài đặt › Dùng trên thiết bị khác."
+    "shortcutFullscreen": "Bật / tắt toàn màn hình"
   },
   "httpError": {
     "default": "Có lỗi xảy ra, vui lòng thử lại",

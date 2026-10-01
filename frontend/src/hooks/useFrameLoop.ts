@@ -21,8 +21,7 @@ export const useFrameLoop = ({ videoRef, active, mirror, options }: Params) => {
   const store = useAppStore();
   const latestOptions = useRef(options);
   const pointerMode = options?.pointer_mode;
-  const laserColor = options?.laser_color;
-  const laserBrightness = options?.laser_brightness;
+  const modelRevision = options?.model_revision;
   useEffect(() => {
     latestOptions.current = options;
   }, [options]);
@@ -115,7 +114,7 @@ export const useFrameLoop = ({ videoRef, active, mirror, options }: Params) => {
         const laser = opts.pointer_mode === "laser";
         if (captureFrame(video, upload, mirror, laser ? LASER_UPLOAD_MAX_SIDE : undefined)) {
           lastMediaTime = mediaTime;
-          image = await canvasToJpeg(upload, laser ? LASER_JPEG_QUALITY[opts.laser_color] : undefined);
+          image = await canvasToJpeg(upload, laser ? LASER_JPEG_QUALITY : undefined);
         }
       } catch {
         // The camera can disappear during drawImage/toBlob; retry without breaking the loop.
@@ -190,5 +189,5 @@ export const useFrameLoop = ({ videoRef, active, mirror, options }: Params) => {
       if (fallbackCallback !== undefined) cancelAnimationFrame(fallbackCallback);
       store.dispatch(visionActions.cancelFrames());
     };
-  }, [active, mirror, pointerMode, laserColor, laserBrightness, store, videoRef]);
+  }, [active, mirror, pointerMode, modelRevision, store, videoRef]);
 };

@@ -1,3 +1,2 @@
-export * from "./modelSlice";
-export * from "./modelEpics";
-export * from "./modelSelector";
+export { modelActions, modelReducer } from "./modelSlice";
+export { modelEpics } from "./modelEpics";

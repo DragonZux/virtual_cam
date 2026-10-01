@@ -88,6 +88,10 @@ const visionSlice = createSlice({
     startStatusPolling: () => {},
     stopStatusPolling: () => {},
     getStatusSuccess: (state, action: PayloadAction<VisionStatus>) => {
+      if (state.status && state.status.model_revision !== action.payload.model_revision) {
+        state.lastFrameId = state.lastRequestId;
+        resetLive(state);
+      }
       state.status = action.payload;
       state.connection = "online";
     },

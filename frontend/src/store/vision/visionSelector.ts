@@ -17,7 +17,6 @@ export const getSessionStartedAt = (state: RootState) => state.vision.sessionSta
 export const isDetectorReady = (state: RootState) =>
   state.vision.connection === "online" && state.vision.status?.phase === "ready";
 
-export const getShareUrls = createSelector([getVisionStatus], (status) => status?.share_urls ?? []);
 
 /**
  * Lật ngang khi là camera trước; webcam laptop thường không báo facingMode nên cũng coi là camera trước.

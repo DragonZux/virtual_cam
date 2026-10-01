@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 const status = {
   phase: "ready", error: null, device: "Test GPU", model: "test", image_size: 640,
   classes: ["laptop", "mouse", "keyboard"],
-  defaults: { targets: ["laptop"], confidence: 0.8, tolerance: 30 }, share_urls: [],
+  defaults: { targets: ["laptop"], confidence: 0.8, tolerance: 30 },
 };
 
 async function prepare(page: Page, delayMs = 50, processingMs: number | ((index: number) => number) = 30, serial = false) {
