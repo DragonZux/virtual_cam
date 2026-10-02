@@ -33,6 +33,8 @@ services:
     volumes:
       # models/ ghi được: container tự tải model bàn tay / YOLO và xuất model laser vào đây ở lần chạy đầu
       - ./models:/models
+      # Cấu hình máy chủ (máy đích TCP socket trong Cài đặt) — dùng chung với khi chạy không Docker
+      - ./backend/data:/app/data
       # Giữ chứng chỉ qua các lần tạo lại container (trình duyệt không phải xác nhận lại)
       - certs:/app/data/certs
     deploy:

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     # Cổng HTTPS tự ký cho máy khác trong mạng (camera cần HTTPS khi không phải localhost); 0 = tắt
     HTTPS_PORT: int = Field(0, ge=0, le=65535)
     CERT_DIR: Path = BACKEND_DIR / "data" / "certs"
+    # Cấu hình máy chủ (máy đích TCP socket…); Docker mount ./backend/data vào đây
+    DATA_DIR: Path = BACKEND_DIR / "data"
     # IP / tên máy thêm vào chứng chỉ, cách nhau dấu phẩy (không bắt buộc: chứng chỉ tự ký vẫn phải bấm "Tiếp tục")
     CERT_HOSTS: str = ""
 
