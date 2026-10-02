@@ -212,11 +212,25 @@
       "OverconstrainedError": "The selected camera is no longer available. Choose another camera.",
       "AbortError": "The browser cancelled opening the camera. Please try again.",
       "default": "Could not open the camera. Please try again.",
-      "media": "The browser cannot open this file. Try a JPG/PNG image or an MP4 (H.264) / WEBM video."
+      "media": "The browser cannot open this file. Try a JPG/PNG image or an MP4 (H.264) / WEBM video.",
+      "stream": "Could not get video from the RTSP stream. Check the address (e.g. rtsp://<IP>:8554/camera), that MediaMTX is running and has a publisher, then use Connect RTSP to retry."
     },
     "snapshotSaved": "Snapshot saved",
     "snapshotEmpty": "No frame to capture yet",
-    "fullscreenUnsupported": "This browser does not support full screen."
+    "fullscreenUnsupported": "This browser does not support full screen.",
+    "rtsp": {
+      "button": "RTSP",
+      "open": "Connect RTSP",
+      "title": "Connect an RTSP / MediaMTX camera",
+      "help": "Paste the stream address you would open with ffplay, e.g. rtsp://<IP>:8554/camera. The server reads the stream and sends frames to the browser, so the address must be reachable from the server.",
+      "connect": "Connect",
+      "cancel": "Cancel",
+      "invalid": "No rtsp:// or rtsps:// address found.",
+      "parsed": "Will connect to: {{url}}",
+      "caption": "RTSP · {{url}}",
+      "startingTitle": "Connecting to the RTSP stream",
+      "startingText": "The server is opening {{url}}…"
+    }
   },
   "media": {
     "stageTitle": "Test image / video",

@@ -107,6 +107,13 @@ export interface ModelList {
   convert_reason?: string | null;
 }
 
+/** POST /camera/streams — phiên đọc luồng RTSP ở máy chủ */
+export interface StreamInfo {
+  id: string;
+  width: number;
+  height: number;
+}
+
 export type MediaKind = "image" | "video";
 
 /* ===== Chỉ ở frontend ===== */

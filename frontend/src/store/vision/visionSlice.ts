@@ -19,6 +19,8 @@ export interface CameraState {
   source: FrameSource;
   /** Ảnh / video đang phát khi source = "media" */
   media: { name: string; kind: MediaKind } | null;
+  /** Địa chỉ RTSP (MediaMTX, camera IP) khi camera là luồng máy chủ đọc hộ; null = camera của trình duyệt */
+  stream: string | null;
 }
 
 export interface FrameError {
@@ -55,7 +57,7 @@ interface VisionState {
 const initialState: VisionState = {
   status: null,
   connection: "connecting",
-  camera: { status: "off", error: null, ended: false, deviceId: null, facingMode: null, devices: [], source: "camera", media: null },
+  camera: { status: "off", error: null, ended: false, deviceId: null, facingMode: null, devices: [], source: "camera", media: null, stream: null },
   paused: false,
   result: null,
   frameSeq: 0,
@@ -106,15 +108,21 @@ const visionSlice = createSlice({
       state.camera.status = "starting";
       state.camera.source = action.payload ?? "camera";
       state.camera.media = null;
+      state.camera.stream = null;
       state.camera.error = null;
       state.camera.ended = false;
     },
+    /** Bắt đầu mở camera RTSP qua máy chủ (giữ địa chỉ khi lỗi để thử lại) */
+    streamStarting: (state, action: PayloadAction<string>) => {
+      state.camera = { ...state.camera, status: "starting", source: "camera", media: null, stream: action.payload, error: null, ended: false };
+    },
     cameraStarted: (
       state,
-      action: PayloadAction<Pick<CameraState, "deviceId" | "facingMode" | "devices"> & { startedAt: number }>,
+      action: PayloadAction<Pick<CameraState, "deviceId" | "facingMode"> & Partial<Pick<CameraState, "devices" | "stream">>
+        & { startedAt: number }>,
     ) => {
-      const { startedAt, ...info } = action.payload;
-      state.camera = { ...state.camera, ...info, status: "on", error: null, ended: false, source: "camera", media: null };
+      const { startedAt, stream = null, ...info } = action.payload;
+      state.camera = { ...state.camera, ...info, status: "on", error: null, ended: false, source: "camera", media: null, stream };
       state.paused = false;
       state.sessionStartedAt ??= startedAt;
       resetLive(state);
@@ -122,7 +130,7 @@ const visionSlice = createSlice({
     /** Ảnh đã sẵn sàng để gửi một lần, hoặc video đã sẵn sàng phát liên tục. */
     mediaStarted: (state, action: PayloadAction<{ name: string; kind: MediaKind; startedAt: number }>) => {
       const { startedAt, name, kind } = action.payload;
-      state.camera = { ...state.camera, status: "on", error: null, ended: false, source: "media", media: { name, kind } };
+      state.camera = { ...state.camera, status: "on", error: null, ended: false, source: "media", media: { name, kind }, stream: null };
       state.paused = false;
       state.sessionStartedAt ??= startedAt;
       resetLive(state);

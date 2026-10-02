@@ -212,11 +212,25 @@
       "OverconstrainedError": "Camera đã chọn không còn khả dụng. Hãy chọn camera khác.",
       "AbortError": "Trình duyệt đã huỷ việc mở camera. Hãy thử lại.",
       "default": "Không thể mở camera. Hãy thử lại.",
-      "media": "Trình duyệt không mở được file này. Thử ảnh JPG/PNG hoặc video MP4 (H.264) / WEBM."
+      "media": "Trình duyệt không mở được file này. Thử ảnh JPG/PNG hoặc video MP4 (H.264) / WEBM.",
+      "stream": "Không lấy được hình từ luồng RTSP. Kiểm tra địa chỉ (ví dụ rtsp://<IP>:8554/camera), MediaMTX đang chạy và đã có nguồn phát, rồi bấm Kết nối RTSP để thử lại."
     },
     "snapshotSaved": "Đã lưu ảnh chụp khung hình",
     "snapshotEmpty": "Chưa có khung hình để chụp",
-    "fullscreenUnsupported": "Trình duyệt này chưa hỗ trợ chế độ toàn màn hình."
+    "fullscreenUnsupported": "Trình duyệt này chưa hỗ trợ chế độ toàn màn hình.",
+    "rtsp": {
+      "button": "RTSP",
+      "open": "Kết nối RTSP",
+      "title": "Kết nối camera RTSP / MediaMTX",
+      "help": "Dán địa chỉ luồng như khi xem bằng ffplay, ví dụ rtsp://<IP>:8554/camera. Máy chủ đọc luồng rồi gửi hình về trình duyệt, nên địa chỉ phải truy cập được từ máy chủ.",
+      "connect": "Kết nối",
+      "cancel": "Huỷ",
+      "invalid": "Chưa thấy địa chỉ rtsp:// hoặc rtsps://.",
+      "parsed": "Sẽ kết nối: {{url}}",
+      "caption": "RTSP · {{url}}",
+      "startingTitle": "Đang kết nối luồng RTSP",
+      "startingText": "Máy chủ đang mở {{url}}…"
+    }
   },
   "media": {
     "stageTitle": "Ảnh / video thử",
