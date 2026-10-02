@@ -14,31 +14,18 @@ const refresh$: RootEpic = (action$) => action$.pipe(
   filter(visionActions.getStatusSuccess.match),
   mergeMap(() => of(modelActions.listRequest())),
 );
-const mutate$: RootEpic = (action$) => action$.pipe(
-  filter((action) => modelActions.activateRequest.match(action) || modelActions.uploadRequest.match(action)),
+// Tải lên = máy chủ dùng ngay mô hình mới: dừng gửi khung trong lúc nạp, xong thì hỏi lại trạng thái (model_revision mới)
+const upload$: RootEpic = (action$) => action$.pipe(
+  filter(modelActions.uploadRequest.match),
   exhaustMap((action) => {
-    const operation: Observable<Action> = modelActions.activateRequest.match(action)
-      ? ModelService.activate(action.payload).pipe(mergeMap((status) => of(
-        visionActions.getStatusSuccess(status), modelActions.mutationSuccess("activate"),
-      )))
-      : modelActions.uploadRequest.match(action)
-        ? ModelService.upload(action.payload.kind, action.payload.file, action.payload.convert).pipe(mergeMap((list) => of(
-          modelActions.listSuccess(list), modelActions.mutationSuccess("upload"),
-        ))) : of();
+    const operation: Observable<Action> = ModelService.upload(action.payload.kind, action.payload.file, action.payload.convert)
+      .pipe(mergeMap((list) => of(modelActions.listSuccess(list), modelActions.mutationSuccess("upload"))));
     return concat(
       of(visionActions.stopStatusPolling(), visionActions.cancelFrames()),
       operation.pipe(catchError((err) => of(modelActions.mutationFailure(errorMessage(err))))),
       of(visionActions.startStatusPolling()),
     );
   }),
-);
-// Chuyển đổi chạy nền: không dừng nhận diện; tiến độ về qua danh sách mô hình (làm mới cùng trạng thái mỗi 3 giây)
-const convert$: RootEpic = (action$) => action$.pipe(
-  filter(modelActions.convertRequest.match),
-  exhaustMap((action) => ModelService.convert(action.payload).pipe(
-    mergeMap((list) => of(modelActions.listSuccess(list), modelActions.mutationSuccess("convert"))),
-    catchError((err) => of(modelActions.mutationFailure(errorMessage(err)))),
-  )),
 );
 // Báo một lần khi lượt chuyển đang chạy kết thúc (người dùng có thể đang ở trang khác)
 const conversionFinished$: RootEpic = (action$) => action$.pipe(
@@ -53,4 +40,4 @@ const conversionFinished$: RootEpic = (action$) => action$.pipe(
   })),
   ignoreElements(),
 );
-export const modelEpics = [list$, refresh$, mutate$, convert$, conversionFinished$];
+export const modelEpics = [list$, refresh$, upload$, conversionFinished$];
