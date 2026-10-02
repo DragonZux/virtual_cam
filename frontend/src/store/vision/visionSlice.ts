@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-import type { CameraDevice, CameraStatus, FrameOptions, FrameResult, FrameSource, MediaKind, VisionStatus } from "@/common/types";
+import type { CameraStatus, FrameOptions, FrameResult, VisionStatus } from "@/common/types";
 import { EMPTY_LASER_TRACK, type LaserPoint, type LaserTrack } from "@/utils/laserTrack";
 import { EMPTY_TRACKING, type Tracking } from "@/utils/tracking";
 
@@ -8,18 +8,9 @@ export type Connection = "connecting" | "online" | "offline";
 
 export interface CameraState {
   status: CameraStatus;
-  /** Mã lỗi getUserMedia (NotAllowedError, insecure…) → camera.errors.<code> */
+  /** Mã lỗi → camera.errors.<code> */
   error: string | null;
-  /** Camera bị ngắt từ phía thiết bị (rút webcam, ứng dụng khác chiếm) */
-  ended: boolean;
-  deviceId: string | null;
-  facingMode: string | null;
-  devices: CameraDevice[];
-  /** Khung đang lấy hình từ camera hay từ ảnh / video thử */
-  source: FrameSource;
-  /** Ảnh / video đang phát khi source = "media" */
-  media: { name: string; kind: MediaKind } | null;
-  /** Địa chỉ RTSP (MediaMTX, camera IP) khi camera là luồng máy chủ đọc hộ; null = camera của trình duyệt */
+  /** Camera RTSP đang mở / vừa dùng (giữ khi lỗi hoặc tắt để kết nối lại) */
   stream: string | null;
 }
 
@@ -45,7 +36,6 @@ interface VisionState {
   lastRequestId: number;
   lastCaptureAt: number | null;
   frameError: FrameError | null;
-  fps: number | null;
   lastResultAt: number | null;
   tracking: Tracking;
   /** Chấm laser đang bám qua các khung (chế độ laser) */
@@ -57,7 +47,7 @@ interface VisionState {
 const initialState: VisionState = {
   status: null,
   connection: "connecting",
-  camera: { status: "off", error: null, ended: false, deviceId: null, facingMode: null, devices: [], source: "camera", media: null, stream: null },
+  camera: { status: "off", error: null, stream: null },
   paused: false,
   result: null,
   frameSeq: 0,
@@ -65,7 +55,6 @@ const initialState: VisionState = {
   lastRequestId: 0,
   lastCaptureAt: null,
   frameError: null,
-  fps: null,
   lastResultAt: null,
   tracking: EMPTY_TRACKING,
   laserTrack: EMPTY_LASER_TRACK,
@@ -75,7 +64,6 @@ const initialState: VisionState = {
 const resetLive = (state: VisionState) => {
   state.result = null;
   state.frameError = null;
-  state.fps = null;
   state.lastResultAt = null;
   state.lastCaptureAt = null;
   state.tracking = EMPTY_TRACKING;
@@ -103,41 +91,19 @@ const visionSlice = createSlice({
       state.connection = "offline";
     },
 
-    /** Bắt đầu mở camera (mặc định) hoặc ảnh / video thử */
-    cameraStarting: (state, action: PayloadAction<FrameSource | undefined>) => {
-      state.camera.status = "starting";
-      state.camera.source = action.payload ?? "camera";
-      state.camera.media = null;
-      state.camera.stream = null;
-      state.camera.error = null;
-      state.camera.ended = false;
-    },
     /** Bắt đầu mở camera RTSP qua máy chủ (giữ địa chỉ khi lỗi để thử lại) */
     streamStarting: (state, action: PayloadAction<string>) => {
-      state.camera = { ...state.camera, status: "starting", source: "camera", media: null, stream: action.payload, error: null, ended: false };
+      state.camera = { status: "starting", stream: action.payload, error: null };
     },
-    cameraStarted: (
-      state,
-      action: PayloadAction<Pick<CameraState, "deviceId" | "facingMode"> & Partial<Pick<CameraState, "devices" | "stream">>
-        & { startedAt: number }>,
-    ) => {
-      const { startedAt, stream = null, ...info } = action.payload;
-      state.camera = { ...state.camera, ...info, status: "on", error: null, ended: false, source: "camera", media: null, stream };
+    cameraStarted: (state, action: PayloadAction<{ stream: string; startedAt: number }>) => {
+      const { startedAt, stream } = action.payload;
+      state.camera = { status: "on", error: null, stream };
       state.paused = false;
       state.sessionStartedAt ??= startedAt;
       resetLive(state);
     },
-    /** Ảnh đã sẵn sàng để gửi một lần, hoặc video đã sẵn sàng phát liên tục. */
-    mediaStarted: (state, action: PayloadAction<{ name: string; kind: MediaKind; startedAt: number }>) => {
-      const { startedAt, name, kind } = action.payload;
-      state.camera = { ...state.camera, status: "on", error: null, ended: false, source: "media", media: { name, kind }, stream: null };
-      state.paused = false;
-      state.sessionStartedAt ??= startedAt;
-      resetLive(state);
-    },
-    cameraStopped: (state, action: PayloadAction<{ ended: boolean }>) => {
+    cameraStopped: (state) => {
       state.camera.status = "off";
-      state.camera.ended = action.payload.ended;
       state.paused = false;
       resetLive(state);
     },
@@ -150,14 +116,13 @@ const visionSlice = createSlice({
     setPaused: (state, action: PayloadAction<boolean>) => {
       state.paused = action.payload;
       state.frameError = null;
-      state.fps = null;
-      state.lastResultAt = null;
+          state.lastResultAt = null;
     },
 
     /** Khung đã chụp (id tăng dần) → epic gửi lên máy chủ; tạm dừng / tắt camera huỷ các request đang chờ */
     analyzeFrameRequest: (
       state,
-      action: PayloadAction<{ id: number; image: Blob; options: FrameOptions; capturedAt: number; laserHint?: LaserPoint | null; singleImage?: boolean }>,
+      action: PayloadAction<{ id: number; image: Blob; options: FrameOptions; capturedAt: number; laserHint?: LaserPoint | null }>,
     ) => {
       state.lastRequestId = action.payload.id;
     },
@@ -175,11 +140,6 @@ const visionSlice = createSlice({
       const { id, result, tracking, laserTrack, at, capturedAt } = action.payload;
       state.lastFrameId = id;
       state.lastCaptureAt = capturedAt;
-      if (state.lastResultAt !== null && at > state.lastResultAt) {
-        const interval = at - state.lastResultAt;
-        // Average frame durations: bursty responses should not inflate the FPS counter.
-        state.fps = 1000 / (state.fps === null ? interval : (1000 / state.fps) * 0.8 + interval * 0.2);
-      }
       state.lastResultAt = at;
       state.result = result;
       state.tracking = tracking;
@@ -189,8 +149,7 @@ const visionSlice = createSlice({
     },
     analyzeFrameFailure: (state, action: PayloadAction<FrameError>) => {
       state.frameError = action.payload;
-      state.fps = null;
-      state.lastResultAt = null;
+          state.lastResultAt = null;
       state.frameSeq += 1;
     },
     /** Kết quả của khung cũ hơn khung đang hiển thị — chỉ đếm để vòng gửi tiếp tục */
