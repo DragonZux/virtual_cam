@@ -1,0 +1,29 @@
+# NVIDIA Jetson Orin / JetPack 6. Build with docker-compose.jetson.yml.
+# PyTorch wheels from the PC CUDA index do not contain Orin (sm_87) kernels.
+ARG JETSON_BASE_IMAGE=ultralytics/ultralytics:8.4.166-jetson-jetpack6
+FROM ${JETSON_BASE_IMAGE}
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+COPY requirements.txt .
+# Preserve the JetPack builds when resolving the application's dependencies.
+RUN python3 -c "from importlib.metadata import version; from pathlib import Path; Path('/tmp/jetson-constraints.txt').write_text(''.join(f'{p}=={version(p)}\n' for p in ('torch', 'torchvision', 'numpy')))" \
+    && python3 -m pip install --no-cache-dir -c /tmp/jetson-constraints.txt -r requirements.txt
+
+COPY backend/ .
+COPY docker/init_models.py /app/init_models.py
+COPY docker/prepare_laser_model.py /app/scripts/prepare_laser_model.py
+
+# The frontend containers serve the UI, including when reusing an older HICAS base.
+ENV MODEL_DIR=/models \
+    HTTPS_PORT=0 \
+    FRONTEND_DIST=/opt/hicas/frontend-dist \
+    VIEW3D_DIST=/opt/hicas/view3d-dist
+EXPOSE 8030
+HEALTHCHECK --interval=30s --timeout=5s --start-period=900s \
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8030/health', timeout=4)"
+ENTRYPOINT ["python3", "/app/init_models.py"]
+CMD ["--host", "0.0.0.0"]

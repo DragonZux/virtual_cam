@@ -41,6 +41,12 @@ Compose (project `hicas-cam`) dựng **3 image / container**, cùng một mạng
 - Lệnh khác: `docker compose down` (tắt), `docker compose logs -f backend` / `frontend` / `view3d` (xem log từng phần), `docker compose up -d --build frontend` (chỉ build lại giao diện).
 - Máy đã chạy bản một image cũ (project `virtual_cam`, container `virtual-cam`): chạy `docker compose -p virtual_cam down` **một lần** trước khi `docker compose up -d --build`, không thì container cũ vẫn giữ cổng 8033. Bản mới tạo chứng chỉ mới trong volume `hicas-certs` (mỗi trình duyệt chọn lại **Nâng cao › Tiếp tục**); dọn đồ cũ bằng `docker volume rm virtual-cam-certs` và `docker image rm virtual-cam:latest`.
 
+### Kết nối giữa các container
+
+Trình duyệt chỉ kết nối tới **một địa chỉ của frontend**. Ví dụ mở `https://10.0.9.41:8033` thì API tự dùng `https://10.0.9.41:8033/api` và WebSocket tự dùng `wss://10.0.9.41:8033/api/vision/ws`. nginx chuyển tiếp trong mạng Docker tới `backend:8030` và `view3d:80`. Không thay các tên service này hoặc `127.0.0.1` trong healthcheck bằng IP LAN. Healthcheck chỉ kiểm tra API sống; trạng thái nhận diện thật ở `/api/vision/status` phải là `ready`.
+
+Nếu build backend dừng ở `exporting layers` / `unpacking`, chờ Docker xuất và giải nén thư viện CUDA. `context canceled` nghĩa là build bị huỷ, không phải lỗi `/health`. Chạy lại `docker compose --progress plain build backend` sẽ dùng các lớp đã cache.
+
 ## Truy cập từ máy khác trong mạng nội bộ
 
 Dùng **IP của máy chạy Docker**, không phải IP của máy đang mở trình duyệt. Xem IPv4 của Wi-Fi / Ethernet bằng `ipconfig`. Ví dụ máy chủ có IP `10.0.9.41` thì mọi máy khách mở `https://10.0.9.41:8033`; trang mô hình là `/settings`, trang thử ảnh là `/test`. Chỉ dùng `https://10.0.10.62:8033` nếu máy chạy Docker thực sự có IP `10.0.10.62`.
@@ -59,22 +65,37 @@ Kiểm tra từ **máy khách** bằng `Test-NetConnection 10.0.9.41 -Port 8033`
 
 ### Máy chủ LAN `10.0.10.62`
 
-Máy chủ hiện tại là NVIDIA Jetson Orin (Linux ARM64), truy cập SSH bằng `hicas@10.0.10.62`. Dự án trên máy chủ nằm ở `/home/hicas/vu_nl/virtual_cam`; đây là bản chạy riêng với Docker Desktop trên máy Windows.
+Máy chủ là NVIDIA Jetson Orin (Linux ARM64, JetPack 6), truy cập SSH bằng `hicas@10.0.10.62`. Dự án trên máy chủ nằm ở `/home/hicas/vu_nl/virtual_cam`; đây là bản chạy riêng với Docker Desktop trên máy Windows. Máy này chạy **HTTP** (camera RTSP do backend đọc nên không cần HTTPS), ba cổng đặt trong `.env` (`WEB_PORT`, `BACKEND_PORT`, `VIEW3D_PORT`):
 
-- Camera: `https://10.0.10.62:8033/`
-- Quản lý mô hình: `https://10.0.10.62:8033/settings`
+- Giao diện: `http://10.0.10.62:8333/` (quản lý mô hình `/settings`, màn hình 3D cũng có ở `/view3d/`)
+- Backend: `http://10.0.10.62:8336/` — API ở `/api/...`, Swagger ở `/docs` (gốc `/` không có trang)
+- Màn hình 3D: `http://10.0.10.62:8339/`
 
-Cổng 8033 trên Jetson dùng HTTPS. Chứng chỉ có IP `10.0.10.62` và lưu trong volume `virtual-cam-certs`; mô hình vẫn lưu trong thư mục `models/` trên máy chủ.
+`docker-compose.override.yml` của máy (không commit, ghi trong `.git/info/exclude`) gộp cấu hình Jetson, mở cổng backend / view3d và thay cấu hình nginx bằng bản HTTP trong `.hicas-local/` (`nginx-frontend.conf`, `nginx-view3d.conf`).
 
-Bản triển khai HTTPS dùng lại image Jetson đang hoạt động để giữ các thư viện CUDA tương thích, bổ sung hỗ trợ TLS và giao diện đã build. Cấu hình Compose trên máy chủ trỏ tới bản triển khai tại `/home/hicas/vu_nl/virtual_cam-deployments/lan-https-20261001-085420`; thư mục này có Dockerfile, mã đóng gói, bản sao cấu hình cũ và `compose.rollback.yml`. Dockerfile ở gốc kho mã dành cho PC; quy trình cập nhật Jetson được ghi trong `DEPLOYMENT.md` trên máy chủ.
+**Jetson phải dùng `backend/Dockerfile.jetson`**. PyTorch CUDA dành cho PC có thể cài thành công, nhận tên GPU Orin, nhưng vẫn báo `no kernel image is available for execution on the device` vì thiếu kernel `sm_87`. Dockerfile Jetson giữ bộ torch / torchvision / numpy tương thích JetPack từ image nền. Engine TensorRT cần được tạo trên máy đích.
 
-Xem trạng thái trên máy chủ:
+Thiết lập lần đầu trên một máy Jetson mới:
+
+```bash
+cp docker-compose.jetson.yml docker-compose.override.yml
+# Đặt WEB_PORT và CERT_HOSTS trong .env cho máy chủ này.
+docker compose up -d --build
+```
+
+Image nền mặc định là `ultralytics/ultralytics:8.4.166-jetson-jetpack6`. Máy `10.0.10.62` có thể đặt `JETSON_BASE_IMAGE=virtual-cam:lan-https-20261001-085420` trong `.env` để tái sử dụng bộ thư viện đã kiểm tra CUDA trên máy này. Không chuyển image PC từ Windows sang Jetson.
+
+Cập nhật / kiểm tra trên máy chủ đã có override:
 
 ```bash
 cd /home/hicas/vu_nl/virtual_cam
+docker compose up -d --build
 docker compose ps
-docker compose logs --tail 60 virtual-cam
+docker compose logs --tail 60 backend
+curl http://localhost:8336/api/vision/status
 ```
+
+Không ghi đè `docker-compose.override.yml` của máy này bằng `docker-compose.jetson.yml` (sẽ mất ba cổng HTTP). Bản sao cấu hình trước khi chuyển sang HTTP nằm ở `/home/hicas/vu_nl/virtual_cam-deployments/http-20261002`.
 
 ## Tính năng
 

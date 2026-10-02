@@ -4,6 +4,8 @@ __pycache__/
 .pytest_cache/
 .cam/
 .env
+# Host-specific Docker settings (e.g. the Jetson override).
+docker-compose.override.yml
 backend/data/*
 !backend/data/.gitkeep
 frontend/tsconfig.tsbuildinfo
