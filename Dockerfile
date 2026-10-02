@@ -1,4 +1,4 @@
-# Virtual Cam — một image: giao diện React (build sẵn) + API FastAPI + YOLO trên GPU NVIDIA (PC x86_64).
+# HICAS — một image: giao diện React (build sẵn) + API FastAPI + YOLO trên GPU NVIDIA (PC x86_64).
 # Chạy ở thư mục gốc: docker compose up -d --build   (xem docker-compose.yml)
 # backend/serve.py phục vụ cả web lẫn API trên cổng HTTP :8030; compose chỉ mở cổng này cho chính máy host.
 

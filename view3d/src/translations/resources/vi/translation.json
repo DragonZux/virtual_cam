@@ -1,9 +1,9 @@
 {
   "app": {
-    "title": "Virtual Cam 3D",
+    "title": "HICAS 3D",
     "tagline": "MÀN HÌNH 3D",
-    "documentTitle": "Màn hình 3D · Virtual Cam",
-    "objectTitle": "{{name}} · Màn hình 3D"
+    "documentTitle": "Màn hình 3D · HICAS 3D",
+    "objectTitle": "{{name}} · HICAS 3D"
   },
   "connection": {
     "connecting": "Đang kết nối…",
@@ -22,7 +22,7 @@
       "none": "ĐANG CHỜ"
     },
     "none": "Chưa có vật thể",
-    "noneHint": "Trên trang camera Virtual Cam, chỉ tay hoặc chiếu laser vào vật thể và giữ để xác nhận — mô hình 3D của vật thể sẽ hiện ở đây.",
+    "noneHint": "Trên trang camera HICAS, chiếu laser vào vật thể và giữ để xác nhận — mô hình 3D của vật thể sẽ hiện ở đây.",
     "lastHint": "Camera đã bỏ chọn; màn hình giữ vật thể vừa chọn.",
     "previewHint": "Đang xem thử. Lần chọn mới trên camera sẽ đưa màn hình về trực tiếp.",
     "confidence": "Độ tin cậy",

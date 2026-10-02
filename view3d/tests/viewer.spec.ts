@@ -60,7 +60,7 @@ test("shows the 3D model of each object confirmed on the camera page", async ({ 
   await expect(heading(page)).toHaveText("Chai");
   await expect(page.getByText("ĐANG CHỌN", { exact: true })).toBeVisible();
   await expect(page.getByText("94%")).toBeVisible();
-  await expect(page).toHaveTitle("Chai · Màn hình 3D");
+  await expect(page).toHaveTitle("Chai · HICAS 3D");
 
   server.select("cam-a", "cup", 0.889, { pointer_mode: "laser" });
   await expect(viewer(page)).toHaveAttribute("data-model", "cup");

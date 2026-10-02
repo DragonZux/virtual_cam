@@ -1,4 +1,4 @@
-# Virtual Cam bằng Docker trên PC có GPU NVIDIA — một container, chạy ở thư mục gốc:
+# HICAS bằng Docker trên PC có GPU NVIDIA — một container, chạy ở thư mục gốc:
 #   docker compose up -d --build
 #   https://localhost:8033  hoặc  https://<IP máy>:8033 từ máy khác trong mạng
 #   https://<IP máy>:8033/view3d/  màn hình 3D (app riêng: hiện mô hình 3D của vật thể đang chọn)
@@ -6,16 +6,16 @@
 # Cần NVIDIA driver ≥ 570 + Docker Desktop có WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
 # Tuỳ chọn trong .env ở thư mục gốc (xem .env.example): WEB_PORT, YOLO_MODEL, IMAGE_SIZE…
 # Lần chạy đầu container tự tải model còn thiếu vào models/ (docker/init_models.py).
-name: virtual_cam
+name: hicas
 services:
-  virtual-cam:
+  hicas:
     build:
       context: .
       dockerfile: Dockerfile
       args:
         - TORCH_INDEX=${TORCH_INDEX:-cu128}
-    image: virtual-cam:latest
-    container_name: virtual-cam
+    image: hicas:latest
+    container_name: hicas
     environment:
       # Model YOLO (file trong models/) và cạnh ảnh đưa vào YOLO (640 chính xác nhất; 480 / 320 nhanh hơn)
       YOLO_MODEL: ${YOLO_MODEL:-yolo26m-seg.pt}
@@ -48,4 +48,4 @@ services:
 
 volumes:
   certs:
-    name: virtual-cam-certs
+    name: hicas-certs

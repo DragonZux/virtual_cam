@@ -1,9 +1,9 @@
 {
   "app": {
-    "title": "Virtual Cam 3D",
+    "title": "HICAS 3D",
     "tagline": "3D VIEW",
-    "documentTitle": "3D view · Virtual Cam",
-    "objectTitle": "{{name}} · 3D view"
+    "documentTitle": "3D view · HICAS 3D",
+    "objectTitle": "{{name}} · HICAS 3D"
   },
   "connection": {
     "connecting": "Connecting…",
@@ -22,7 +22,7 @@
       "none": "WAITING"
     },
     "none": "No object yet",
-    "noneHint": "On the Virtual Cam camera page, point your finger or the laser at an object and hold to confirm — its 3D model appears here.",
+    "noneHint": "On the HICAS camera page, aim the laser at an object and hold to confirm — its 3D model appears here.",
     "lastHint": "The camera cleared its selection; showing the last selected object.",
     "previewHint": "Preview mode. The next selection on the camera brings the screen back to live.",
     "confidence": "Confidence",

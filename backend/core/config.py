@@ -11,7 +11,7 @@ PROJECT_ROOT = BACKEND_DIR.parent
 class Settings(BaseSettings):
     """Cấu hình đọc từ biến môi trường / file .env (xem .env.example)."""
 
-    API_TITLE: str = "Virtual Cam API"
+    API_TITLE: str = "HICAS API"
     API_VERSION: str = "1.0.0"
     LOG_LEVEL: str = "INFO"
 

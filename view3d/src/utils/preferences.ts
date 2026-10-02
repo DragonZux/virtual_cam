@@ -1,7 +1,9 @@
 import { DEFAULT_PREFERENCES } from "@/common/constants";
 import type { ViewerPreferences } from "@/common/types";
 
-const STORAGE_KEY = "virtualcam.view3d.preferences";
+const STORAGE_KEY = "hicas3d.preferences";
+/** Khoá trước khi đổi tên dự án: vẫn đọc để không mất cài đặt cũ */
+const LEGACY_KEY = "virtualcam.view3d.preferences";
 
 const boolOr = (value: unknown, fallback: boolean): boolean => (typeof value === "boolean" ? value : fallback);
 
@@ -19,7 +21,7 @@ export const sanitizePreferences = (raw: unknown): ViewerPreferences => {
 
 export const loadPreferences = (): ViewerPreferences => {
   try {
-    return sanitizePreferences(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null"));
+    return sanitizePreferences(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_KEY) ?? "null"));
   } catch {
     return { ...DEFAULT_PREFERENCES };
   }

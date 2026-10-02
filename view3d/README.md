@@ -1,6 +1,6 @@
-# Virtual Cam 3D — màn hình 3D
+# HICAS 3D — màn hình 3D
 
-App frontend **riêng** (không nằm trong giao diện camera): nghe WebSocket `/api/vision/ws` của Virtual Cam, vật thể nào được **xác nhận** trên trang camera (chỉ tay / laser, giữ để xác nhận) thì hiện **mô hình 3D** của vật đó trên bệ xoay. Chỉ đọc kết quả: không mở camera, không gửi gì lên máy chủ. Dùng làm màn hình thứ hai (tivi, máy chiếu, máy khác trong mạng).
+App frontend **riêng** (không nằm trong giao diện camera): nghe WebSocket `/api/vision/ws` của HICAS, vật thể nào được **xác nhận** trên trang camera (chỉ tay / laser, giữ để xác nhận) thì hiện **mô hình 3D** của vật đó trên bệ xoay. Chỉ đọc kết quả: không mở camera, không gửi gì lên máy chủ. Dùng làm màn hình thứ hai (tivi, máy chiếu, máy khác trong mạng).
 
 ```
 Trình duyệt camera ──/api/vision/ws/publish──► backend (SelectionHub) ──/api/vision/ws──► view3d
@@ -10,7 +10,7 @@ Trình duyệt camera ──/api/vision/ws/publish──► backend (SelectionHu
 
 | Cách | Địa chỉ | Ghi chú |
 |---|---|---|
-| Docker (cùng image Virtual Cam) | `https://<IP máy>:8033/view3d/` | Backend phục vụ bản build ở `/view3d/`, cùng cổng HTTPS 8033, không mở cổng mới |
+| Docker (cùng image HICAS) | `https://<IP máy>:8033/view3d/` | Backend phục vụ bản build ở `/view3d/`, cùng cổng HTTPS 8033, không mở cổng mới |
 | Phát triển | `http://localhost:5183` | `npm install` rồi `npm run dev` |
 | Bản build | `http://localhost:5184` | `npm run build && npm run preview` |
 
