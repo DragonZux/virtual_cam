@@ -67,6 +67,13 @@ class ModelStore:
         temporary.write_text(json.dumps(active, ensure_ascii=False, indent=2), encoding="utf-8")
         temporary.replace(self.state_file)
 
+    def engine_path(self, kind: str, source: Path) -> Path:
+        """Engine FP16 build từ `source`: cạnh các mô hình tải lên cùng loại, không ghi đè engine đã có."""
+        folder = self.folder / kind
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / f"{source.stem}-fp16.engine"
+        return target if not target.exists() else folder / f"{source.stem}-fp16-{uuid4().hex[:6]}.engine"
+
     def upload_path(self, kind: str, name: str) -> Path:
         suffix = Path(name).suffix.lower()
         allowed = (".pt", ".engine") if kind == "segmentation" else (".pt", ".torchscript", ".engine")

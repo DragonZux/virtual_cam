@@ -26,6 +26,7 @@ from models import (
 from services.laser_model import LaserModel, YoloLaserModel, LaserUnavailable
 from services.engine_metadata import engine_header
 from services.tensorrt_laser import TensorRTLaserModel
+from services.model_converter import CONVERTIBLE, ModelConverter
 from services.model_store import ModelStore
 from services.pointing import index_tip, object_at_point, object_at_laser
 
@@ -117,6 +118,8 @@ class Detector:
         self._loader: threading.Thread | None = None
         # Bàn tay chạy CPU song song với YOLO trên GPU: giảm ~35% độ trễ mỗi khung so với chạy lần lượt
         self._hand_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hand")
+        # Chuyển .pt / .torchscript sang TensorRT FP16 ở tiến trình con, xong thì tự chọn engine
+        self.converter = ModelConverter(self)
 
     @property
     def phase(self) -> DetectorPhase:
@@ -349,8 +352,19 @@ class Detector:
     def model_infos(self) -> list[dict[str, Any]]:
         return [{"id": model_id, "name": path.name, "kind": kind,
                  "size_bytes": path.stat().st_size if path.is_file() else 0,
-                 "available": path.is_file(), "active": self._active[kind] == model_id}
+                 "available": path.is_file(), "active": self._active[kind] == model_id,
+                 "convertible": path.is_file() and path.suffix.lower() in CONVERTIBLE}
                 for model_id, (kind, path) in self.model_store.catalog().items()]
+
+    def engine_unavailable(self) -> str | None:
+        """Lý do máy này chưa build / chạy được TensorRT; None = được."""
+        if not self.ready.is_set():
+            return "Bộ nhận diện đang khởi động."
+        try:
+            self._require_engine_gpu()
+        except Exception as exc:
+            return str(exc)
+        return None
 
     def _require_engine_gpu(self) -> None:
         if not self._gpu:
@@ -426,8 +440,10 @@ class Detector:
             self.model_busy = False
             self._management_lock.release()
 
-    def activate_model(self, model_id: str) -> dict[str, Any]:
-        if not self._management_lock.acquire(blocking=False):
+    def activate_model(self, model_id: str, wait: float = 0) -> dict[str, Any]:
+        """wait > 0: chờ lượt nạp mô hình khác xong (engine vừa build) thay vì báo bận ngay."""
+        acquired = self._management_lock.acquire(timeout=wait) if wait > 0 else self._management_lock.acquire(blocking=False)
+        if not acquired:
             raise DetectorBusy
         self.model_busy = True
         try:
@@ -459,6 +475,7 @@ class Detector:
             self._management_lock.release()
 
     def close(self) -> None:
+        self.converter.close()
         if self._loader:
             self._loader.join(timeout=15)
         with self.lock:

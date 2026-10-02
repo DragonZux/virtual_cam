@@ -11,6 +11,9 @@ ultralytics>=8.4.162   # YOLO26 + tham so quantize (thay half)
 # TensorRT for NVIDIA GPU on Windows/Linux x86_64. Jetson: use the runtime from JetPack.
 # Engines must be built for the deployment OS, GPU and TensorRT version.
 tensorrt-cu12==11.3.0.99; (platform_machine == "AMD64" or platform_machine == "x86_64") and (sys_platform == "win32" or sys_platform == "linux")
+# Chuyen .pt / .torchscript sang TensorRT FP16 ngay tren may chu (Cai dat > Mo hinh): ONNX + ModelOpt AutoCast
+# (TensorRT 11 bo co FP16 cua builder). Cai san de container khong tu pip install luc dang chay.
+nvidia-modelopt[onnx]>=0.44; (platform_machine == "AMD64" or platform_machine == "x86_64") and (sys_platform == "win32" or sys_platform == "linux")
 pillow
 
 # Xuat model laser ADVR mot lan (docker/prepare_laser_model.py).
