@@ -191,9 +191,12 @@ cd backend
 ..\.cam\Scripts\python.exe -m pytest -m model     # YOLO + MediaPipe thật
 
 cd frontend
-npm run dev                  # http://localhost:5180 (proxy /api → :8030)
+npm run dev                  # http://localhost:5180 (proxy /api → backend BACKEND_HOST:BACKEND_PORT, mặc định 127.0.0.1:8030)
+npm run build && npm run preview   # bản build: http://localhost:5182 (cùng proxy /api → backend)
 npm run lint && npx tsc -b && npm run build
 ```
+
+Đổi backend nhận diện cho frontend: sao chép `frontend/.env.example` thành `frontend/.env` rồi đặt `BACKEND_HOST` (IP), `BACKEND_PORT`, `BACKEND_PROTOCOL` (`http` / `https`), ví dụ `BACKEND_HOST=10.0.9.81` + `BACKEND_PORT=8030`; backend Docker / Jetson thì `BACKEND_PROTOCOL=https`, `BACKEND_PORT=8033` (proxy chấp nhận chứng chỉ tự ký, có cả WebSocket). Có thể truyền thẳng khi chạy, ưu tiên hơn `.env`: `$env:BACKEND_HOST="10.0.9.82"; npm run preview`. Proxy chạy ở dev / preview server nên đổi IP chỉ cần chạy lại `npm run dev` / `npm run preview`, không phải build lại. `VITE_API_URL` chỉ dùng khi trình duyệt phải gọi thẳng backend khác origin; khi đó backend cần thêm origin của web vào `CORS_ORIGINS`.
 
 ## Cổng
 
@@ -202,3 +205,4 @@ npm run lint && npx tsc -b && npm run build
 | 8030 | Backend khi phát triển (uvicorn) |
 | 8033 | Docker, HTTPS (map vào 8031 trong container) |
 | 5180 | Vite dev |
+| 5182 | `npm run preview` (bản build, proxy /api → backend `BACKEND_HOST`) |
