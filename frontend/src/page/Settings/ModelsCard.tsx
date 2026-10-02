@@ -24,7 +24,7 @@ export const ModelsCard = () => {
       <Segmented<ModelKind> value={kind} onChange={setKind} options={[
         { value: "segmentation", label: t("models.segmentation") }, { value: "laser", label: t("models.laser") },
       ]} />
-      <Upload accept={kind === "segmentation" ? ".pt" : ".pt,.torchscript"} showUploadList={false} disabled={disabled}
+      <Upload accept={kind === "segmentation" ? ".pt,.engine" : ".pt,.torchscript,.engine"} showUploadList={false} disabled={disabled}
         beforeUpload={(file) => {
           if (catalog && file.size > catalog.max_bytes) notify.error(t("models.tooLarge", { size: catalog.max_bytes / 1024 / 1024 }));
           else dispatch(modelActions.uploadRequest({ kind, file }));
