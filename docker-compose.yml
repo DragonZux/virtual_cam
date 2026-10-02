@@ -1,6 +1,7 @@
 # Virtual Cam bằng Docker trên PC có GPU NVIDIA — một container, chạy ở thư mục gốc:
 #   docker compose up -d --build
 #   https://localhost:8033  hoặc  https://<IP máy>:8033 từ máy khác trong mạng
+#   https://<IP máy>:8033/view3d/  màn hình 3D (app riêng: hiện mô hình 3D của vật thể đang chọn)
 #   (chứng chỉ tự ký: lần đầu chọn Nâng cao › Tiếp tục; camera của trình duyệt cần HTTPS khi không phải localhost)
 # Cần NVIDIA driver ≥ 570 + Docker Desktop có WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
 # Tuỳ chọn trong .env ở thư mục gốc (xem .env.example): WEB_PORT, YOLO_MODEL, IMAGE_SIZE…

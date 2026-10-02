@@ -55,6 +55,8 @@ class Settings(BaseSettings):
 
     # Bản build React (npm run build) — backend phục vụ luôn để chạy một cổng; không có thì chỉ chạy API
     FRONTEND_DIST: Path = PROJECT_ROOT / "frontend" / "dist"
+    # Màn hình 3D (app riêng trong view3d/, chỉ đọc WebSocket /api/vision/ws) — phục vụ ở /view3d/ nếu đã build
+    VIEW3D_DIST: Path = PROJECT_ROOT / "view3d" / "dist"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
