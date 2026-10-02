@@ -1,27 +1,8 @@
-# HICAS — một image: giao diện React (build sẵn) + API FastAPI + YOLO trên GPU NVIDIA (PC x86_64).
-# Chạy ở thư mục gốc: docker compose up -d --build   (xem docker-compose.yml)
-# backend/serve.py phục vụ cả web lẫn API trên cổng HTTP :8030; compose chỉ mở cổng này cho chính máy host.
-
-# ---- 1. Build giao diện React ----
-FROM node:20-alpine AS web
-WORKDIR /web
-COPY frontend/package*.json ./
-RUN npm ci --no-audit --no-fund
-COPY frontend/ ./
-RUN npm run build
-
-# ---- 1b. Build màn hình 3D (app riêng trong view3d/, backend phục vụ ở /view3d/) ----
-FROM node:20-alpine AS view3d
-WORKDIR /view3d
-COPY view3d/package*.json ./
-RUN npm ci --no-audit --no-fund
-COPY view3d/ ./
-RUN npm run build
-
-# ---- 2. Backend Python + PyTorch CUDA ----
+# HICAS backend — API FastAPI + YOLO / laser / TensorRT trên GPU NVIDIA (PC x86_64). Không mở cổng ra ngoài:
+# container frontend (nginx) chuyển /api sang đây trong mạng Docker.
+# Build từ thư mục gốc (cần requirements.txt và docker/): docker-compose.yml đặt context ".", dockerfile backend/Dockerfile.
 FROM python:3.11-slim
-# FROM ultralytics/ultralytics:8.4.166-jetson-jetpack6
-# Log ra ngay (không thì `docker logs` hiện trễ / sai thứ tự)
+# Log ra ngay (không thì docker logs hiện trễ / sai thứ tự)
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -45,16 +26,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 COPY backend/ .
 COPY docker/init_models.py /app/init_models.py
 COPY docker/prepare_laser_model.py /app/scripts/prepare_laser_model.py
-COPY --from=web /web/dist /app/frontend/dist
-COPY --from=view3d /view3d/dist /app/view3d/dist
 
-# Thư mục models/ mount vào /models (xem docker-compose.yml)
+# models/ mount vào /models; chỉ HTTP 8030 trong mạng Docker (HTTPS do container frontend lo)
 ENV MODEL_DIR=/models \
-    FRONTEND_DIST=/app/frontend/dist \
-    VIEW3D_DIST=/app/view3d/dist \
-    HTTPS_PORT=8031
-# 8031 HTTPS tự ký — cổng duy nhất compose map ra ngoài; 8030 HTTP chỉ cho healthcheck trong container
-EXPOSE 8030 8031
+    HTTPS_PORT=0
+EXPOSE 8030
 # start-period dài: lần chạy đầu tải model và xuất model laser (vài phút)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=900s \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8030/health', timeout=4)"

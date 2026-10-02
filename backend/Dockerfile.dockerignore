@@ -1,28 +1,11 @@
-.git
-.cam
-.env
-**/node_modules
-**/__pycache__
-**/.pytest_cache
-frontend/dist
-frontend/tsconfig.tsbuildinfo
-frontend/test-results
-frontend/playwright-report
-view3d/dist
-view3d/.env
-view3d/test-results
-view3d/playwright-report
+# Ngữ cảnh build của backend là thư mục gốc (cần requirements.txt và docker/): chỉ gửi những gì image cần
+*
+!requirements.txt
+!backend/
+!docker/init_models.py
+!docker/prepare_laser_model.py
 backend/data
 backend/tests
 backend/.env
-# Model mount lúc chạy, không đóng vào image
-models
-*.pt
-*.task
-# Tài liệu và file Docker không thuộc image web (trừ 2 script image cần)
-docker/*
-!docker/init_models.py
-!docker/prepare_laser_model.py
-Dockerfile
-docker-compose.yml
-*.md
+**/__pycache__
+**/.pytest_cache

@@ -14,8 +14,16 @@ Mọi tính toán AI chạy ở backend; trình duyệt chỉ chụp khung, gử
 
 ```bash
 docker compose up -d --build
-docker compose logs -f        # chờ dòng "Detector ready"
+docker compose logs -f backend   # chờ dòng "Detector ready"
 ```
+
+Compose (project `hicas-cam`) dựng **3 image / container**, cùng một mạng Docker:
+
+| Image / container | Nội dung | Cổng |
+|---|---|---|
+| `hicas-cam-backend` | FastAPI + mô hình AI (YOLO, laser, TensorRT) trên GPU, đọc camera RTSP, gửi socket TCP (`backend/Dockerfile`) | 8030 chỉ trong mạng Docker |
+| `hicas-cam-frontend` | nginx: giao diện hicascam, HTTPS tự ký, chuyển `/api` (cả WebSocket) sang backend và `/view3d/` sang view3d (cấu hình nginx viết trong `frontend/Dockerfile`) | **8033** (`WEB_PORT`) → 8443 |
+| `hicas-cam-view3d` | nginx (cấu hình mặc định): màn hình 3D hicas3d ở `/view3d/` (`view3d/Dockerfile`) | 80 chỉ trong mạng Docker |
 
 | Địa chỉ | Dùng cho |
 |---|---|
@@ -25,13 +33,13 @@ docker compose logs -f        # chờ dòng "Detector ready"
 | https://localhost:8033/docs | Tài liệu API (Swagger) |
 
 - Cần NVIDIA driver ≥ 570 + Docker Desktop bật WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
-- Lần chạy đầu container tự tải model còn thiếu vào `models/` và xuất model laser đỏ (vài phút, cần internet).
+- Lần chạy đầu backend tự tải model còn thiếu vào `models/` và xuất model laser đỏ (vài phút, cần internet). Giao diện mở được ngay, hiện "Đang khởi động" tới khi backend sẵn sàng.
 - Tuỳ chọn: sao chép `.env.example` thành `.env` ở thư mục gốc để đổi cổng `WEB_PORT`, `YOLO_MODEL`, `IMAGE_SIZE`… Không có `.env` vẫn chạy với mặc định.
-- Một cổng duy nhất **8033** (`WEB_PORT`), chỉ HTTPS (gõ `https://`, không phải `http://`), mở trên mọi IP của máy host — trình duyệt chỉ cho mở camera ở `localhost` hoặc `https://`. Chứng chỉ tự ký, tạo lần đầu và giữ trong volume `hicas-certs`; mỗi trình duyệt chọn **Nâng cao › Tiếp tục** một lần.
+- Một cổng duy nhất **8033** (`WEB_PORT`), chỉ HTTPS (gõ `https://`, không phải `http://`), mở trên mọi IP của máy host. Chứng chỉ tự ký do container frontend tạo lần đầu (thêm IP / tên máy bằng `CERT_HOSTS` trong `.env`, đổi là tự tạo lại) và giữ trong volume `hicas-certs`; mỗi trình duyệt chọn **Nâng cao › Tiếp tục** một lần.
 - Máy khác không vào được: xem hướng dẫn mạng nội bộ bên dưới.
-- Image ~13 GB (thư viện CUDA): xem ổ chứa dữ liệu Docker còn ≥ 20 GB trước khi build.
-- Lệnh khác: `docker compose down` (tắt), `docker compose logs -f` (xem log).
-- Máy đã chạy bản tên cũ (project `virtual_cam`, container `virtual-cam`): chạy `docker compose -p virtual_cam down` **một lần** trước khi `docker compose up -d --build`, không thì container cũ vẫn giữ cổng 8033. Bản mới tạo chứng chỉ mới trong volume `hicas-certs` (mỗi trình duyệt chọn lại **Nâng cao › Tiếp tục**); volume cũ xoá bằng `docker volume rm virtual-cam-certs`.
+- Image backend ~16 GB (thư viện CUDA, TensorRT 6 GB để chuyển mô hình ngay trong container); frontend / view3d chỉ vài chục MB. Xem ổ chứa dữ liệu Docker còn ≥ 25 GB trước khi build.
+- Lệnh khác: `docker compose down` (tắt), `docker compose logs -f backend` / `frontend` / `view3d` (xem log từng phần), `docker compose up -d --build frontend` (chỉ build lại giao diện).
+- Máy đã chạy bản một image cũ (project `virtual_cam`, container `virtual-cam`): chạy `docker compose -p virtual_cam down` **một lần** trước khi `docker compose up -d --build`, không thì container cũ vẫn giữ cổng 8033. Bản mới tạo chứng chỉ mới trong volume `hicas-certs` (mỗi trình duyệt chọn lại **Nâng cao › Tiếp tục**); dọn đồ cũ bằng `docker volume rm virtual-cam-certs` và `docker image rm virtual-cam:latest`.
 
 ## Truy cập từ máy khác trong mạng nội bộ
 
@@ -214,18 +222,20 @@ Mở `http://localhost:8030`, chọn hai engine trong Cài đặt rồi thử ca
 
 ```
 virtual_cam/
-├── backend/            FastAPI: nhận khung JPEG → đầu ngón trỏ / chấm laser đỏ + vật thể được chỉ; phục vụ luôn frontend/dist
-├── frontend/           React 19 + TypeScript + Vite + Ant Design + Redux Toolkit / redux-observable
-├── view3d/             App riêng: màn hình 3D nghe /api/vision/ws, hiện mô hình 3D của vật thể đang chọn (three.js)
+├── backend/            FastAPI: nhận khung JPEG → chấm laser đỏ + vật thể được chỉ; khi chạy không Docker phục vụ luôn frontend/dist
+│                       Dockerfile (+ Dockerfile.dockerignore) — image backend, build từ thư mục gốc
+├── frontend/           Giao diện hicascam: React 19 + TypeScript + Vite + Ant Design + Redux Toolkit / redux-observable
+│                       Dockerfile (kèm cấu hình nginx), docker/40-hicas-cert.sh — image nginx HTTPS
+├── view3d/             Màn hình 3D hicas3d: nghe /api/vision/ws, hiện mô hình 3D của vật thể đang chọn (three.js); Dockerfile
 ├── models/             hand_landmarker.task, yolo26*-seg.pt, laser-advr-yolov5l6.torchscript — không commit
-├── docker/             init_models.py (tải model còn thiếu khi container chạy), prepare_laser_model.py (xuất model laser đỏ)
-├── Dockerfile, docker-compose.yml, .dockerignore   Docker cho PC có GPU NVIDIA
+├── docker/             init_models.py (tải model còn thiếu khi backend chạy), prepare_laser_model.py (xuất model laser đỏ)
+├── docker-compose.yml  3 service backend / frontend / view3d cho PC có GPU NVIDIA
 └── requirements.txt    mọi thư viện Python (web, test)
 ```
 
 Backend: `main.py` → `routers/vision.py` → `services/detector.py` (khoá một khung một lúc; laser đỏ chạy GPU lần lượt với YOLO; bàn tay chỉ khi API gọi `pointer_mode=hand`) → `services/pointing.py` (ngón tay: bỏ vật mà đầu ngón nằm ngoài mép quá `tolerance`, còn lại chọn vật đầu ngón nằm sâu nhất, bằng nhau thì vật nhỏ hơn; laser: mask nhỏ nhất chứa chấm). `core/spa.py` phục vụ `frontend/dist`; `serve.py` chạy web + API trên một cổng HTTP.
 
-Frontend: `Services/VisionService.ts` → `store/{vision,setting,model}` → `page/{Live,Settings}`. Luồng khung: `useFrameLoop` chụp và nén JPEG 1280px → `visionEpics` gọi API → `utils/laserTrack.ts` (bám chấm laser, gửi `laser_hint`) → `utils/tracking.ts` (giữ để xác nhận). Nguồn hình: `useCamera` (webcam, hoặc RTSP qua `Services/CameraService.ts`). `useOverlay` vẽ kết quả, nội suy mượt bằng `utils/smoothing.ts`.
+Frontend: `Services/VisionService.ts` → `store/{vision,setting,model}` → `page/{Live,Settings}`. Luồng khung: `useFrameLoop` chụp và nén JPEG 1280px → `visionEpics` gọi API → `utils/laserTrack.ts` (bám chấm laser, gửi `laser_hint`) → `utils/tracking.ts` (giữ để xác nhận). Nguồn hình: `useCamera` (camera RTSP qua `Services/CameraService.ts`). `useOverlay` vẽ kết quả, nội suy mượt bằng `utils/smoothing.ts`.
 
 ## Phát triển & kiểm thử
 
