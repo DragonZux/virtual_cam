@@ -169,6 +169,28 @@ App frontend riêng, không chung với giao diện camera: nghe `/api/vision/ws
 
 Nguồn: [Davide Torielli / IIT — trọng số ADVR trên Zenodo](https://zenodo.org/records/10471835), CC BY 4.0; [mã nguồn nhóm tác giả](https://github.com/ADVRHumanoids/nn_laser_spot_tracking). Trọng số gốc `yolov5l6_e200_b8_tvt302010_laser_v5.pt`, MD5 `21b8e90b7707cb91054547c6558301e3`. Chuyển định dạng dùng [YOLOv5 v7.0](https://github.com/ultralytics/yolov5/tree/v7.0), GPL-3.0.
 
+## Chạy model TensorRT
+
+Backend hỗ trợ model vật thể Ultralytics segmentation `.engine`, laser Ultralytics detect một lớp `.engine`, và engine ADVR YOLOv5 có đầu vào cố định `[1, 3, H, W]`, đầu ra đã giải mã `[1, N, 6]` (`xywh`, objectness, class score). FE vẫn gửi JPEG và nhận cùng cấu trúc JSON.
+
+- Chép `yolo26m-seg.engine` và `laser-advr-yolov5l6.engine` vào `models/`, mở **Cài đặt → Quản lý mô hình AI** và chọn từng engine. Có thể upload `.engine` với loại model tương ứng; engine được nạp thử trước khi lưu. Lựa chọn lưu ở `models/custom/active.json` và được ưu tiên hơn tên model mặc định trong `.env`.
+- Engine segmentation cần metadata do Ultralytics export tạo ra (`task=segment`, tên lớp). Engine ADVR thuần đặt ở thư mục gốc cần tên bắt đầu bằng `laser-advr-`; tên khác thì upload dưới loại **Laser**. Đầu vào/đầu ra ADVR phải ở dạng float16 hoặc float32 và bộ nhớ tuyến tính.
+- Engine ADVR cố định chạy **toàn ảnh**: resize giữ tỷ lệ và thêm viền đến đúng kích thước engine, sau đó quy đổi vị trí chấm về ảnh gốc. Engine `1280×1280` không chạy được nhánh crop `384×384`; `LASER_CROP_SIZE` chỉ áp dụng cho TorchScript. `laser_hint` vẫn ưu tiên ứng viên gần vị trí trước đó.
+- Cần GPU NVIDIA CUDA và runtime TensorRT tương thích engine. `requirements.txt` cài TensorRT CUDA 12 bản 11.3 trên Windows/Linux x86_64; Jetson dùng runtime tương ứng JetPack. Engine của Windows không dùng trực tiếp cho Docker Linux/Jetson: build lại trên môi trường đích. Model `.pt` và `.torchscript` vẫn có thể chọn lại trong giao diện.
+- Container không tự tải hoặc xuất engine bị thiếu. Phải cung cấp engine đúng cho máy đó trước khi cấu hình `YOLO_MODEL` / `LASER_MODEL` trỏ tới `.engine`.
+
+Thử trực tiếp trên Windows bằng Python đã có PyTorch CUDA và TensorRT (kiểm tra `torch.cuda.is_available()` trả `True`):
+
+```powershell
+.\.cam\Scripts\python.exe -c "import torch, tensorrt; print(torch.cuda.is_available(), tensorrt.__version__)"
+cd frontend
+npm run build
+cd ..
+.\.cam\Scripts\python.exe backend/serve.py --host 127.0.0.1 --port 8030 --https-port 0
+```
+
+Mở `http://localhost:8030`, chọn hai engine trong Cài đặt rồi thử camera hoặc ảnh ở `/test`. Nếu `.cam` đang cài PyTorch CPU thì dùng Python có CUDA hoặc cài PyTorch CUDA vào môi trường đó. So sánh `yolo26m-seg.engine` với chính `yolo26m-seg.pt` trên cùng ảnh, không so với bản `n` để kết luận mức tăng tốc TensorRT.
+
 ## Cấu trúc
 
 ```
