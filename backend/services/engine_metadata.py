@@ -1,6 +1,7 @@
-"""Read Ultralytics' optional engine header without importing CUDA or TensorRT."""
+"""Read model metadata (Ultralytics engine header, TorchScript extra files) without importing CUDA or TensorRT."""
 import json
 from pathlib import Path
+import zipfile
 
 
 def engine_header(path: Path) -> tuple[int, dict]:
@@ -32,3 +33,19 @@ def engine_kind(path: Path) -> str | None:
     if not metadata and path.stem.lower().startswith("laser-advr-"):
         return "laser"
     return None
+
+
+def torchscript_metadata(path: Path) -> dict:
+    """Ultralytics TorchScript export: metadata JSON in extra/config.txt. ADVR laser uses config.json → {}."""
+    try:
+        with zipfile.ZipFile(path) as archive:
+            name = next((n for n in archive.namelist() if n.endswith("/extra/config.txt")), None)
+            metadata = json.loads(archive.read(name)) if name else {}
+    except (OSError, ValueError, zipfile.BadZipFile, KeyError):
+        return {}
+    return metadata if isinstance(metadata, dict) and metadata.get("task") else {}
+
+
+def torchscript_kind(path: Path) -> str:
+    """Ultralytics segmentation TorchScript → segmentation; everything else (ADVR) stays a laser model."""
+    return "segmentation" if torchscript_metadata(path).get("task") == "segment" else "laser"

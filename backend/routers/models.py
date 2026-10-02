@@ -51,7 +51,7 @@ async def activate_model(body: ModelSelection, detector: Detector = Depends(requ
 @router.post("", response_model=ModelList, status_code=201)
 async def upload_model(request: Request, kind: Literal["segmentation", "laser"],
                        name: str = Query(min_length=1, max_length=255),
-                       convert: bool = Query(False, description="Tải lên xong thì chuyển sang TensorRT FP16"),
+                       convert: bool = Query(False, description="Dùng ngay rồi chuyển sang TensorRT FP16 ở nền; xong tự đổi sang engine"),
                        detector: Detector = Depends(require_ready)):
     limit = detector.cfg.MAX_MODEL_MB * 1024 * 1024
     if request.headers.get("content-length", "").isdigit() and int(request.headers["content-length"]) > limit:
@@ -74,10 +74,16 @@ async def upload_model(request: Request, kind: Literal["segmentation", "laser"],
                 await run_in_threadpool(stream.write, chunk)
         if not total:
             raise HTTPException(400, "File mô hình trống.")
-        await run_in_threadpool(detector.validate_model, kind, temporary)
         temporary.replace(target)
+        model_id = detector.model_store.identifier(target)
+        # Mô hình mới thay mô hình cùng loại ngay; nạp lỗi thì bỏ file, mô hình đang chạy giữ nguyên
+        try:
+            await run_in_threadpool(detector.activate_model, model_id)
+        except BaseException:
+            target.unlink(missing_ok=True)
+            raise
         if convert:
-            detector.converter.submit(detector.model_store.identifier(target), strict=False)
+            detector.converter.submit(model_id, strict=False)
         return list_models(detector)
     except HTTPException:
         raise

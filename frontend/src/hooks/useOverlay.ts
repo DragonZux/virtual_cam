@@ -11,7 +11,6 @@ interface Params {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   objectsRef: RefObject<HTMLCanvasElement | null>;
   active: boolean;
-  staticImage?: boolean;
   result: FrameResult | null;
   receivedAt: number | null;
   capturedAt: number | null;
@@ -46,22 +45,21 @@ export const useOverlay = ({ videoRef, canvasRef, objectsRef, active, ...state }
     let cachedResult: FrameResult | null = null;
     let cachedPrefs: Preferences | null = null;
     let cachedLabel: Params["label"] | null = null;
-    let handWasVisible = false;
+    let pointerWasVisible = false;
     const paint = (now: number) => {
-      const { result, receivedAt, capturedAt, tracking, prefs, label, staticImage } = latest.current;
+      const { result, receivedAt, capturedAt, tracking, prefs, label } = latest.current;
       const age = receivedAt === null ? Infinity : Date.now() - receivedAt;
       const latency = receivedAt !== null && capturedAt !== null ? receivedAt - capturedAt : 0;
       const staleAfter = Math.min(1500, Math.max(500, latency * 2));
-      if (!result || (!staticImage && age > staleAfter) || !video.videoWidth || !video.videoHeight) {
+      if (!result || age > staleAfter || !video.videoWidth || !video.videoHeight) {
         if (displayed) clear();
         displayed = null;
       } else {
-        displayed = staticImage ? result : smoothPointer(displayed, result, lastPaint ? now - lastPaint : 100);
+        displayed = smoothPointer(displayed, result, lastPaint ? now - lastPaint : 100);
         const scale = Math.min(1, DISPLAY_MAX_SIDE / Math.max(video.videoWidth, video.videoHeight));
         const size = { width: Math.round(video.videoWidth * scale), height: Math.round(video.videoHeight * scale) };
         const opts = {
-          showHand: prefs.showHand,
-          showTip: prefs.showTip,
+          showPointer: true,
           showOutline: prefs.showOutline,
           showBoxes: prefs.showBoxes,
           // Only an actual server result can confirm a selection.
@@ -71,19 +69,18 @@ export const useOverlay = ({ videoRef, canvasRef, objectsRef, active, ...state }
         // Contours, translated labels and text measurement only change on a detection update.
         if (cachedResult !== result || cachedPrefs !== prefs || cachedLabel !== label ||
             objects.width !== size.width || objects.height !== size.height) {
-          drawResult(objects, size, result, { ...opts, showHand: false, showTip: false });
+          drawResult(objects, size, result, { ...opts, showPointer: false });
           cachedResult = result;
           cachedPrefs = prefs;
           cachedLabel = label;
         }
-        const handVisible = (opts.showHand && displayed.landmarks.length === 21) ||
-          (opts.showTip && (displayed.tip !== null || !!displayed.laser));
-        if (handVisible) {
+        const pointerVisible = !!displayed.laser;
+        if (pointerVisible) {
           drawResult(canvas, size, displayed, { ...opts, showBoxes: false, showOutline: false });
-        } else if (handWasVisible) {
+        } else if (pointerWasVisible) {
           canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
         }
-        handWasVisible = handVisible;
+        pointerWasVisible = pointerVisible;
       }
       lastPaint = now;
       animation = requestAnimationFrame(paint);

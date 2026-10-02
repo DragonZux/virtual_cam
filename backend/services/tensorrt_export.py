@@ -12,6 +12,8 @@ from pathlib import Path
 import shutil
 import sys
 
+from services.engine_metadata import torchscript_metadata
+
 
 def export_ultralytics(source: Path, work: Path, imgsz: int) -> Path:
     """Ultralytics export keeps task/names metadata in the engine header (Detector reads it)."""
@@ -23,6 +25,26 @@ def export_ultralytics(source: Path, work: Path, imgsz: int) -> Path:
     model = YOLO(str(copy))
     # TensorRT 11 is strongly typed: quantize=16 bakes FP16 into the ONNX graph (ModelOpt AutoCast) before building.
     return Path(model.export(format="engine", imgsz=imgsz, quantize=16, device=0, batch=1, dynamic=False, verbose=False))
+
+
+def export_yolo_torchscript(source: Path, work: Path, metadata: dict) -> Path:
+    """Ultralytics TorchScript (task/names in extra config.txt) → static ONNX → engine carrying the same metadata."""
+    import torch
+    from ultralytics.utils.export.engine import onnx2engine
+
+    model = torch.jit.load(str(source), map_location="cpu").eval()
+    height, width = metadata.get("imgsz") or (640, 640)
+    pixels = torch.zeros(1, metadata.get("channels", 3), height, width)
+    with torch.no_grad():
+        outputs = model(pixels)
+    count = len(outputs) if isinstance(outputs, (list, tuple)) else 1
+    onnx_file = work / f"{source.stem}.onnx"
+    with torch.no_grad():
+        torch.onnx.export(model, (pixels,), str(onnx_file), opset_version=17, input_names=["images"],
+                          output_names=[f"output{i}" for i in range(count)], dynamo=False)
+    engine = work / f"{source.stem}.engine"
+    onnx2engine(str(onnx_file), engine, quantize=16, dynamic=False, shape=tuple(pixels.shape), metadata=metadata)
+    return engine
 
 
 def export_advr(source: Path, work: Path, imgsz: int) -> Path:
@@ -53,7 +75,10 @@ def main() -> None:
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True)
     try:
-        if args.source.suffix.lower() == ".torchscript":
+        metadata = torchscript_metadata(args.source) if args.source.suffix.lower() == ".torchscript" else None
+        if metadata:
+            built = export_yolo_torchscript(args.source, work, metadata)
+        elif args.source.suffix.lower() == ".torchscript":
             built = export_advr(args.source, work, args.imgsz)
         else:
             built = export_ultralytics(args.source, work, args.imgsz)

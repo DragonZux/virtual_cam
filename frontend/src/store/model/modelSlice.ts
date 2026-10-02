@@ -1,7 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { ModelKind, ModelList } from "@/common/types";
 
-type Mutation = "upload" | "activate" | "convert";
+type Mutation = "upload";
 
 interface ModelState {
   catalog: ModelList | null;
@@ -26,13 +26,6 @@ const slice = createSlice({
     /** convert: tải xong thì chuyển sang TensorRT FP16 (máy chủ tự chọn engine khi xong) */
     uploadRequest: (state, _action: PayloadAction<{ kind: ModelKind; file: File; convert: boolean }>) => {
       state.busy = "upload"; state.error = null; state.success = null;
-    },
-    activateRequest: (state, _action: PayloadAction<string>) => {
-      state.busy = "activate"; state.error = null; state.success = null;
-    },
-    /** Chuyển mô hình đã có sang TensorRT FP16 (chạy nền ở máy chủ) */
-    convertRequest: (state, _action: PayloadAction<string>) => {
-      state.busy = "convert"; state.error = null; state.success = null;
     },
     mutationSuccess: (state, action: PayloadAction<Mutation>) => {
       state.busy = null; state.error = null; state.success = action.payload;

@@ -6,13 +6,13 @@
   gap: 18px;
 }
 
-.modelUpload { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 20px 0; }
 .modelName { overflow-wrap: anywhere; }
-.conversions { width: 100%; margin-bottom: 16px; }
+.conversions { width: 100%; margin-top: 12px; }
+.modelAlerts { display: grid; gap: 10px; margin-top: 12px; &:empty { display: none; } }
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
 }
@@ -145,22 +145,6 @@
   }
 }
 
-.mirror {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
-  font-size: 13px;
-}
-
-.voiceActions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  margin-top: 10px;
-}
-
 /* ===== Chân trang ===== */
 .footer {
   display: flex;
@@ -172,23 +156,53 @@
   color: @muted;
 }
 
-@media (max-width: 1280px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .grid > :first-child {
-    grid-row: span 2;
-  }
-}
-
 @media @tablet {
   .grid {
     grid-template-columns: 1fr;
   }
-  .grid > :first-child {
-    grid-row: auto;
-  }
   .groups {
     max-height: none;
   }
+}
+
+/* ===== Kết nối socket ===== */
+.socketSection {
+  & + & {
+    margin-top: 20px;
+  }
+
+  h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 650;
+    color: @text-2;
+  }
+}
+
+.socketUrl {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.addRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.hostInput {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.portInput {
+  width: 110px;
+}
+
+.fieldError {
+  margin: 6px 0 0;
+  color: @danger;
+  font-size: 12px;
 }

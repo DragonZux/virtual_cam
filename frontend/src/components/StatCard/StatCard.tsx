@@ -15,10 +15,12 @@ interface Props {
   tone: StatTone;
   /** Giá trị dạng chữ (trạng thái) thay vì số */
   textual?: boolean;
+  /** Viền nổi bật (vd. đã chọn được vật thể) */
+  highlight?: boolean;
 }
 
-export const StatCard = ({ title, value, suffix, hint, icon, tone, textual }: Props) => (
-  <Card size="small" className={styles.card}>
+export const StatCard = ({ title, value, suffix, hint, icon, tone, textual, highlight }: Props) => (
+  <Card size="small" className={highlight ? `${styles.card} ${styles.highlight}` : styles.card}>
     <div className={styles.body}>
       <div className={styles.text}>
         <span className={styles.title}>{title}</span>

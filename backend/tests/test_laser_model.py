@@ -163,3 +163,19 @@ def test_crop_keeps_full_frame_hint_radius_when_choosing_between_laser_and_led()
     rows = np.array([[70, 192, 8, 8, 0.99, 1], [250, 192, 8, 8, 0.8, 1]])
     spot = select_spot(rows, (384, 384), 1, (0, 0), 0.55, (192, 192), hint_radius=80)
     assert spot.point == [250, 192]
+
+
+@pytest.mark.parametrize("fmt,ok", [("hicas-laser-v1", True), ("virtual-cam-laser-v1", True), ("other-laser-v1", False)])
+def test_laser_torchscript_format_accepts_current_and_pre_rename_exports(tmp_path, fmt, ok):
+    import json
+
+    import torch
+
+    path = tmp_path / "laser.torchscript"
+    meta = {"format": fmt, "color": "red", "stride": 64}
+    torch.jit.save(torch.jit.script(torch.nn.Identity()), str(path), _extra_files={"config.json": json.dumps(meta)})
+    if ok:
+        assert LaserModel(path, "cpu").size == 1280
+    else:
+        with pytest.raises(ValueError, match="HICAS"):
+            LaserModel(path, "cpu")

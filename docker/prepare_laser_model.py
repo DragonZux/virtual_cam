@@ -23,6 +23,8 @@ ROOT = Path(__file__).resolve().parents[1]
 WEIGHT_NAME = "yolov5l6_e200_b8_tvt302010_laser_v5.pt"
 WEIGHT_MD5 = "21b8e90b7707cb91054547c6558301e3"
 CODE_URL = "https://codeload.github.com/ultralytics/yolov5/zip/refs/tags/v7.0"
+# Định dạng ghi trong config.json của TorchScript (backend/services/laser_model.py đọc)
+LASER_FORMAT = "hicas-laser-v1"
 CODE_SHA256 = "a40568a7979c4b27195d198987e49610de86b038b044f2521f5515455571f852"
 
 
@@ -110,7 +112,7 @@ def main():
             pixels = torch.rand(shape)
             torch.testing.assert_close(traced(pixels)[0], model(pixels)[0], rtol=1e-4, atol=1e-4)
             print(f"Verified dynamic shape: {shape}", flush=True)
-    meta = {"format": "virtual-cam-laser-v1", "architecture": "yolov5l6", "color": "red",
+    meta = {"format": LASER_FORMAT, "architecture": "yolov5l6", "color": "red",
             "stride": 64, "names": ["Laser"], "imgsz": 1280, "license": "CC-BY-4.0",
             "source": "https://zenodo.org/records/10471835", "source_md5": WEIGHT_MD5}
     args.output.parent.mkdir(parents=True, exist_ok=True)

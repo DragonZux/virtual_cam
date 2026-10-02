@@ -11,7 +11,7 @@ PROJECT_ROOT = BACKEND_DIR.parent
 class Settings(BaseSettings):
     """Cấu hình đọc từ biến môi trường / file .env (xem .env.example)."""
 
-    API_TITLE: str = "Virtual Cam API"
+    API_TITLE: str = "HICAS API"
     API_VERSION: str = "1.0.0"
     LOG_LEVEL: str = "INFO"
 
@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     # Cổng HTTPS tự ký cho máy khác trong mạng (camera cần HTTPS khi không phải localhost); 0 = tắt
     HTTPS_PORT: int = Field(0, ge=0, le=65535)
     CERT_DIR: Path = BACKEND_DIR / "data" / "certs"
+    # Cấu hình máy chủ (máy đích TCP socket…); Docker mount ./backend/data vào đây
+    DATA_DIR: Path = BACKEND_DIR / "data"
     # IP / tên máy thêm vào chứng chỉ, cách nhau dấu phẩy (không bắt buộc: chứng chỉ tự ký vẫn phải bấm "Tiếp tục")
     CERT_HOSTS: str = ""
 

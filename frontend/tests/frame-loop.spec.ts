@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
+import { connectCamera, mockRtspCamera } from "./helpers";
+
 const status = {
   phase: "ready", error: null, device: "Test GPU", model: "test", image_size: 640,
   classes: ["laptop", "mouse", "keyboard"],
@@ -33,8 +35,10 @@ async function prepare(page: Page, delayMs = 50, processingMs: number | ((index:
       resolution: { width: 640, height: 360 },
     } }).catch(() => undefined); // Requests are expected to abort on pause.
   });
+  // Camera RTSP giả ~20 khung/giây (như webcam giả của Chrome trước đây)
+  await mockRtspCamera(page, { frameDelayMs: 50 });
   await page.goto("/");
-  await page.getByRole("button", { name: /Bật camera|Start camera/ }).click();
+  await connectCamera(page);
   return { requests: () => requests, maximum: () => maximum, roundTrips };
 }
 
@@ -128,9 +132,9 @@ test("slow serial inference keeps frames fresh instead of filling the server que
 test("mirror changes restart capture and snapshots keep the camera resolution", async ({ page }) => {
   const stats = await prepare(page);
   await expect.poll(stats.requests).toBeGreaterThan(2);
-  await page.locator('a[href="/settings"]').first().click();
-  await page.getByText("Không lật", { exact: true }).click();
-  await expect(page.getByRole("radio", { name: "Không lật", exact: true })).toBeChecked();
+  await page.getByRole("menuitem", { name: "Cài đặt", exact: true }).click();
+  await page.getByText("Lật ngang hình camera (chế độ gương)", { exact: true }).click();
+  await expect(page.getByRole("switch", { name: "Lật ngang hình camera (chế độ gương)" })).toBeChecked();
   const switchedAt = stats.requests();
   await expect.poll(stats.requests).toBeGreaterThan(switchedAt + 2);
   await page.locator('a[href="/"]').first().click();
@@ -138,7 +142,7 @@ test("mirror changes restart capture and snapshots keep the camera resolution", 
   const downloaded = page.waitForEvent("download");
   await page.getByRole("button", { name: /Chụp ảnh|Snapshot/, exact: true }).click();
   const download = await downloaded;
-  expect(download.suggestedFilename()).toMatch(/virtual-cam-.*\.png/);
+  expect(download.suggestedFilename()).toMatch(/hicascam-.*\.png/);
   expect(await download.failure()).toBeNull();
   const png = await readFile((await download.path())!);
   const resolution = await page.locator("video").evaluate((video: HTMLVideoElement) => [video.videoWidth, video.videoHeight]);

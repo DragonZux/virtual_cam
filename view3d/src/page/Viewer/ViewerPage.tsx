@@ -19,7 +19,7 @@ import { SettingsDrawer } from "./SettingsDrawer";
 import styles from "./viewer.module.less";
 
 /**
- * Màn hình 3D: nghe WebSocket `/api/vision/ws` của Virtual Cam, vật thể nào được xác nhận trên trang camera
+ * Màn hình 3D: nghe WebSocket `/api/vision/ws` của HICAS, vật thể nào được xác nhận trên trang camera
  * thì hiện mô hình 3D của vật đó. Chỉ đọc kết quả, không mở camera, không gửi gì lên máy chủ.
  */
 export const ViewerPage = () => {
@@ -87,7 +87,7 @@ export const ViewerPage = () => {
             <Box size={24} strokeWidth={1.6} />
           </span>
           <span className={styles.brandText}>
-            virtual<span>cam</span>
+            hicas<span>3d</span>
             <small>{t("app.tagline")}</small>
           </span>
         </div>

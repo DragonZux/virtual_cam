@@ -19,10 +19,10 @@ def test_new_lan_address_renews_cached_certificate(tmp_path):
 
 def test_container_replacement_keeps_valid_certificate(tmp_path, monkeypatch):
     monkeypatch.setattr(tls.socket, "gethostname", lambda: "old-container")
-    cert_path, key_path = tls.ensure_certificate(tmp_path, ["10.0.10.62", "virtual-cam.lan"])
+    cert_path, key_path = tls.ensure_certificate(tmp_path, ["10.0.10.62", "hicas.lan"])
     previous = (cert_path.read_bytes(), key_path.read_bytes())
 
     monkeypatch.setattr(tls.socket, "gethostname", lambda: "new-container")
-    tls.ensure_certificate(tmp_path, ["virtual-cam.lan", "10.0.10.62"])
+    tls.ensure_certificate(tmp_path, ["hicas.lan", "10.0.10.62"])
 
     assert (cert_path.read_bytes(), key_path.read_bytes()) == previous

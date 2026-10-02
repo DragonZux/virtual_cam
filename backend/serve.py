@@ -1,4 +1,4 @@
-"""Chạy web Virtual Cam: API + giao diện (frontend/dist) trên cùng một cổng.
+"""Chạy web HICAS: API + giao diện (frontend/dist) trên cùng một cổng.
 
     python serve.py                      # http://localhost:8030 — chỉ cho chính máy này
     python serve.py --https-port 8031    # thêm https://<IP máy>:8031 cho máy khác (chứng chỉ tự ký)
@@ -53,7 +53,7 @@ async def serve(configs: list[uvicorn.Config], local_url: str, open_browser: boo
     while not servers[0].started and not tasks[0].done():
         await asyncio.sleep(0.1)
     if servers[0].started:
-        logger.info("Virtual Cam: open %s (Ctrl+C to stop)", local_url)
+        logger.info("HICAS: open %s (Ctrl+C to stop)", local_url)
         for config in configs[1:]:
             # Trong Docker cổng này được map ra HTTPS_PORT của host (mặc định 8033)
             logger.info("HTTPS for other machines on port %d (self-signed - choose Advanced > Proceed)", config.port)
@@ -63,7 +63,7 @@ async def serve(configs: list[uvicorn.Config], local_url: str, open_browser: boo
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Virtual Cam web server (API + giao diện)")
+    parser = argparse.ArgumentParser(description="HICAS web server (API + giao diện)")
     parser.add_argument("--host", default=settings.HOST, help="Địa chỉ lắng nghe (mặc định chỉ máy này)")
     parser.add_argument("--port", type=int, default=settings.PORT)
     parser.add_argument("--https-port", type=int, default=settings.HTTPS_PORT, help="Cổng HTTPS cho máy khác (0 = tắt)")

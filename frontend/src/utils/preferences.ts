@@ -1,8 +1,9 @@
-import { CONFIDENCE_RANGE, DEFAULT_PREFERENCES, DWELL_RANGE, TOLERANCE_RANGE } from "@/common/constants";
-import type { MirrorMode, Preferences } from "@/common/types";
+import { CONFIDENCE_RANGE, DEFAULT_PREFERENCES, DWELL_RANGE } from "@/common/constants";
+import type { Preferences } from "@/common/types";
 
-const STORAGE_KEY = "virtualcam.preferences";
-const MIRROR_MODES: MirrorMode[] = ["auto", "on", "off"];
+const STORAGE_KEY = "hicascam.preferences";
+/** Khoá trước khi đổi tên dự án: vẫn đọc để không mất cài đặt cũ */
+const LEGACY_KEY = "virtualcam.preferences";
 
 type Range = { min: number; max: number };
 
@@ -21,23 +22,19 @@ export const sanitizePreferences = (raw: unknown): Preferences => {
       ? (r.targets as string[])
       : undefined;
   return {
-    pointerMode: r.pointerMode === "laser" ? "laser" : "hand",
     targets,
     confidence: numberIn(r.confidence, CONFIDENCE_RANGE),
-    tolerance: numberIn(r.tolerance, TOLERANCE_RANGE),
     dwellMs: numberIn(r.dwellMs, DWELL_RANGE) ?? d.dwellMs,
-    showHand: boolOr(r.showHand, d.showHand),
-    showTip: boolOr(r.showTip, d.showTip),
     showOutline: boolOr(r.showOutline, d.showOutline),
     showBoxes: boolOr(r.showBoxes, d.showBoxes),
-    mirror: MIRROR_MODES.includes(r.mirror as MirrorMode) ? (r.mirror as MirrorMode) : d.mirror,
-    voice: boolOr(r.voice, d.voice),
+    // Bản cũ lưu "auto" | "on" | "off": chỉ "on" là lật
+    mirror: typeof r.mirror === "boolean" ? r.mirror : r.mirror === "on",
   };
 };
 
 export const loadPreferences = (): Preferences => {
   try {
-    return sanitizePreferences(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null"));
+    return sanitizePreferences(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_KEY) ?? "null"));
   } catch {
     return { ...DEFAULT_PREFERENCES };
   }

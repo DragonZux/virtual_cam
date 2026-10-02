@@ -5,6 +5,6 @@ import "./index.css";
 import "./i18n";
 import App from "./layout/App";
 
-console.log(`%c Virtual Cam v${import.meta.env.APP_VERSION} `, "background:#fb8020;color:#fff;padding:2px 6px;border-radius:3px");
+console.log(`%c HICAS Cam v${import.meta.env.APP_VERSION} `, "background:#fb8020;color:#fff;padding:2px 6px;border-radius:3px");
 
 createRoot(document.getElementById("root")!).render(<App />);

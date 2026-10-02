@@ -62,13 +62,12 @@ export interface FrameResult {
   resolution: { width: number; height: number };
 }
 
-/** Cài đặt gửi kèm từng khung hình (query của POST /vision/frame) */
+/** Cài đặt gửi kèm từng khung hình (query của POST /vision/frame); giao diện web chỉ chọn bằng laser */
 export interface FrameOptions {
   model_revision?: number;
-  pointer_mode: PointerMode;
+  pointer_mode: "laser";
   targets: string[];
   conf: number;
-  tolerance: number;
 }
 
 export type ModelKind = "segmentation" | "laser";
@@ -107,6 +106,32 @@ export interface ModelList {
   convert_reason?: string | null;
 }
 
+/** Camera RTSP người dùng thêm (lưu trên trình duyệt) */
+export interface StreamLink {
+  url: string;
+  /** Tên tự đặt, vd. "Camera cửa" */
+  name?: string;
+}
+
+/** GET /sockets — WebSocket có sẵn và máy đích TCP máy chủ tự gửi vật thể đang chọn tới */
+export type TcpStatus = "off" | "connecting" | "connected" | "error";
+export interface TcpTarget {
+  host: string;
+  port: number;
+  enabled: boolean;
+}
+export interface TcpTargetState extends TcpTarget {
+  id: string;
+  status: TcpStatus;
+  error: string | null;
+  sent: number;
+  last_sent: number | null;
+}
+export interface SocketConfig {
+  websocket_path: string;
+  tcp: TcpTargetState[];
+}
+
 /** POST /camera/streams — phiên đọc luồng RTSP ở máy chủ */
 export interface StreamInfo {
   id: string;
@@ -114,41 +139,24 @@ export interface StreamInfo {
   height: number;
 }
 
-export type MediaKind = "image" | "video";
-
 /* ===== Chỉ ở frontend ===== */
 
-export type MirrorMode = "auto" | "on" | "off";
-
-/** Cài đặt riêng của trình duyệt (localStorage). targets/confidence/tolerance trống = mặc định máy chủ */
+/** Cài đặt riêng của trình duyệt (localStorage). targets/confidence trống = mặc định máy chủ */
 export interface Preferences {
-  pointerMode: PointerMode;
   targets?: string[];
   confidence?: number;
-  tolerance?: number;
-  /** Giữ ngón tay trên vật thể bấy nhiêu ms mới tính là một lượt chọn */
+  /** Giữ chấm laser trên vật thể bấy nhiêu ms mới tính là đã chọn */
   dwellMs: number;
-  showHand: boolean;
-  showTip: boolean;
   showOutline: boolean;
   showBoxes: boolean;
-  mirror: MirrorMode;
-  voice: boolean;
-}
-
-export interface SelectionEvent {
-  pointerMode?: PointerMode;
-  id: number;
-  name: string;
-  confidence: number;
-  /** epoch ms */
-  time: number;
+  /** Lật ngang hình camera (chế độ gương) */
+  mirror: boolean;
 }
 
 export type CameraStatus = "off" | "starting" | "on" | "error";
 
-/** Nguồn hình của khung camera: camera của trình duyệt hoặc ảnh / video thử */
-export type FrameSource = "camera" | "media";
+/** Nguồn hình: camera của trình duyệt hoặc luồng RTSP máy chủ đọc hộ (cả hai báo "camera" cho WebSocket) */
+export type FrameSource = "camera";
 
 /** Confirmed selection shared over WebSocket; confidence matches the displayed percentage. */
 export interface SelectionUpdate {
@@ -157,22 +165,9 @@ export interface SelectionUpdate {
   source: FrameSource;
 }
 
-/** Ảnh / video đang phát trong khung camera — url là blob: của file vừa chọn trên máy */
-export interface MediaSource {
-  url: string;
-  name: string;
-  kind: MediaKind;
-}
-
-export interface CameraDevice {
-  deviceId: string;
-  label: string;
-}
 
 /** Trạng thái tổng hợp hiện ở nhãn trạng thái và trên khung camera */
 export type LiveState =
-  | "analyzing"
-  | "complete"
   | "connecting"
   | "offline"
   | "error"

@@ -67,6 +67,10 @@ def select_spot(prediction: np.ndarray, shape: tuple[int, int], gain: float,
                      score=round(float(scores[winner]), 4))
 
 
+# Định dạng docker/prepare_laser_model.py ghi vào config.json; file xuất trước khi đổi tên dự án ghi bản cũ
+LASER_FORMATS = {"hicas-laser-v1", "virtual-cam-laser-v1"}
+
+
 class LaserModel:
     def __init__(self, path: Path, device: str, size: int = 1280, confidence: float = 0.55,
                  crop_size: int = 384):
@@ -78,8 +82,8 @@ class LaserModel:
         extra = {"config.json": ""}
         self.model: Any = torch.jit.load(str(path), map_location=device, _extra_files=extra).eval()
         meta = json.loads(extra["config.json"])
-        if meta.get("format") != "virtual-cam-laser-v1" or meta.get("color") != "red" or meta.get("stride") != 64:
-            raise ValueError("Model laser không đúng định dạng ADVR đã xuất cho Virtual Cam.")
+        if meta.get("format") not in LASER_FORMATS or meta.get("color") != "red" or meta.get("stride") != 64:
+            raise ValueError("Model laser không đúng định dạng ADVR đã xuất cho HICAS.")
         self.torch = torch
         self.device = device
         self.dtype = torch.float16 if device.startswith("cuda") else torch.float32

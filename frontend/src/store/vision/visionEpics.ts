@@ -9,7 +9,6 @@ import type { FrameResult } from "@/common/types";
 import { advanceLaser, type LaserStep } from "@/utils/laserTrack";
 import { advanceTracking, type Tracking, type TrackingStep } from "@/utils/tracking";
 import { errorMessage } from "../epicHelpers";
-import { historyActions } from "../history/historySlice";
 import type { RootEpic } from "../types";
 import { visionActions } from "./visionSlice";
 import { selectionEpic } from "./selectionEpic";
@@ -34,7 +33,7 @@ const statusPolling$: RootEpic = (action$) =>
 /** Hành động làm dừng luồng khung hình */
 const stopsFrames = (action: Action): boolean =>
   visionActions.cancelFrames.match(action) ||
-  visionActions.cameraStarting.match(action) ||
+  visionActions.streamStarting.match(action) ||
   visionActions.cameraStopped.match(action) ||
   visionActions.cameraFailed.match(action) ||
   (visionActions.setPaused.match(action) && action.payload);
@@ -70,39 +69,19 @@ const analyzeFrame$: RootEpic = (action$, state$) => {
   const isStale = (id: number) => id <= state$.value.vision.lastFrameId;
   return action$.pipe(
     filter(visionActions.analyzeFrameRequest.match),
-    mergeMap(({ payload: { id, image, options, capturedAt, laserHint, singleImage } }) =>
+    mergeMap(({ payload: { id, image, options, capturedAt, laserHint } }) =>
       VisionService.Post.frame(image, options, laserHint).pipe(
         mergeMap((result) => {
           if (isStale(id)) return of(visionActions.analyzeFrameSkipped());
           const at = Date.now();
           const { vision, setting } = state$.value;
-          // A mode change may precede the capture effect's cleanup.
-          if (options.pointer_mode !== setting.prefs.pointerMode || options.model_revision !== vision.status?.model_revision) {
-            return of(visionActions.analyzeFrameSkipped());
-          }
+          // A model change may precede the capture effect's cleanup.
+          if (options.model_revision !== vision.status?.model_revision) return of(visionActions.analyzeFrameSkipped());
           const advance = (selected: FrameResult["selected"]) => advanceTracking(vision.tracking, selected, at, setting.prefs.dwellMs);
-          let shown = result;
-          let step: TrackingStep;
-          let laserTrack;
-          if (singleImage) {
-            // A still image has no future frames to confirm dwell or stabilize a laser point.
-            step = { tracking: { held: result.selected, heldAt: at, pending: null }, confirmed: null };
-          } else if (options.pointer_mode === "laser") {
-            const laser = advanceLaser(vision.laserTrack, result.laser?.point ?? null,
-              Math.max(result.resolution.width, result.resolution.height));
-            ({ shown, step } = stabilizeLaser(result, vision.result, laser, vision.tracking, advance));
-            laserTrack = laser.track;
-          } else {
-            step = advance(result.selected);
-          }
-          const out: Action[] = [
-            visionActions.analyzeFrameSuccess({ id, result: shown, tracking: step.tracking, laserTrack, at, capturedAt }),
-          ];
-          if (step.confirmed && vision.camera.source !== "media") {
-            const { name, confidence } = step.confirmed;
-            out.push(historyActions.addSelection({ name, confidence, time: at, pointerMode: options.pointer_mode }));
-          }
-          return of(...out);
+          const laser = advanceLaser(vision.laserTrack, result.laser?.point ?? null,
+            Math.max(result.resolution.width, result.resolution.height));
+          const { shown, step } = stabilizeLaser(result, vision.result, laser, vision.tracking, advance);
+          return of(visionActions.analyzeFrameSuccess({ id, result: shown, tracking: step.tracking, laserTrack: laser.track, at, capturedAt }));
         }),
         catchError((err: AjaxError) =>
           of(

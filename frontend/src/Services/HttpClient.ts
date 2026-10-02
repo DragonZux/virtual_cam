@@ -47,6 +47,7 @@ export const handleHttpError = (err: AjaxError, suppress?: boolean | number[]): 
 export class HttpMethod {
   static GET = "GET";
   static POST = "POST";
+  static PUT = "PUT";
   static PATCH = "PATCH";
   static DELETE = "DELETE";
 }
@@ -80,6 +81,8 @@ const HttpClient = {
   get: <T>(url: string, options?: RequestOptions) => request<T>(HttpMethod.GET, url, undefined, options),
   post: <T>(url: string, body?: unknown, options?: RequestOptions) =>
     request<T>(HttpMethod.POST, url, body, options),
+  put: <T>(url: string, body?: unknown, options?: RequestOptions) =>
+    request<T>(HttpMethod.PUT, url, body, options),
   patch: <T>(url: string, body?: unknown, options?: RequestOptions) =>
     request<T>(HttpMethod.PATCH, url, body, options),
   delete: <T>(url: string, options?: RequestOptions) => request<T>(HttpMethod.DELETE, url, undefined, options),

@@ -135,3 +135,27 @@ class StreamOut(BaseModel):
     id: str = Field(description="Phiên đọc luồng; lấy khung ở GET /camera/streams/{id}/frame")
     width: int
     height: int
+
+
+class TcpTargetIn(BaseModel):
+    """Máy đích nhận vật thể đang chọn qua TCP (mỗi bản tin một dòng JSON)."""
+    host: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9._:-]+$", description="IP hoặc tên máy, không kèm giao thức")
+    port: int = Field(ge=1, le=65535)
+    enabled: bool = True
+
+
+class TcpTargetsIn(BaseModel):
+    targets: list[TcpTargetIn] = Field(max_length=8)
+
+
+class TcpTargetOut(TcpTargetIn):
+    id: str
+    status: Literal["off", "connecting", "connected", "error"]
+    error: str | None = None
+    sent: int = Field(0, description="Số bản tin đã gửi từ khi máy chủ khởi động")
+    last_sent: int | None = Field(None, description="Lần gửi gần nhất, Unix milliseconds")
+
+
+class SocketConfig(BaseModel):
+    websocket_path: str = Field(description="WebSocket để app khác kết nối vào nhận vật thể đang chọn")
+    tcp: list[TcpTargetOut]

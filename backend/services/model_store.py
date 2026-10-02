@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from core.config import Settings
 from core.logging import logger
-from services.engine_metadata import engine_kind
+from services.engine_metadata import engine_kind, torchscript_kind
 
 KINDS = ("segmentation", "laser")
 
@@ -28,7 +28,7 @@ class ModelStore:
             for path in sorted(self.root.iterdir()):
                 if path.is_file() and path.suffix.lower() in (".pt", ".torchscript", ".engine"):
                     kind = (engine_kind(path) if path.suffix.lower() == ".engine" else
-                            "laser" if path.suffix.lower() == ".torchscript" else "segmentation")
+                            torchscript_kind(path) if path.suffix.lower() == ".torchscript" else "segmentation")
                     if kind:
                         entries.setdefault(self.identifier(path), (kind, path))
         for kind in KINDS:
@@ -76,9 +76,8 @@ class ModelStore:
 
     def upload_path(self, kind: str, name: str) -> Path:
         suffix = Path(name).suffix.lower()
-        allowed = (".pt", ".engine") if kind == "segmentation" else (".pt", ".torchscript", ".engine")
-        if suffix not in allowed:
-            raise ValueError("Segmentation cần .pt hoặc .engine; laser cần .pt, .torchscript hoặc .engine.")
+        if suffix not in (".pt", ".torchscript", ".engine"):
+            raise ValueError("Mô hình cần file .pt, .torchscript hoặc .engine.")
         stem = re.sub(r"[^\w-]+", "_", Path(name.replace("\\", "/")).stem).strip("_")[:70] or "model"
         folder = self.folder / kind
         folder.mkdir(parents=True, exist_ok=True)

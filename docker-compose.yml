@@ -1,21 +1,24 @@
-# Virtual Cam bằng Docker trên PC có GPU NVIDIA — một container, chạy ở thư mục gốc:
+# HICAS bằng Docker trên PC có GPU NVIDIA — 3 image / container, chạy ở thư mục gốc:
 #   docker compose up -d --build
-#   https://localhost:8033  hoặc  https://<IP máy>:8033 từ máy khác trong mạng
-#   https://<IP máy>:8033/view3d/  màn hình 3D (app riêng: hiện mô hình 3D của vật thể đang chọn)
-#   (chứng chỉ tự ký: lần đầu chọn Nâng cao › Tiếp tục; camera của trình duyệt cần HTTPS khi không phải localhost)
+#   https://localhost:8033  hoặc  https://<IP máy>:8033 từ máy khác trong mạng (giao diện hicascam)
+#   https://<IP máy>:8033/view3d/  màn hình 3D (hicas3d: hiện mô hình 3D của vật thể đang chọn)
+#   (chứng chỉ tự ký: lần đầu chọn Nâng cao › Tiếp tục)
+# - backend : API + mô hình AI trên GPU, chỉ trong mạng Docker (không mở cổng)
+# - frontend: nginx, cổng HTTPS duy nhất; chuyển /api (cả WebSocket) sang backend, /view3d/ sang view3d
+# - view3d  : nginx phục vụ màn hình 3D
 # Cần NVIDIA driver ≥ 570 + Docker Desktop có WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
 # Tuỳ chọn trong .env ở thư mục gốc (xem .env.example): WEB_PORT, YOLO_MODEL, IMAGE_SIZE…
-# Lần chạy đầu container tự tải model còn thiếu vào models/ (docker/init_models.py).
-name: virtual_cam
+# Lần chạy đầu backend tự tải model còn thiếu vào models/ (docker/init_models.py).
+name: hicas-cam
 services:
-  virtual-cam:
+  backend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: backend/Dockerfile
       args:
         - TORCH_INDEX=${TORCH_INDEX:-cu128}
-    image: virtual-cam:latest
-    container_name: virtual-cam
+    image: hicas-cam-backend:latest
+    container_name: hicas-cam-backend
     environment:
       # Model YOLO (file trong models/) và cạnh ảnh đưa vào YOLO (640 chính xác nhất; 480 / 320 nhanh hơn)
       YOLO_MODEL: ${YOLO_MODEL:-yolo26m-seg.pt}
@@ -25,16 +28,11 @@ services:
       LASER_CONFIDENCE: ${LASER_CONFIDENCE:-0.55}
       LASER_CROP_SIZE: ${LASER_CROP_SIZE:-384}
       MAX_MODEL_MB: ${MAX_MODEL_MB:-1024}
-      # Không bắt buộc: IP máy host ghi thêm vào chứng chỉ HTTPS (vd 10.0.10.62)
-      CERT_HOSTS: ${CERT_HOSTS:-}
-    ports:
-      # Một cổng HTTPS mở trên mọi IP của máy (giống các dự án khác); HTTP 8030 chỉ dùng trong container (healthcheck)
-      - "${WEB_PORT:-8033}:8031"
     volumes:
-      # models/ ghi được: container tự tải model bàn tay / YOLO và xuất model laser vào đây ở lần chạy đầu
+      # models/ ghi được: backend tự tải model YOLO / bàn tay và xuất model laser vào đây ở lần chạy đầu
       - ./models:/models
-      # Giữ chứng chỉ qua các lần tạo lại container (trình duyệt không phải xác nhận lại)
-      - certs:/app/data/certs
+      # Cấu hình máy chủ (máy đích TCP socket trong Cài đặt) — dùng chung với khi chạy không Docker
+      - ./backend/data:/app/data
     deploy:
       resources:
         reservations:
@@ -44,6 +42,30 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
 
+  frontend:
+    build: ./frontend
+    image: hicas-cam-frontend:latest
+    container_name: hicas-cam-frontend
+    environment:
+      # Không bắt buộc: IP / tên máy host ghi thêm vào chứng chỉ HTTPS, cách nhau dấu phẩy (vd 10.0.10.62)
+      CERT_HOSTS: ${CERT_HOSTS:-}
+    ports:
+      # Một cổng HTTPS mở trên mọi IP của máy (giống các dự án khác)
+      - "${WEB_PORT:-8033}:8443"
+    volumes:
+      # Giữ chứng chỉ qua các lần tạo lại container (trình duyệt không phải xác nhận lại)
+      - certs:/etc/nginx/certs
+    depends_on:
+      - backend
+      - view3d
+    restart: unless-stopped
+
+  view3d:
+    build: ./view3d
+    image: hicas-cam-view3d:latest
+    container_name: hicas-cam-view3d
+    restart: unless-stopped
+
 volumes:
   certs:
-    name: virtual-cam-certs
+    name: hicas-certs

@@ -9,4 +9,4 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 
-logger = logging.getLogger("virtual_cam")
+logger = logging.getLogger("hicas")

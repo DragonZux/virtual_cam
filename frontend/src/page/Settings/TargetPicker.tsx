@@ -81,6 +81,8 @@ export const TargetPicker = () => {
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("settings.targets.waiting")} />
       ) : (
         <>
+          {/* Danh sách lớp đọc từ mô hình segmentation đang chạy: đổi mô hình là danh sách đổi theo */}
+          <p className={styles.help}>{t("settings.targets.fromModel", { model: status?.model ?? "" })}</p>
           <div className={styles.targetToolbar}>
             <Input
               allowClear

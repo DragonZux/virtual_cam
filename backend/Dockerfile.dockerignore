@@ -1,0 +1,11 @@
+# Ngữ cảnh build của backend là thư mục gốc (cần requirements.txt và docker/): chỉ gửi những gì image cần
+*
+!requirements.txt
+!backend/
+!docker/init_models.py
+!docker/prepare_laser_model.py
+backend/data
+backend/tests
+backend/.env
+**/__pycache__
+**/.pytest_cache
