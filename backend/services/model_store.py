@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from core.config import Settings
 from core.logging import logger
+from services.engine_metadata import engine_kind
 
 KINDS = ("segmentation", "laser")
 
@@ -25,14 +26,16 @@ class ModelStore:
             entries[self.identifier(path)] = (kind, path)
         if self.root.is_dir():
             for path in sorted(self.root.iterdir()):
-                if path.is_file() and path.suffix.lower() in (".pt", ".torchscript"):
-                    kind = "laser" if path.suffix.lower() == ".torchscript" else "segmentation"
-                    entries.setdefault(self.identifier(path), (kind, path))
+                if path.is_file() and path.suffix.lower() in (".pt", ".torchscript", ".engine"):
+                    kind = (engine_kind(path) if path.suffix.lower() == ".engine" else
+                            "laser" if path.suffix.lower() == ".torchscript" else "segmentation")
+                    if kind:
+                        entries.setdefault(self.identifier(path), (kind, path))
         for kind in KINDS:
             folder = self.folder / kind
             if folder.is_dir():
                 for path in sorted(folder.iterdir()):
-                    if path.is_file() and path.suffix.lower() in (".pt", ".torchscript"):
+                    if path.is_file() and path.suffix.lower() in (".pt", ".torchscript", ".engine"):
                         entries[self.identifier(path)] = (kind, path)
         return entries
 
@@ -66,9 +69,9 @@ class ModelStore:
 
     def upload_path(self, kind: str, name: str) -> Path:
         suffix = Path(name).suffix.lower()
-        allowed = (".pt",) if kind == "segmentation" else (".pt", ".torchscript")
+        allowed = (".pt", ".engine") if kind == "segmentation" else (".pt", ".torchscript", ".engine")
         if suffix not in allowed:
-            raise ValueError("Segmentation cần file .pt; laser cần .pt (YOLO detect một lớp) hoặc .torchscript (ADVR).")
+            raise ValueError("Segmentation cần .pt hoặc .engine; laser cần .pt, .torchscript hoặc .engine.")
         stem = re.sub(r"[^\w-]+", "_", Path(name.replace("\\", "/")).stem).strip("_")[:70] or "model"
         folder = self.folder / kind
         folder.mkdir(parents=True, exist_ok=True)

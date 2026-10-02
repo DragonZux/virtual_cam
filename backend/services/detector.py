@@ -24,6 +24,8 @@ from models import (
     Detection, DetectionDefaults, DetectorPhase, FrameResult, FrameSize, LaserSpot, Point, PointerMode, SelectedObject,
 )
 from services.laser_model import LaserModel, YoloLaserModel, LaserUnavailable
+from services.engine_metadata import engine_header
+from services.tensorrt_laser import TensorRTLaserModel
 from services.model_store import ModelStore
 from services.pointing import index_tip, object_at_point, object_at_laser
 
@@ -108,7 +110,7 @@ class Detector:
         self._canonical: dict[str, str] = {}
         self.default_targets: list[str] = []
         self._hands: Any = None
-        self._laser: LaserModel | YoloLaserModel | None = None
+        self._laser: LaserModel | YoloLaserModel | TensorRTLaserModel | None = None
         self.laser_error: str | None = None
         self._mp: Any = None
         self._gpu = False
@@ -131,7 +133,6 @@ class Detector:
             # Import nặng (torch, ultralytics, mediapipe) để trong luồng nền cho server lên ngay
             import mediapipe as mp
             import torch
-            from ultralytics import YOLO
 
             self._active.update(self.model_store.saved())
 
@@ -144,9 +145,7 @@ class Detector:
             self.device_name = torch.cuda.get_device_name(0) if self._gpu else "CPU"
 
             # Tên model chuẩn (yolo26n-seg.pt…) chưa có file thì ultralytics tự tải về MODEL_DIR
-            self._model = YOLO(str(self.cfg.MODEL_DIR / self._active["segmentation"]))
-            if self._model.task != "segment":
-                raise ValueError("Mô hình vật thể phải là YOLO segmentation.")
+            self._model = self._load_segmentation(self.cfg.MODEL_DIR / self._active["segmentation"])
             self._set_classes({int(k): str(v) for k, v in dict(self._model.names).items()})
             options = mp.tasks.vision.HandLandmarkerOptions(
                 base_options=mp.tasks.BaseOptions(model_asset_path=str(hand_path)),
@@ -163,7 +162,7 @@ class Detector:
             for height, width in ((480, 640), (360, 640), (640, 480), (640, 360)):
                 self._predict(np.zeros((height, width, 3), dtype=np.uint8), self.classes, self.cfg.DEFAULT_CONFIDENCE)
             self.ready.set()
-            logger.info("Detector ready: %s / %s / imgsz %d", self.device_name, self.cfg.YOLO_MODEL, self.cfg.IMAGE_SIZE)
+            logger.info("Detector ready: %s / %s / imgsz %d", self.device_name, self._active["segmentation"], self.cfg.IMAGE_SIZE)
         except Exception as exc:
             self.error = str(exc) or type(exc).__name__
             logger.exception("Detector initialization failed")
@@ -173,7 +172,7 @@ class Detector:
             laser = self._prepare_model("laser", self.cfg.MODEL_DIR / self._active["laser"])
             self._laser = laser
             self.laser_error = None
-            logger.info("Red laser model ready: %s / imgsz %d", self.cfg.LASER_MODEL, self.cfg.LASER_IMAGE_SIZE)
+            logger.info("Red laser model ready: %s", self._active["laser"])
         except Exception as exc:
             self._laser = None
             self.laser_error = str(exc) or type(exc).__name__
@@ -353,21 +352,63 @@ class Detector:
                  "available": path.is_file(), "active": self._active[kind] == model_id}
                 for model_id, (kind, path) in self.model_store.catalog().items()]
 
+    def _require_engine_gpu(self) -> None:
+        if not self._gpu:
+            raise ValueError("Mô hình TensorRT cần GPU NVIDIA CUDA; chọn .pt hoặc .torchscript khi dùng CPU.")
+        try:
+            import tensorrt  # noqa: F401
+        except (ImportError, OSError) as exc:
+            raise RuntimeError("Chưa nạp được TensorRT. Cài runtime tương thích engine trên máy chạy backend.") from exc
+
+    def _load_segmentation(self, path):
+        from ultralytics import YOLO
+
+        if path.suffix.lower() == ".engine":
+            self._require_engine_gpu()
+            _, metadata = engine_header(path)
+            if metadata.get("task") != "segment" or not metadata.get("names"):
+                raise ValueError("Engine vật thể phải được xuất bằng Ultralytics YOLO segmentation, có metadata task và names.")
+            # Uploaded names need not contain '-seg'; do not guess the task from a filename.
+            model = YOLO(str(path), task="segment")
+        else:
+            model = YOLO(str(path))
+        if model.task != "segment" or not any(not excluded(str(n)) for n in model.names.values()):
+            raise ValueError("Cần mô hình YOLO segmentation có ít nhất một lớp vật thể (ngoài person).")
+        return model
+
+    @staticmethod
+    def _close_laser(model) -> None:
+        if callable(getattr(model, "close", None)):
+            try:
+                model.close()
+            except Exception:
+                logger.exception("Could not release the previous laser runtime")
+
     def _prepare_model(self, kind, path):
         """Load and run a candidate before committing a selection."""
         if kind == "laser":
             device = "cuda:0" if self._gpu else "cpu"
-            if path.suffix.lower() == ".pt":
+            if path.suffix.lower() == ".engine":
+                self._require_engine_gpu()
+                _, metadata = engine_header(path)
+                if metadata:
+                    if metadata.get("task") != "detect" or len(metadata.get("names") or {}) != 1:
+                        raise ValueError("Engine laser Ultralytics phải là YOLO detect một lớp chấm laser.")
+                    model = YoloLaserModel(path, device, self.cfg.LASER_IMAGE_SIZE, self.cfg.LASER_CONFIDENCE)
+                else:
+                    model = TensorRTLaserModel(path, device, self.cfg.LASER_CONFIDENCE)
+            elif path.suffix.lower() == ".pt":
                 model = YoloLaserModel(path, device, self.cfg.LASER_IMAGE_SIZE, self.cfg.LASER_CONFIDENCE)
             else:
                 model = LaserModel(path, device, self.cfg.LASER_IMAGE_SIZE,
                                    self.cfg.LASER_CONFIDENCE, self.cfg.LASER_CROP_SIZE)
-            model.warm_up()
+            try:
+                model.warm_up()
+            except Exception:
+                self._close_laser(model)
+                raise
         else:
-            from ultralytics import YOLO
-            model = YOLO(str(path))
-            if model.task != "segment" or not any(not excluded(str(n)) for n in model.names.values()):
-                raise ValueError("Cần mô hình YOLO segmentation có ít nhất một lớp vật thể (ngoài person).")
+            model = self._load_segmentation(path)
             model.predict(np.zeros((480, 640, 3), dtype=np.uint8), imgsz=self.cfg.IMAGE_SIZE,
                           device=0 if self._gpu else "cpu", verbose=False)
         return model
@@ -378,7 +419,9 @@ class Detector:
         self.model_busy = True
         try:
             with self.lock:
-                self._prepare_model(kind, path)
+                candidate = self._prepare_model(kind, path)
+                if kind == "laser":
+                    self._close_laser(candidate)
         finally:
             self.model_busy = False
             self._management_lock.release()
@@ -395,11 +438,17 @@ class Detector:
                 candidate = self._prepare_model(kind, path)
                 active = {**self._active, kind: model_id}
                 # Persist first: failure must leave the running model and classes intact.
-                self.model_store.save(active)
+                try:
+                    self.model_store.save(active)
+                except Exception:
+                    if kind == "laser":
+                        self._close_laser(candidate)
+                    raise
                 if kind == "segmentation":
                     self._model = candidate
                     self._set_classes({int(k): str(v) for k, v in dict(candidate.names).items()})
                 else:
+                    self._close_laser(self._laser)
                     self._laser = candidate
                     self.laser_error = None
                 self._active = active
@@ -416,5 +465,6 @@ class Detector:
             if self._hands is not None:
                 self._hands.close()
                 self._hands = None
+            self._close_laser(self._laser)
             self._laser = None
         self._hand_pool.shutdown(wait=False, cancel_futures=True)

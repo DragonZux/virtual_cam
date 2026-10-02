@@ -18,11 +18,12 @@ class LaserUnavailable(RuntimeError):
     """The trained laser detector is not available; never silently use colour rules."""
 
 
-def prepare_frame(frame: np.ndarray, size: int, stride: int = 64):
+def prepare_frame(frame: np.ndarray, size: int, stride: int = 64, *, target_shape: tuple[int, int] | None = None):
     """YOLOv5 AutoShape letterbox, RGB/CHW float32; preserve its half-pad mapping."""
     height, width = frame.shape[:2]
     gain = size / max(height, width)
-    target_h, target_w = (int(np.ceil(v * gain / stride) * stride) for v in (height, width))
+    target_h, target_w = (target_shape if target_shape is not None else
+                          tuple(int(np.ceil(v * gain / stride) * stride) for v in (height, width)))
     gain = min(target_h / height, target_w / width)
     resized_w, resized_h = round(width * gain), round(height * gain)
     pad_x, pad_y = (target_w - resized_w) / 2, (target_h - resized_h) / 2
@@ -138,7 +139,7 @@ class YoloLaserModel:
     def __init__(self, path: Path, device: str, size: int, confidence: float):
         from ultralytics import YOLO
 
-        self.model = YOLO(str(path))
+        self.model = YOLO(str(path), task="detect") if path.suffix.lower() == ".engine" else YOLO(str(path))
         if self.model.task != "detect" or len(self.model.names) != 1:
             raise ValueError("Model laser .pt phải là YOLO detect được huấn luyện với đúng một lớp chấm laser.")
         self.device, self.size, self.confidence = device, size, confidence

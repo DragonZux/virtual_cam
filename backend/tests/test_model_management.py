@@ -70,7 +70,8 @@ def test_persistence_failure_keeps_previous_model(client, detector, catalog, mon
     assert detector.classes == old_classes
 
 
-@pytest.mark.parametrize("kind,name", [("segmentation", "my-seg.pt"), ("laser", "spot.pt"), ("laser", "spot.torchscript")])
+@pytest.mark.parametrize("kind,name", [("segmentation", "my-seg.pt"), ("laser", "spot.pt"), ("laser", "spot.torchscript"),
+                                     ("segmentation", "objects.engine"), ("laser", "spot.engine")])
 def test_upload_validates_without_activating_or_overwriting(client, detector, catalog, kind, name):
     folder, calls = catalog
     for _ in range(2):
