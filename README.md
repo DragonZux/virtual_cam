@@ -22,6 +22,7 @@ docker compose logs -f        # chờ dòng "Detector ready"
 | https://localhost:8033 | Giao diện web (máy khác: `https://<IP máy>:8033`) |
 | https://localhost:8033/settings | Tải thêm và chọn mô hình segmentation / laser |
 | https://localhost:8033/test | Thử mô hình bằng ảnh hoặc video |
+| https://localhost:8033/view3d/ | Màn hình 3D: mô hình 3D của vật thể đang chọn (app riêng, xem [view3d/README.md](view3d/README.md)) |
 | https://localhost:8033/docs | Tài liệu API (Swagger) |
 
 - Cần NVIDIA driver ≥ 570 + Docker Desktop bật WSL2 GPU (Windows) hoặc NVIDIA Container Toolkit (Linux).
@@ -158,6 +159,10 @@ Frontend tự kết nối lại (đợi 0,5 giây, tăng dần tối đa 10 giâ
 
 WebSocket dùng chung cổng và phạm vi mạng với API hiện tại, không có đăng nhập. Trạng thái chỉ lưu trong bộ nhớ của **một tiến trình server**, đúng với `serve.py` / Docker hiện tại; nếu chạy nhiều worker hoặc nhiều máy chủ thì cần thêm cơ chế chia sẻ trạng thái và phát sự kiện giữa các tiến trình. Gọi riêng `POST /api/vision/frame` không phát sự kiện lựa chọn đã xác nhận vì bước xác nhận hiện nằm ở trình duyệt.
 
+### Màn hình 3D (`view3d/`)
+
+App frontend riêng, không chung với giao diện camera: nghe `/api/vision/ws` và hiện **mô hình 3D** của vật thể vừa được xác nhận (dựng sẵn cho cả 79 lớp COCO, thay được bằng file GLB riêng). Bản Docker mở ở `https://<IP máy>:8033/view3d/` (cùng cổng 8033); khi phát triển chạy `npm install && npm run dev` trong `view3d/` → `http://localhost:5183` (proxy `/api` → backend như `frontend/`). Nối tới máy chủ khác bằng `?ws=<IP:cổng>` hoặc Cài đặt của màn hình 3D. Chi tiết: [view3d/README.md](view3d/README.md).
+
 ## Model laser đỏ
 
 `docker/prepare_laser_model.py` (container tự gọi lần chạy đầu) tải trọng số đã fine-tune, kiểm tra checksum và xuất `models/laser-advr-yolov5l6.torchscript` (~305 MB). `backend/services/laser_model.py` chạy ở 1280px, confidence 0.55; khi có `laser_hint` chỉ tìm trong vùng 384×384 quanh đó, mất dấu thì quét lại toàn ảnh trong cùng request. Cấu hình: `LASER_MODEL`, `LASER_IMAGE_SIZE`, `LASER_CONFIDENCE`, `LASER_CROP_SIZE` (`0` = luôn quét toàn ảnh). Thiếu model thì chế độ laser báo 503, chỉ tay vẫn chạy. Model vẫn có thể nhận nhầm LED / phản sáng.
@@ -170,6 +175,7 @@ Nguồn: [Davide Torielli / IIT — trọng số ADVR trên Zenodo](https://zeno
 virtual_cam/
 ├── backend/            FastAPI: nhận khung JPEG → đầu ngón trỏ / chấm laser đỏ + vật thể được chỉ; phục vụ luôn frontend/dist
 ├── frontend/           React 19 + TypeScript + Vite + Ant Design + Redux Toolkit / redux-observable
+├── view3d/             App riêng: màn hình 3D nghe /api/vision/ws, hiện mô hình 3D của vật thể đang chọn (three.js)
 ├── models/             hand_landmarker.task, yolo26*-seg.pt, laser-advr-yolov5l6.torchscript — không commit
 ├── docker/             init_models.py (tải model còn thiếu khi container chạy), prepare_laser_model.py (xuất model laser đỏ)
 ├── Dockerfile, docker-compose.yml, .dockerignore   Docker cho PC có GPU NVIDIA
@@ -206,3 +212,5 @@ npm run lint && npx tsc -b && npm run build
 | 8033 | Docker, HTTPS (map vào 8031 trong container) |
 | 5180 | Vite dev |
 | 5182 | `npm run preview` (bản build, proxy /api → backend `BACKEND_HOST`) |
+| 5183 | `view3d/` dev (màn hình 3D, proxy /api → backend) |
+| 5184 | `view3d/` `npm run preview` (bản build màn hình 3D) |
