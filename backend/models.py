@@ -126,3 +126,12 @@ class FrameResult(BaseModel):
     processing_ms: int
     resolution: FrameSize
 
+
+class StreamOpen(BaseModel):
+    url: str = Field(min_length=8, max_length=1000, description="rtsp://máy:cổng/đường_dẫn (MediaMTX, camera IP)")
+
+
+class StreamOut(BaseModel):
+    id: str = Field(description="Phiên đọc luồng; lấy khung ở GET /camera/streams/{id}/frame")
+    width: int
+    height: int

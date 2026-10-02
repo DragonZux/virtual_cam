@@ -6,8 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
 from core.logging import logger
 from core.spa import mount_frontend, mount_view3d
-from routers import vision, models, selection
+from routers import camera, vision, models, selection
 from services.detector import Detector
+from services.rtsp_stream import StreamHub
 from services.selection_stream import SelectionHub
 
 # CSP cho trang React (không áp cho /api, /docs): antd chèn <style> lúc chạy nên style cần 'unsafe-inline'
@@ -24,11 +25,13 @@ async def lifespan(app: FastAPI):
     detector = Detector(settings)
     app.state.detector = detector
     app.state.selection_hub = SelectionHub()
+    app.state.stream_hub = StreamHub()
     # Nạp model ở luồng nền: web mở được ngay, giao diện hiện "Đang khởi động" tới khi sẵn sàng
     detector.start()
     logger.info("=" * 60)
     yield
     logger.info("Shutting down")
+    app.state.stream_hub.shutdown()
     detector.close()
 
 
@@ -69,6 +72,7 @@ API_PREFIX = "/api"
 app.include_router(vision.router, prefix=API_PREFIX)
 app.include_router(models.router, prefix=API_PREFIX)
 app.include_router(selection.router, prefix=API_PREFIX)
+app.include_router(camera.router, prefix=API_PREFIX)
 
 
 @app.get("/api", tags=["Health"])
