@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
 from core.logging import logger
-from core.spa import mount_frontend
+from core.spa import mount_frontend, mount_view3d
 from routers import vision, models, selection
 from services.detector import Detector
 from services.selection_stream import SelectionHub
@@ -81,5 +81,7 @@ def health():
     return {"status": "ok"}
 
 
+# Màn hình 3D (app riêng, view3d/dist) ở /view3d/ — trước giao diện chính vì "/" bắt mọi đường dẫn
+mount_view3d(app, settings.VIEW3D_DIST)
 # Giao diện React đã build — mount sau cùng để không che các route ở trên
 mount_frontend(app, settings.FRONTEND_DIST)
