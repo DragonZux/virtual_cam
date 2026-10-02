@@ -74,9 +74,10 @@ docker compose logs --tail 60 virtual-cam
 - **Tổng quan**: camera trực tiếp với lựa chọn riêng mô hình segmentation và laser, khung xương bàn tay, vòng "giữ để xác nhận", viền vật thể đang chọn và khung các vật thể khác; FPS, trạng thái bàn tay / laser, số vật thể, số lượt chọn; chụp ảnh, toàn màn hình, phím tắt (Space tạm dừng, S chụp ảnh, F toàn màn hình).
 - **Thử nghiệm** (`/test`): chọn / kéo thả ảnh hoặc video, đổi mô hình, chỉnh confidence và lớp vật thể, xem độ tin cậy, điểm laser, thời gian xử lý. Ảnh chỉ gửi nhận diện **một lần**, giữ nguyên kết quả; đổi ảnh / mô hình / thông số hoặc bấm **Phân tích lại** mới gửi lại. Video gửi theo từng khung. Camera dừng khi vào trang thử; kết quả thử không ghi vào lịch sử camera.
 - **Quản lý mô hình** (`/settings`): tải YOLO segmentation `.pt`, YOLO laser detect `.pt` (một lớp chấm laser) hoặc ADVR `.torchscript` đúng định dạng Virtual Cam. File được nạp thử trước khi thêm; tải trùng tên tạo bản riêng. Giới hạn mặc định 1024 MB (`MAX_MODEL_MB`). Chỉ tải trọng số từ nguồn tin cậy.
+- **Camera RTSP / MediaMTX**: bấm **RTSP** cạnh ô chọn camera (hoặc **Kết nối RTSP** trên khung camera), dán địa chỉ như khi xem bằng `ffplay rtsp://10.0.9.41:8554/camera` (dán cả lệnh `ffplay …` cũng được). Trình duyệt không mở được `rtsp://` nên **máy chủ** đọc luồng (OpenCV/FFmpeg, RTSP qua TCP) và gửi khung JPEG mới nhất về trang; nhận diện, lớp vẽ, chụp ảnh, lịch sử chạy như webcam. Địa chỉ phải truy cập được từ máy chủ (trong Docker: dùng IP LAN của máy chạy MediaMTX, không dùng `localhost`). Địa chỉ gần nhất được nhớ trên trình duyệt; tài khoản / mật khẩu trong URL không hiện trên khung hình và không ghi log.
 - **Chọn bằng laser**: chọn **Laser** phía trên khung camera, chiếu chấm laser đỏ lên vật thể để camera thấy cả vật lẫn chấm, giữ yên để xác nhận.
 - **Thử nghiệm**: kéo thả ảnh / video để thử mô hình; file phát trên trình duyệt, các khung được gửi tới máy chủ để nhận diện.
-- **Quản lý mô hình AI**: chọn mô hình segmentation và mô hình laser đang chạy, hoặc tải lên file mới (`.pt` YOLO segmentation; `.pt` YOLO detect một lớp chấm laser hoặc `.torchscript` ADVR). File lưu trong `models/custom`, lựa chọn áp dụng cho toàn máy chủ và được nhớ khi khởi động lại. Chỉ tải mô hình từ nguồn tin cậy (`.pt` là pickle).
+- **Quản lý mô hình AI**: chọn mô hình segmentation và mô hình laser đang chạy, hoặc tải lên file mới (`.pt` YOLO segmentation; `.pt` YOLO detect một lớp chấm laser hoặc `.torchscript` ADVR). Có GPU NVIDIA thì mặc định tích **Chuyển sang TensorRT (FP16) sau khi tải lên**; mô hình `.pt` / `.torchscript` đã có thì bấm **Chuyển TensorRT** (xem [Chuyển sang TensorRT ngay trên máy chủ](#chuyển-sang-tensorrt-ngay-trên-máy-chủ)). File lưu trong `models/custom`, lựa chọn áp dụng cho toàn máy chủ và được nhớ khi khởi động lại. Chỉ tải mô hình từ nguồn tin cậy (`.pt` là pickle).
 - **Lịch sử**: thống kê phiên, bảng lượt chọn, xuất CSV.
 - **Cài đặt** (lưu trên từng trình duyệt): chọn vật thể trong 79 lớp COCO, ngưỡng tin cậy, vùng chấp nhận quanh đầu ngón tay, thời gian giữ, lớp hiển thị, chế độ gương, đọc tên bằng giọng nói.
 - **Hướng dẫn**, giao diện **tiếng Việt / English**.
@@ -96,6 +97,10 @@ Khung camera chỉ dùng để nhận diện rồi bỏ, không lưu. Cài đặ
 | `GET` | `/api/models` | Danh sách mô hình, loại, dung lượng, lựa chọn hiện tại và giới hạn tải |
 | `POST` | `/api/models?kind=segmentation&name=custom.pt` | Body là file nhị phân; `kind=laser` cho mô hình laser. Kiểm tra rồi lưu, chưa tự chuyển mô hình |
 | `POST` | `/api/models/activate` | JSON `{"id":"<id từ danh sách>"}`; nạp, kiểm tra và lưu lựa chọn, trả trạng thái mới |
+| `POST` | `/api/models/convert` | JSON `{"id":"<id .pt / .torchscript>"}`; build TensorRT FP16 ở nền (202), xong tự chọn engine. Tiến độ ở `conversions` của `GET /api/models`; `POST /api/models?...&convert=true` tải lên rồi chuyển luôn |
+| `POST` | `/api/camera/streams` | JSON `{"url":"rtsp://…"}`; máy chủ mở luồng RTSP, trả `{id, width, height}` (502 nếu không kết nối được) |
+| `GET` | `/api/camera/streams/{id}/frame` | Khung JPEG mới hơn khung đã nhận của phiên (504 chưa có khung mới, 404 phiên đã đóng) |
+| `DELETE` | `/api/camera/streams/{id}` | Đóng phiên; không ai lấy khung trong 20 giây thì máy chủ tự đóng luồng |
 
 Query của `POST /api/vision/frame` (đều không bắt buộc): `targets` (tên lớp, cách nhau dấu phẩy, không phân biệt hoa / thường; `person` luôn bị loại), `conf` (0.05–0.95), `tolerance` (0–100 px), `pointer_mode` (`hand` | `laser`), `laser_hint` (`x,y` chấm laser đang bám ở khung trước), `model_revision` (phiên bản mô hình client đang dùng; lệch thì máy chủ bỏ khung).
 
@@ -168,6 +173,38 @@ App frontend riêng, không chung với giao diện camera: nghe `/api/vision/ws
 `docker/prepare_laser_model.py` (container tự gọi lần chạy đầu) tải trọng số đã fine-tune, kiểm tra checksum và xuất `models/laser-advr-yolov5l6.torchscript` (~305 MB). `backend/services/laser_model.py` chạy ở 1280px, confidence 0.55; khi có `laser_hint` chỉ tìm trong vùng 384×384 quanh đó, mất dấu thì quét lại toàn ảnh trong cùng request. Cấu hình: `LASER_MODEL`, `LASER_IMAGE_SIZE`, `LASER_CONFIDENCE`, `LASER_CROP_SIZE` (`0` = luôn quét toàn ảnh). Thiếu model thì chế độ laser báo 503, chỉ tay vẫn chạy. Model vẫn có thể nhận nhầm LED / phản sáng.
 
 Nguồn: [Davide Torielli / IIT — trọng số ADVR trên Zenodo](https://zenodo.org/records/10471835), CC BY 4.0; [mã nguồn nhóm tác giả](https://github.com/ADVRHumanoids/nn_laser_spot_tracking). Trọng số gốc `yolov5l6_e200_b8_tvt302010_laser_v5.pt`, MD5 `21b8e90b7707cb91054547c6558301e3`. Chuyển định dạng dùng [YOLOv5 v7.0](https://github.com/ultralytics/yolov5/tree/v7.0), GPL-3.0.
+
+## Chạy model TensorRT
+
+Backend hỗ trợ model vật thể Ultralytics segmentation `.engine`, laser Ultralytics detect một lớp `.engine`, và engine ADVR YOLOv5 có đầu vào cố định `[1, 3, H, W]`, đầu ra đã giải mã `[1, N, 6]` (`xywh`, objectness, class score). FE vẫn gửi JPEG và nhận cùng cấu trúc JSON.
+
+- Chép `yolo26m-seg.engine` và `laser-advr-yolov5l6.engine` vào `models/`, mở **Cài đặt → Quản lý mô hình AI** và chọn từng engine. Có thể upload `.engine` với loại model tương ứng; engine được nạp thử trước khi lưu. Lựa chọn lưu ở `models/custom/active.json` và được ưu tiên hơn tên model mặc định trong `.env`.
+- Engine segmentation cần metadata do Ultralytics export tạo ra (`task=segment`, tên lớp). Engine ADVR thuần đặt ở thư mục gốc cần tên bắt đầu bằng `laser-advr-`; tên khác thì upload dưới loại **Laser**. Đầu vào/đầu ra ADVR phải ở dạng float16 hoặc float32 và bộ nhớ tuyến tính.
+- Engine ADVR cố định chạy **toàn ảnh**: resize giữ tỷ lệ và thêm viền đến đúng kích thước engine, sau đó quy đổi vị trí chấm về ảnh gốc. Engine `1280×1280` không chạy được nhánh crop `384×384`; `LASER_CROP_SIZE` chỉ áp dụng cho TorchScript. `laser_hint` vẫn ưu tiên ứng viên gần vị trí trước đó.
+- Cần GPU NVIDIA CUDA và runtime TensorRT tương thích engine. `requirements.txt` cài TensorRT CUDA 12 bản 11.3 trên Windows/Linux x86_64; Jetson dùng runtime tương ứng JetPack. Engine của Windows không dùng trực tiếp cho Docker Linux/Jetson: build lại trên môi trường đích. Model `.pt` và `.torchscript` vẫn có thể chọn lại trong giao diện.
+- Container không tự tải hoặc xuất engine bị thiếu khi khởi động. Phải cung cấp engine đúng cho máy đó (hoặc chuyển trong giao diện, xem dưới) trước khi cấu hình `YOLO_MODEL` / `LASER_MODEL` trỏ tới `.engine`.
+
+### Chuyển sang TensorRT ngay trên máy chủ
+
+**Cài đặt → Quản lý mô hình AI**: tích **Chuyển sang TensorRT (FP16) sau khi tải lên** (mặc định bật khi máy chủ có GPU NVIDIA + TensorRT), hoặc bấm **Chuyển TensorRT** ở mô hình `.pt` / `.torchscript` đã có (kể cả mô hình mặc định trong `models/`).
+
+- Máy chủ build engine **FP16** cho đúng GPU, hệ điều hành và bản TensorRT của nó, ở tiến trình con (`services/tensorrt_export.py`, mỗi lúc một mô hình). Xong thì engine được nạp thử và **tự chọn chạy luôn**; lỗi thì giữ mô hình đang chạy và báo lý do trong Cài đặt.
+- Segmentation / laser `.pt` Ultralytics: export Ultralytics `format=engine`, `quantize=16`, ảnh vuông `IMAGE_SIZE` / `LASER_IMAGE_SIZE`, giữ metadata lớp trong engine. Laser ADVR `.torchscript`: TorchScript → ONNX tĩnh `[1, 3, LASER_IMAGE_SIZE, LASER_IMAGE_SIZE]` → engine thuần đầu ra `[1, N, 6]`.
+- TensorRT 11 bỏ cờ FP16 của builder nên FP16 được đổi sẵn trong ONNX bằng NVIDIA ModelOpt AutoCast (`nvidia-modelopt[onnx]` trong `requirements.txt`).
+- Engine lưu ở `models/custom/<loại>/<tên>-fp16.engine`, không ghi đè engine cũ; file gốc vẫn còn để chọn lại.
+- Build mất vài phút (laser ADVR 1280 lâu hơn) và cần nhiều RAM: máy ít RAM có thể lỗi `LLVM ERROR: out of memory` — đóng bớt ứng dụng rồi bấm chuyển lại. Trong lúc build, nhận diện vẫn chạy nhưng chậm hơn vì dùng chung GPU.
+
+Thử trực tiếp trên Windows bằng Python đã có PyTorch CUDA và TensorRT (kiểm tra `torch.cuda.is_available()` trả `True`):
+
+```powershell
+.\.cam\Scripts\python.exe -c "import torch, tensorrt; print(torch.cuda.is_available(), tensorrt.__version__)"
+cd frontend
+npm run build
+cd ..
+.\.cam\Scripts\python.exe backend/serve.py --host 127.0.0.1 --port 8030 --https-port 0
+```
+
+Mở `http://localhost:8030`, chọn hai engine trong Cài đặt rồi thử camera hoặc ảnh ở `/test`. Nếu `.cam` đang cài PyTorch CPU thì dùng Python có CUDA hoặc cài PyTorch CUDA vào môi trường đó. So sánh `yolo26m-seg.engine` với chính `yolo26m-seg.pt` trên cùng ảnh, không so với bản `n` để kết luận mức tăng tốc TensorRT.
 
 ## Cấu trúc
 

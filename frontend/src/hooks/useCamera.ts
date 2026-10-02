@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { firstValueFrom } from "rxjs";
+import type { AjaxError } from "rxjs/ajax";
 
 import { IMAGE_MAX_SIDE } from "@/common/constants";
 import type { CameraDevice, MediaSource } from "@/common/types";
+import { CameraService } from "@/Services/CameraService";
 import { useAppDispatch } from "@/store/hooks";
 import { visionActions } from "@/store/vision";
+
+/** Luồng RTSP: số lần liên tiếp không lấy được khung (mỗi lần máy chủ chờ ~3 giây) trước khi báo mất kết nối */
+const STREAM_MAX_FAILURES = 5;
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Lỗi getUserMedia có bản dịch ở camera.errors.<code> */
 const KNOWN_ERRORS = ["NotAllowedError", "NotFoundError", "NotReadableError", "OverconstrainedError", "AbortError"];
@@ -167,6 +174,72 @@ export const useCamera = (videoRef: RefObject<HTMLVideoElement | null>) => {
     [dispatch, release, videoRef],
   );
 
+  /**
+   * Camera RTSP (MediaMTX, camera IP): máy chủ đọc luồng, trang lấy lần lượt từng khung JPEG mới nhất và vẽ vào
+   * canvas → <video> như ảnh thử, nên vòng gửi khung / lớp vẽ / chụp ảnh dùng chung với webcam.
+   */
+  const startStream = useCallback(
+    async (url: string) => {
+      release();
+      const run = runRef.current;
+      const video = videoRef.current;
+      const ctx = document.createElement("canvas").getContext("2d", { alpha: false });
+      if (!video || !ctx) return;
+      dispatch(visionActions.streamStarting(url));
+      let id: string;
+      try {
+        id = (await firstValueFrom(CameraService.openStream(url))).id;
+      } catch {
+        if (run === runRef.current) dispatch(visionActions.cameraFailed("stream"));
+        return;
+      }
+      const close = () => void firstValueFrom(CameraService.closeStream(id)).catch(() => undefined);
+      if (run !== runRef.current) {
+        close();
+        return;
+      }
+      cleanupRef.current = close;
+      const { canvas } = ctx;
+      const stream = canvas.captureStream(0);
+      const track = stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
+      streamRef.current = stream;
+      let started = false;
+      let failures = 0;
+      while (run === runRef.current) {
+        try {
+          const bitmap = await createImageBitmap(await firstValueFrom(CameraService.frame(id)));
+          if (run !== runRef.current) {
+            bitmap.close();
+            break;
+          }
+          if (canvas.width !== bitmap.width) canvas.width = bitmap.width;
+          if (canvas.height !== bitmap.height) canvas.height = bitmap.height;
+          ctx.drawImage(bitmap, 0, 0);
+          bitmap.close();
+          track.requestFrame();
+          failures = 0;
+          if (!started) {
+            started = true;
+            video.srcObject = stream;
+            await video.play().catch(() => undefined);
+            // facingMode "environment": chế độ gương "tự động" không lật hình camera RTSP
+            dispatch(visionActions.cameraStarted({ deviceId: null, facingMode: "environment", stream: url, startedAt: Date.now() }));
+          }
+        } catch (error) {
+          if (run !== runRef.current) break;
+          // 404: máy chủ đã đóng phiên (khởi động lại…); 504: luồng chưa có khung mới, máy chủ đang kết nối lại
+          if ((error as AjaxError)?.status === 404 || ++failures >= STREAM_MAX_FAILURES) {
+            release();
+            dispatch(visionActions.cameraFailed("stream"));
+            break;
+          }
+          await wait(500);
+        }
+      }
+    },
+    [dispatch, release, videoRef],
+  );
+
   // Rời trang / đóng tab: tắt đèn camera ngay
   useEffect(() => {
     window.addEventListener("pagehide", release);
@@ -176,5 +249,5 @@ export const useCamera = (videoRef: RefObject<HTMLVideoElement | null>) => {
     };
   }, [release, stop]);
 
-  return { start, stop, playMedia };
+  return { start, stop, playMedia, startStream };
 };

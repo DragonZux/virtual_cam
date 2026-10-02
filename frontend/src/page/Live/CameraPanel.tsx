@@ -1,6 +1,6 @@
-import { Button, Card, Select, Tooltip } from "antd";
-import { Aperture, Camera, Film, FlaskConical, Maximize, Minimize, Pause, Play, Power, RotateCcw } from "lucide-react";
-import { useEffect, useRef, type RefObject } from "react";
+import { Button, Card, Select, Space, Tooltip } from "antd";
+import { Aperture, Camera, Cctv, Film, FlaskConical, Maximize, Minimize, Pause, Play, Power, RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -27,7 +27,9 @@ import { canvasToPng, captureFrame } from "@/utils/capture";
 import { downloadBlob } from "@/utils/download";
 import { fileStamp, objectLabel } from "@/utils/format";
 import { notify } from "@/utils/notify";
+import { displayStreamUrl } from "@/utils/stream";
 import styles from "./live.module.less";
+import { StreamDialog } from "./StreamDialog";
 
 interface Props {
   /** Đang ở trang Tổng quan (trang được giữ mount khi chuyển trang) — chỉ bắt phím tắt lúc hiện */
@@ -66,8 +68,9 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
   const options = useAppSelector(getFrameOptions);
   const sessionStarted = useAppSelector(getSessionStartedAt) !== null;
   const pageVisible = useDocumentVisible();
-  const { start, stop } = source;
+  const { start, stop, startStream } = source;
   const fullscreen = useFullscreen(stageRef);
+  const [streamDialog, setStreamDialog] = useState(false);
 
   const cameraOn = camera.status === "on";
   const media = camera.source === "media";
@@ -146,6 +149,7 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
 
   const overlay = ((): OverlayContent | null => {
     if (camera.status === "starting") {
+      if (camera.stream) return { title: t("camera.rtsp.startingTitle"), text: t("camera.rtsp.startingText", { url: displayStreamUrl(camera.stream) }) };
       return media
         ? { title: t("media.startingTitle"), text: t("media.startingText") }
         : { title: t("camera.overlay.startingTitle"), text: t("camera.overlay.startingText") };
@@ -212,20 +216,29 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
         </span>
       }
       extra={
-        !testMode && <Select
-          size="small"
-          className={styles.cameraSelect}
-          aria-label={t("camera.select")}
-          placeholder={t("camera.select")}
-          value={camera.deviceId ?? undefined}
-          disabled={!cameraOn || media || camera.devices.length < 2}
-          popupMatchSelectWidth={false}
-          options={camera.devices.map((device, index) => ({
-            value: device.deviceId,
-            label: device.label || t("camera.deviceFallback", { index: index + 1 }),
-          }))}
-          onChange={(deviceId: string) => start(deviceId)}
-        />
+        !testMode && <Space size={6}>
+          <Select
+            size="small"
+            className={styles.cameraSelect}
+            aria-label={t("camera.select")}
+            placeholder={t("camera.select")}
+            value={camera.stream ? undefined : (camera.deviceId ?? undefined)}
+            // Đang xem RTSP: chọn webcam nào cũng là đổi nguồn
+            disabled={!cameraOn || media || camera.devices.length < (camera.stream ? 1 : 2)}
+            popupMatchSelectWidth={false}
+            options={camera.devices.map((device, index) => ({
+              value: device.deviceId,
+              label: device.label || t("camera.deviceFallback", { index: index + 1 }),
+            }))}
+            onChange={(deviceId: string) => start(deviceId)}
+          />
+          <Tooltip title={t("camera.rtsp.title")}>
+            <Button size="small" icon={<Cctv size={14} />} type={camera.stream && cameraOn ? "primary" : "default"}
+              aria-label={t("camera.rtsp.button")} onClick={() => setStreamDialog(true)}>
+              <span className={styles.rtspLabel}>{t("camera.rtsp.button")}</span>
+            </Button>
+          </Tooltip>
+        </Space>
       }
     >
       <ModelControls />
@@ -262,6 +275,7 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
                 <Button type="primary" icon={<Camera size={16} />} onClick={startCamera}>
                   {t("camera.start")}
                 </Button>
+                <Button ghost icon={<Cctv size={16} />} onClick={() => setStreamDialog(true)}>{t("camera.rtsp.open")}</Button>
                 <Link to={ROUTES.test}><Button ghost icon={<FlaskConical size={16} />}>{t("test.open")}</Button></Link>
               </div>
             )}
@@ -280,7 +294,9 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
           <span className={styles.frameCorner} />
           {media && camera.media
             ? t("media.caption", { name: camera.media.name })
-            : t(prefs.pointerMode === "laser" ? "pointer.caption" : "camera.caption")}
+            : camera.stream && cameraOn
+              ? t("camera.rtsp.caption", { url: displayStreamUrl(camera.stream) })
+              : t(prefs.pointerMode === "laser" ? "pointer.caption" : "camera.caption")}
         </div>
       </div>
 
@@ -319,6 +335,10 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
           </Tooltip>
         </div>
       </div>
+      {streamDialog && <StreamDialog open initial={camera.stream} onCancel={() => setStreamDialog(false)} onConnect={(url) => {
+        setStreamDialog(false);
+        void startStream(url);
+      }} />}
     </Card>
   );
 };

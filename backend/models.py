@@ -57,11 +57,28 @@ class ModelInfo(BaseModel):
     size_bytes: int
     active: bool
     available: bool
+    convertible: bool = Field(False, description="Chuyển được sang TensorRT (.pt / .torchscript)")
+
+
+class ConversionInfo(BaseModel):
+    """Một lượt chuyển mô hình sang TensorRT FP16; xong thì engine được chọn chạy luôn."""
+    id: str
+    source: str = Field(description="id mô hình gốc")
+    name: str
+    kind: str
+    status: Literal["queued", "running", "done", "error"]
+    error: str | None = None
+    engine: str | None = Field(None, description="id engine đã tạo")
+    created_at: float
+    finished_at: float | None = None
 
 
 class ModelList(BaseModel):
     items: list[ModelInfo]
     max_bytes: int
+    conversions: list[ConversionInfo] = Field(default_factory=list, description="Mới nhất trước")
+    convert_available: bool = False
+    convert_reason: str | None = Field(None, description="Lý do chưa chuyển được sang TensorRT trên máy này")
 
 
 class ModelSelection(BaseModel):
@@ -108,3 +125,13 @@ class FrameResult(BaseModel):
     detections: list[Detection]
     processing_ms: int
     resolution: FrameSize
+
+
+class StreamOpen(BaseModel):
+    url: str = Field(min_length=8, max_length=1000, description="rtsp://máy:cổng/đường_dẫn (MediaMTX, camera IP)")
+
+
+class StreamOut(BaseModel):
+    id: str = Field(description="Phiên đọc luồng; lấy khung ở GET /camera/streams/{id}/frame")
+    width: int
+    height: int

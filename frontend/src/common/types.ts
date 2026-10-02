@@ -79,10 +79,39 @@ export interface ModelInfo {
   size_bytes: number;
   active: boolean;
   available: boolean;
+  /** .pt / .torchscript: chuyển được sang TensorRT FP16 */
+  convertible?: boolean;
+}
+export type ConversionStatus = "queued" | "running" | "done" | "error";
+/** Một lượt chuyển sang TensorRT FP16; xong thì máy chủ tự chọn engine mới */
+export interface ConversionInfo {
+  id: string;
+  /** id mô hình gốc */
+  source: string;
+  name: string;
+  kind: ModelKind;
+  status: ConversionStatus;
+  error: string | null;
+  /** id engine đã tạo */
+  engine: string | null;
+  created_at: number;
+  finished_at: number | null;
 }
 export interface ModelList {
   items: ModelInfo[];
   max_bytes: number;
+  /** Mới nhất trước */
+  conversions?: ConversionInfo[];
+  convert_available?: boolean;
+  /** Lý do máy chủ chưa chuyển được sang TensorRT */
+  convert_reason?: string | null;
+}
+
+/** POST /camera/streams — phiên đọc luồng RTSP ở máy chủ */
+export interface StreamInfo {
+  id: string;
+  width: number;
+  height: number;
 }
 
 export type MediaKind = "image" | "video";
