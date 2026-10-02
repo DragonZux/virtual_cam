@@ -1,6 +1,7 @@
 # HICAS backend — API FastAPI + YOLO / laser / TensorRT trên GPU NVIDIA (PC x86_64). Không mở cổng ra ngoài:
 # container frontend (nginx) chuyển /api sang đây trong mạng Docker.
 # Build từ thư mục gốc (cần requirements.txt và docker/): docker-compose.yml đặt context ".", dockerfile backend/Dockerfile.
+# Jetson Orin dùng backend/Dockerfile.jetson + docker-compose.jetson.yml (CUDA sm_87).
 FROM python:3.11-slim
 # Log ra ngay (không thì docker logs hiện trễ / sai thứ tự)
 ENV PYTHONUNBUFFERED=1 \
