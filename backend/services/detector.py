@@ -24,7 +24,7 @@ from models import (
     Detection, DetectionDefaults, DetectorPhase, FrameResult, FrameSize, LaserSpot, Point, PointerMode, SelectedObject,
 )
 from services.laser_model import LaserModel, YoloLaserModel, LaserUnavailable
-from services.engine_metadata import engine_header
+from services.engine_metadata import engine_header, torchscript_metadata
 from services.tensorrt_laser import TensorRTLaserModel
 from services.model_converter import CONVERTIBLE, ModelConverter
 from services.model_store import ModelStore
@@ -133,33 +133,20 @@ class Detector:
 
     def _load(self) -> None:
         try:
-            # Import nặng (torch, ultralytics, mediapipe) để trong luồng nền cho server lên ngay
-            import mediapipe as mp
+            # Import nặng (torch, ultralytics) để trong luồng nền cho server lên ngay
             import torch
 
-            self._active.update(self.model_store.saved())
+            saved = self.model_store.saved()
 
-            hand_path = self.cfg.hand_model_path
-            if not hand_path.is_file():
-                raise RuntimeError(f"Thiếu model bàn tay {hand_path.name} trong {hand_path.parent}. Khởi động lại container để tự tải.")
             self._gpu = self.cfg.DEVICE.lower() != "cpu" and torch.cuda.is_available()
             if self.cfg.DEVICE.lower() not in ("auto", "cpu") and not self._gpu:
                 logger.warning("DEVICE=%s but CUDA is unavailable - running YOLO on CPU", self.cfg.DEVICE)
             self.device_name = torch.cuda.get_device_name(0) if self._gpu else "CPU"
 
             # Tên model chuẩn (yolo26n-seg.pt…) chưa có file thì ultralytics tự tải về MODEL_DIR
-            self._model = self._load_segmentation(self.cfg.MODEL_DIR / self._active["segmentation"])
+            self._model = self._load_selected("segmentation", saved, self._load_segmentation)
             self._set_classes({int(k): str(v) for k, v in dict(self._model.names).items()})
-            options = mp.tasks.vision.HandLandmarkerOptions(
-                base_options=mp.tasks.BaseOptions(model_asset_path=str(hand_path)),
-                running_mode=mp.tasks.vision.RunningMode.IMAGE,
-                num_hands=1,
-                min_hand_detection_confidence=self.cfg.HAND_CONFIDENCE,
-                min_hand_presence_confidence=self.cfg.HAND_CONFIDENCE,
-            )
-            self._hands = mp.tasks.vision.HandLandmarker.create_from_options(options)
-            self._mp = mp
-            self._load_laser()
+            self._load_laser(saved)
             # Chạy thử các cỡ khung hay gặp (webcam 4:3 / 16:9, điện thoại dọc): mỗi cỡ mới lần đầu mất vài giây
             # để GPU chọn kernel — làm sẵn ở đây thì khung đầu tiên không bị chậm
             for height, width in ((480, 640), (360, 640), (640, 480), (640, 360)):
@@ -170,16 +157,33 @@ class Detector:
             self.error = str(exc) or type(exc).__name__
             logger.exception("Detector initialization failed")
 
-    def _load_laser(self) -> None:
+    def _load_selected(self, kind: str, saved: dict[str, str], load: Any) -> Any:
+        """Mô hình đã chọn (active.json) nạp lỗi thì chạy mô hình mặc định trong cấu hình, giữ nguyên active.json.
+
+        Hay gặp khi Windows và Docker dùng chung models/: engine TensorRT build trên hệ điều hành / GPU này
+        không nạp được ở bên kia; trước đây cả bộ nhận diện báo lỗi.
+        """
+        default = self._active[kind]
+        selected = saved.get(kind, default)
+        if selected != default:
+            try:
+                model = load(self.cfg.MODEL_DIR / selected)
+                self._active[kind] = selected
+                return model
+            except Exception as exc:
+                logger.warning("Selected %s model %s failed to load (%s); using default %s", kind, selected, exc, default)
+        return load(self.cfg.MODEL_DIR / default)
+
+    def _load_laser(self, saved: dict[str, str] | None = None) -> None:
         try:
-            laser = self._prepare_model("laser", self.cfg.MODEL_DIR / self._active["laser"])
+            laser = self._load_selected("laser", saved or {}, lambda path: self._prepare_model("laser", path))
             self._laser = laser
             self.laser_error = None
             logger.info("Red laser model ready: %s", self._active["laser"])
         except Exception as exc:
             self._laser = None
             self.laser_error = str(exc) or type(exc).__name__
-            logger.exception("Red laser unavailable; hand pointing remains available")
+            logger.exception("Red laser model unavailable")
 
     def _set_classes(self, names: dict[int, str]) -> None:
         """Bảng lớp của model YOLO (test gọi trực tiếp, không nạp model thật)."""
@@ -301,6 +305,7 @@ class Detector:
                 raise LaserUnavailable(self.laser_error or "Model laser đỏ chưa sẵn sàng.")
             laser = self._laser.detect(frame, options.laser_hint)
         else:
+            self._ensure_hands()
             hand_job = self._hand_pool.submit(self._detect_hand, frame)
         try:
             result = self._predict(frame, options.targets, options.confidence)
@@ -344,6 +349,25 @@ class Detector:
                     polygons[k] = np.asarray(polygon, dtype=np.float32)
         return ModelOutput(landmarks=landmarks, detections=detections, polygons=polygons)
 
+    def _ensure_hands(self) -> None:
+        """MediaPipe chỉ nạp khi có khung chế độ chỉ tay (giao diện web chỉ dùng laser): tiết kiệm RAM lúc chạy."""
+        if self._hands is not None:
+            return
+        import mediapipe as mp
+
+        hand_path = self.cfg.hand_model_path
+        if not hand_path.is_file():
+            raise LaserUnavailable(f"Thiếu model bàn tay {hand_path.name} trong {hand_path.parent}.")
+        options = mp.tasks.vision.HandLandmarkerOptions(
+            base_options=mp.tasks.BaseOptions(model_asset_path=str(hand_path)),
+            running_mode=mp.tasks.vision.RunningMode.IMAGE,
+            num_hands=1,
+            min_hand_detection_confidence=self.cfg.HAND_CONFIDENCE,
+            min_hand_presence_confidence=self.cfg.HAND_CONFIDENCE,
+        )
+        self._hands = mp.tasks.vision.HandLandmarker.create_from_options(options)
+        self._mp = mp
+
     def _detect_hand(self, frame: np.ndarray) -> list[Any] | None:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = self._hands.detect(self._mp.Image(image_format=self._mp.ImageFormat.SRGB, data=rgb))
@@ -383,6 +407,10 @@ class Detector:
             if metadata.get("task") != "segment" or not metadata.get("names"):
                 raise ValueError("Engine vật thể phải được xuất bằng Ultralytics YOLO segmentation, có metadata task và names.")
             # Uploaded names need not contain '-seg'; do not guess the task from a filename.
+            model = YOLO(str(path), task="segment")
+        elif path.suffix.lower() == ".torchscript":
+            if torchscript_metadata(path).get("task") != "segment":
+                raise ValueError("TorchScript vật thể phải được xuất bằng Ultralytics YOLO segmentation (có metadata task).")
             model = YOLO(str(path), task="segment")
         else:
             model = YOLO(str(path))

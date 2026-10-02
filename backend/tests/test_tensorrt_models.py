@@ -146,3 +146,35 @@ def test_real_static_laser_runs_across_threads():
                 assert pool.submit(model.detect, frame, (100, 100)).result() is None
     finally:
         model.close()
+
+
+def write_torchscript(path, metadata):
+    """Zip giống TorchScript: chỉ cần extra/config.txt để phân loại."""
+    import zipfile
+
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(f"{path.stem}/data.pkl", b"x")
+        archive.writestr(f"{path.stem}/extra/{'config.txt' if metadata is not None else 'config.json'}",
+                         json.dumps(metadata if metadata is not None else {"format": "hicas-laser-v1"}))
+
+
+def test_torchscript_role_comes_from_its_metadata(tmp_path):
+    from services.engine_metadata import torchscript_kind, torchscript_metadata
+
+    write_torchscript(tmp_path / "objects.torchscript", {"task": "segment", "names": {"0": "cup"}, "imgsz": [640, 640]})
+    write_torchscript(tmp_path / "laser-advr-yolov5l6.torchscript", None)
+    (tmp_path / "broken.torchscript").write_bytes(b"not a zip")
+    assert torchscript_kind(tmp_path / "objects.torchscript") == "segmentation"
+    assert torchscript_metadata(tmp_path / "objects.torchscript")["names"] == {"0": "cup"}
+    assert torchscript_kind(tmp_path / "laser-advr-yolov5l6.torchscript") == "laser"
+    assert torchscript_kind(tmp_path / "broken.torchscript") == "laser"
+    cfg = Settings(MODEL_DIR=tmp_path, YOLO_MODEL="objects.torchscript", LASER_MODEL="laser-advr-yolov5l6.torchscript")
+    catalog = ModelStore(cfg).catalog()
+    assert catalog["objects.torchscript"][0] == "segmentation"
+    assert catalog["laser-advr-yolov5l6.torchscript"][0] == "laser"
+
+
+def test_segmentation_torchscript_requires_ultralytics_metadata(detector, tmp_path):
+    write_torchscript(tmp_path / "laser.torchscript", None)
+    with pytest.raises(ValueError, match="Ultralytics YOLO segmentation"):
+        detector._load_segmentation(tmp_path / "laser.torchscript")
