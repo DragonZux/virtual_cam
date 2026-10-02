@@ -8,6 +8,10 @@ frontend/dist
 frontend/tsconfig.tsbuildinfo
 frontend/test-results
 frontend/playwright-report
+view3d/dist
+view3d/.env
+view3d/test-results
+view3d/playwright-report
 backend/data
 backend/tests
 backend/.env

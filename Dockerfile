@@ -10,6 +10,14 @@ RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
+# ---- 1b. Build màn hình 3D (app riêng trong view3d/, backend phục vụ ở /view3d/) ----
+FROM node:20-alpine AS view3d
+WORKDIR /view3d
+COPY view3d/package*.json ./
+RUN npm ci --no-audit --no-fund
+COPY view3d/ ./
+RUN npm run build
+
 # ---- 2. Backend Python + PyTorch CUDA ----
 FROM python:3.11-slim
 # FROM ultralytics/ultralytics:8.4.166-jetson-jetpack6
@@ -38,10 +46,12 @@ COPY backend/ .
 COPY docker/init_models.py /app/init_models.py
 COPY docker/prepare_laser_model.py /app/scripts/prepare_laser_model.py
 COPY --from=web /web/dist /app/frontend/dist
+COPY --from=view3d /view3d/dist /app/view3d/dist
 
 # Thư mục models/ mount vào /models (xem docker-compose.yml)
 ENV MODEL_DIR=/models \
     FRONTEND_DIST=/app/frontend/dist \
+    VIEW3D_DIST=/app/view3d/dist \
     HTTPS_PORT=8031
 # 8031 HTTPS tự ký — cổng duy nhất compose map ra ngoài; 8030 HTTP chỉ cho healthcheck trong container
 EXPOSE 8030 8031
