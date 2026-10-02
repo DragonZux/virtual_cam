@@ -3,64 +3,27 @@
     "title": "AI model management",
     "segmentation": "Segmentation model",
     "laser": "Laser model",
-    "select": "Select a model",
-    "manage": "Add / manage models",
-    "shared": "Runs one segmentation model plus one laser model in Laser mode. Selection is shared by the server and saved across restarts.",
     "refresh": "Refresh",
-    "upload": "Upload new model",
-    "uploadBusy": "Uploading and validating the model. Detection will resume when complete…",
-    "activateBusy": "Loading the selected model. Please wait…",
-    "uploadSuccess": "Model added. Select Use or choose it from the list to run it.",
-    "activateSuccess": "Model switched. Available object classes have been updated.",
-    "segmentHelp": "Ultralytics YOLO segmentation .pt or TensorRT .engine with object masks. Engines must match the server's NVIDIA GPU and TensorRT runtime.",
-    "laserHelp": "Single-class YOLO laser (.pt or .engine), ADVR .torchscript, or a static ADVR TensorRT .engine. ADVR engines process the full frame without the 384 px crop.",
+    "uploadBusy": "Uploading and loading the new model. Detection resumes when complete…",
+    "uploadSuccess": "Model updated and now in use.",
     "tooLarge": "File exceeds the {{size}} MB limit.",
     "name": "Model name",
     "kind": "Type",
     "size": "Size",
-    "state": "Status",
-    "active": "Selected",
     "missing": "Missing file",
-    "activate": "Use",
-    "empty": "Model list is not available yet.",
-    "storage": "New models are stored in models/custom; duplicate names create separate files. Only upload models from sources you trust.",
-    "convertOnUpload": "Convert to TensorRT (FP16) after upload",
-    "convertHelp": "The server builds an FP16 engine for this GPU (a few minutes; detection is slower meanwhile), then selects the engine automatically.",
-    "convert": "Convert to TensorRT",
     "converting": "Converting…",
-    "engine": "Engine",
-    "convertBusy": "Requesting TensorRT conversion…",
-    "convertSuccess": "TensorRT FP16 conversion started. The new engine is selected when it finishes.",
+    "engine": "TensorRT",
     "convertQueued": "{{name}}: waiting for TensorRT conversion…",
     "convertRunning": "{{name}}: building TensorRT FP16 on the GPU, this can take a few minutes. The new engine is selected when done.",
     "convertDone": "Converted {{name}} to TensorRT; the new engine is now running.",
-    "convertFailed": "TensorRT conversion of {{name}} failed: {{error}}"
-  },
-  "test": {
-    "analyzeAgain": "Analyze again",
-    "clearImage": "Clear image",
-    "imageProcessing": "Analyzing image…",
-    "imageDone": "Image analyzed · {{ms}} ms",
-    "imageFailed": "Image analysis failed",
-    "imageError": "Could not analyze the image. Choose Analyze again to retry.",
-    "open": "Test images / videos",
-    "uploadTitle": "Drop or select an image / video to test your model",
-    "uploadHelp": "JPG, PNG, WebP, BMP, GIF · MP4, WebM, MOV. Images are analyzed once; changing the image or detection settings runs a new analysis. Videos are analyzed frame by frame.",
-    "emptyTitle": "Ready to test",
-    "emptyText": "Choose an image or video above, select your models and hand / laser mode to see results.",
-    "results": "Detection results",
-    "timing": "{{count}} objects · {{ms}} ms / frame",
-    "laserResult": "Laser ({{x}}, {{y}}) · {{score}}",
-    "waiting": "Results appear after you select a file.",
-    "noDetections": "No objects found. Try a lower confidence threshold or select more object classes."
+    "convertFailed": "TensorRT conversion of {{name}} failed: {{error}}",
+    "update": "Update",
+    "updateHelp": "Choose a .pt, .torchscript or .engine file: used immediately, then converted to TensorRT FP16 by the server.",
+    "updateHelpNoConvert": "Choose a .pt, .torchscript or .engine file: it replaces the current model immediately."
   },
   "pointer": {
-    "mode": "Pointing mode",
-    "hand": "Finger",
-    "laser": "Laser",
-    "redModelReady": "Red laser: AI model ready",
     "redModelLoading": "Checking the red laser model…",
-    "modelUnavailable": "Red laser model unavailable. Check the model on the server; hand pointing is still available.",
+    "modelUnavailable": "The red laser model is not ready. Check or upload a laser model in Settings.",
     "caption": "Shine the laser spot onto an object in view and hold to select",
     "status": "Laser spot",
     "idle": "Waiting",
@@ -68,54 +31,34 @@
     "missing": "No laser spot",
     "noteFound": "Looking for the object under the spot",
     "noteMissing": "Keep the spot on the object visible to the camera",
-    "selected": "SELECTED WITH LASER",
-    "confirming": "HOLD LASER TO CONFIRM",
-    "hint": "Shine the laser on an enabled object type within the camera view.",
-    "selectedHint": "The object at the laser spot.",
-    "guideTitle": "Select with a laser",
-    "guideText": "Choose Laser above the camera and point a red laser at an object. Red laser uses a trained AI model. Both the object and the spot must be visible. Hold to confirm its name. Only enabled object types supported by the object model can be recognised. If the spot is missing, bring the object closer. LEDs and reflections can still cause false detections."
+    "unavailableTitle": "Laser is not available"
   },
   "app": {
-    "title": "Virtual Cam",
+    "title": "HICAS Cam",
     "tagline": "VISION WORKSPACE",
-    "home": "Virtual Cam — home"
+    "home": "HICAS Cam — home"
   },
   "nav": {
     "section": "WORKSPACE",
     "main": "Main navigation",
     "live": "Overview",
-    "test": "Model testing",
-    "history": "Selection history",
-    "settings": "Settings",
-    "guide": "Guide"
+    "settings": "Settings"
   },
   "page": {
     "eyebrow": "CAMERA INTELLIGENCE",
-    "test": {
-      "title": "Test your models",
-      "description": "Choose an image or video, switch models and inspect detections. The camera stops when you enter this screen."
-    },
     "live": {
       "title": "Tracking space",
-      "description": "Recognise objects with your index finger or a laser spot."
-    },
-    "history": {
-      "title": "Your touches",
-      "description": "Every selection is a moment. Review them here."
+      "description": "Detect objects with a red laser dot, from a webcam or an RTSP camera."
     },
     "settings": {
       "title": "Tune the recognition",
       "description": "Manage AI models, choose objects, sensitivity and display options."
-    },
-    "guide": {
-      "title": "Point with your finger or a laser",
-      "description": "Three simple steps to explore your space."
     }
   },
   "sidebar": {
     "cardTitle": "Your own camera",
     "cardText": "Your own view. Instant recognition.",
-    "tag": "Virtual Cam / Web"
+    "tag": "HICAS Cam / Web"
   },
   "header": {
     "workspace": "Workspace",
@@ -124,8 +67,6 @@
     "viewer": "Viewer"
   },
   "status": {
-    "analyzing": "Analyzing image",
-    "complete": "Image analyzed",
     "connecting": "Connecting",
     "offline": "Server unreachable",
     "error": "Detector error",
@@ -136,39 +77,20 @@
     "paused": "Paused",
     "reconnecting": "Reconnecting"
   },
-  "footer": {
-    "checking": "Checking the inference device",
-    "offline": "Cannot reach the recognition server",
-    "device": "{{device}} · {{model}} · {{size}}px",
-    "session": "Your session · {{time}}"
-  },
   "metrics": {
-    "fps": "Processing speed",
-    "fpsNote": "Whole recognition pipeline",
-    "hand": "Hand status",
-    "handIdle": "Waiting",
-    "handFound": "Detected",
-    "handMissing": "No hand",
-    "handNoteFound": "Tracking your index fingertip",
-    "handNoteMissing": "Bring your hand into view",
     "objects": "Objects in frame",
-    "objectsNote": "From the selected object types",
-    "selections": "Selections",
-    "selectionsNote": "In the current session"
+    "objectsNote": "From the selected object types"
   },
   "camera": {
-    "title": "Your camera",
-    "select": "Choose camera",
-    "deviceFallback": "Camera {{index}}",
-    "start": "Turn on my camera",
+    "title": "Camera",
+    "select": "Choose an RTSP camera",
     "stop": "Turn off camera",
     "pause": "Pause",
     "resume": "Resume",
     "snapshot": "Snapshot",
     "fullscreen": "Full screen",
     "exitFullscreen": "Exit full screen",
-    "caption": "Point your index finger at an object to select it",
-    "canvasLabel": "Your camera image with hand and object recognition overlays",
+    "canvasLabel": "Camera view with the laser dot and detected objects",
     "badge": {
       "idle": "WAITING",
       "off": "CAMERA OFF",
@@ -179,7 +101,7 @@
       "file": "TEST FILE"
     },
     "stream": {
-      "off": "Camera is off",
+      "off": "Camera not connected",
       "waiting": "Waiting for the detector",
       "live": "Recognising · {{ms}} ms",
       "paused": "Not sending frames",
@@ -187,119 +109,54 @@
       "retrying": "Trying to reconnect…"
     },
     "overlay": {
-      "introTitle": "Your point of view, right here",
-      "introText": "Turn on the camera to start. Frames go to the recognition server and are discarded — never saved as photos or video.",
-      "startingTitle": "Opening your camera",
-      "startingText": "Allow camera access when your browser asks.",
-      "stoppedTitle": "Camera is off",
-      "stoppedText": "Turn the camera back on to continue your own tracking session.",
-      "endedTitle": "Camera disconnected",
-      "endedText": "Check the device, then turn the camera back on.",
-      "errorTitle": "Camera needed",
+      "introTitle": "Connect an RTSP camera",
+      "introText": "Press Connect camera to start. The server reads the camera, detects objects and discards the frames; nothing is stored.",
+      "stoppedTitle": "Camera disconnected",
+      "stoppedText": "Press Connect camera to watch again.",
+      "errorTitle": "Could not connect to the camera",
       "pausedTitle": "Recognition paused",
-      "pausedText": "The camera is still on. Press Resume to recognise again or Turn off camera to release the device.",
+      "pausedText": "The camera is still connected. Press Resume to detect again or Stop camera to disconnect.",
       "waitingTitle": "Waiting for the server",
       "slowText": "The server is slow to respond. Retrying automatically…",
       "serverErrorTitle": "Detector not ready",
       "offlineTitle": "Server unreachable",
-      "offlineText": "Keep this page open. It will reconnect automatically."
+      "offlineText": "Keep this page open. It will reconnect automatically.",
+      "noStreamTitle": "No RTSP camera yet",
+      "noStreamText": "Add an RTSP link (e.g. rtsp://<IP>:8554/camera) here or in Settings › RTSP cameras."
     },
     "errors": {
-      "insecure": "Browser cameras only open on localhost or HTTPS. From another computer, open https://<server IP>:8033 (self-signed certificate: choose Advanced › Proceed).",
-      "NotAllowedError": "Camera permission was not granted. Allow the camera in your browser's site settings and try again.",
-      "NotFoundError": "No camera found. Connect a webcam or try a device with a camera.",
-      "NotReadableError": "The camera could not be opened. Close other apps using the camera and try again.",
-      "OverconstrainedError": "The selected camera is no longer available. Choose another camera.",
-      "AbortError": "The browser cancelled opening the camera. Please try again.",
       "default": "Could not open the camera. Please try again.",
-      "media": "The browser cannot open this file. Try a JPG/PNG image or an MP4 (H.264) / WEBM video.",
       "stream": "Could not get video from the RTSP stream. Check the address (e.g. rtsp://<IP>:8554/camera), that MediaMTX is running and has a publisher, then use Connect RTSP to retry."
     },
     "snapshotSaved": "Snapshot saved",
     "snapshotEmpty": "No frame to capture yet",
     "fullscreenUnsupported": "This browser does not support full screen.",
     "rtsp": {
-      "button": "RTSP",
-      "open": "Connect RTSP",
-      "title": "Connect an RTSP / MediaMTX camera",
+      "open": "Add RTSP camera",
+      "title": "Add RTSP camera",
       "help": "Paste the stream address you would open with ffplay, e.g. rtsp://<IP>:8554/camera. The server reads the stream and sends frames to the browser, so the address must be reachable from the server.",
-      "connect": "Connect",
       "cancel": "Cancel",
       "invalid": "No rtsp:// or rtsps:// address found.",
       "parsed": "Will connect to: {{url}}",
       "caption": "RTSP · {{url}}",
       "startingTitle": "Connecting to the RTSP stream",
-      "startingText": "The server is opening {{url}}…"
-    }
-  },
-  "media": {
-    "stageTitle": "Test image / video",
-    "open": "Use image / video",
-    "stop": "Stop playback",
-    "caption": "Testing: {{name}}",
-    "unsupported": "Only images (JPG, PNG, WEBP, BMP, GIF) or videos (MP4, WEBM, MOV, M4V, OGV) are accepted.",
-    "startingTitle": "Opening image / video",
-    "startingText": "Frames are analysed like the camera: a finger or laser dot in the image / video selects objects.",
-    "stoppedTitle": "Image / video stopped",
-    "stoppedText": "Pick an image / video again, or start the camera.",
-    "errorTitle": "Cannot play the image / video",
-    "pausedText": "The video is paused. Press Resume to play and keep detecting."
+      "startingText": "The server is opening {{url}}…",
+      "add": "+ Add RTSP camera…",
+      "editTitle": "Edit RTSP camera",
+      "save": "Save",
+      "name": "Camera name",
+      "namePlaceholder": "e.g. Front door",
+      "url": "RTSP address"
+    },
+    "connect": "Connect camera",
+    "reconnect": "Reconnect"
   },
   "selection": {
     "title": "Selected object",
-    "current": "CURRENT",
-    "ready": "READY",
-    "confirming": "HOLD YOUR FINGER TO CONFIRM",
-    "selected": "SELECTED WITH YOUR FINGER",
     "none": "Nothing selected",
-    "hint": "Point your index finger at an object to see the result here.",
-    "selectedHint": "The object under your index fingertip.",
-    "confidence": "Detection confidence"
-  },
-  "targets": {
-    "title": "Objects being recognised",
-    "count": "{{count}} in view",
-    "edit": "Change in Settings"
-  },
-  "recent": {
-    "byLaser": "Selected with a laser",
-    "title": "Recent selections",
-    "subtitle": "This session",
-    "viewAll": "View all",
-    "empty": "No selections yet. Try pointing at an object.",
-    "byFinger": "Selected with your finger"
-  },
-  "history": {
-    "total": "Total selections",
-    "totalNote": "Since the session started",
-    "top": "Most selected",
-    "topCount": "{{count}} times",
-    "average": "Average confidence",
-    "averageNote": "Across selections",
-    "session": "Session time",
-    "sessionNote": "Since the camera was first turned on",
-    "tableTitle": "Your session history",
-    "tableSubtitle": "{{count}} most recent selections",
-    "columns": {
-      "id": "#",
-      "object": "OBJECT",
-      "time": "TIME",
-      "confidence": "CONFIDENCE"
-    },
-    "empty": "History appears once you select an object.",
-    "export": "Export CSV",
-    "clear": "Clear history",
-    "clearConfirm": "Clear the whole history of this session?",
-    "cleared": "History cleared",
-    "footnote": "History lives only in your tab and is cleared when the page reloads.",
-    "csv": {
-      "file": "selection-history",
-      "id": "No.",
-      "object": "Object",
-      "className": "Class",
-      "time": "Time",
-      "confidence": "Confidence (%)"
-    }
+    "confidenceValue": "Confidence {{value}}%",
+    "holding": "Hold the laser to confirm…",
+    "idleHint": "Aim the laser at an object and hold still to select it"
   },
   "settings": {
     "saved": "Settings are saved automatically in this browser.",
@@ -313,54 +170,60 @@
       "search": "Search objects…",
       "defaults": "Defaults",
       "all": "Select all",
-      "hint": "“Person” is not offered: your fingertip is always on the person pointing.",
+      "hint": "There is no “person” class: objects on a person would match the person holding the laser.",
       "minOne": "Keep at least one object type.",
       "noMatch": "No matching objects.",
-      "waiting": "The object list appears once the detector is ready."
+      "waiting": "The object list appears once the detector is ready.",
+      "fromModel": "Read from the running segmentation model ({{model}}): changing the model changes this list."
     },
     "detection": {
       "title": "Recognition",
       "confidence": "Minimum confidence",
       "confidenceHelp": "Lower catches more objects but makes more mistakes.",
-      "tolerance": "Tolerance around the fingertip",
-      "toleranceHelp": "How many pixels the fingertip may sit outside the object's edge.",
       "dwell": "Hold time to confirm",
-      "dwellHelp": "Keep your finger or laser spot on an object this long for it to count as a selection; 0 = instant."
+      "dwellHelp": "Keep the laser dot on an object this long before it counts as selected; 0 = immediately."
     },
     "display": {
       "title": "Display",
-      "hand": "Hand skeleton",
-      "tip": "Finger / laser pointer and confirmation ring",
       "outline": "Outline of the selected object",
       "boxes": "Boxes around other objects",
-      "mirror": "Mirror mode",
-      "mirrorAuto": "Automatic (front cameras)",
-      "mirrorOn": "Always mirror",
-      "mirrorOff": "Never mirror"
+      "mirror": "Flip the camera image horizontally (mirror)"
     },
-    "voice": {
-      "title": "Sound",
-      "enabled": "Read the object name aloud",
-      "test": "Test",
-      "sample": "Laptop",
-      "noVoice": "No English voice installed; the browser will use its default voice.",
-      "unsupported": "This browser cannot read text aloud."
+    "streams": {
+      "title": "RTSP cameras",
+      "add": "Add RTSP camera",
+      "name": "Name",
+      "url": "Address",
+      "watching": "Watching",
+      "connect": "Connect",
+      "edit": "Edit",
+      "remove": "Delete",
+      "removeConfirm": "Delete this camera?",
+      "empty": "No RTSP camera yet. Press “Add RTSP camera” to add a link, e.g. rtsp://<IP>:8554/camera.",
+      "note": "Saved in this browser. The server reads the stream, so the address must be reachable from the server."
+    },
+    "socket": {
+      "title": "Socket connections",
+      "wsTitle": "WebSocket — other apps connect here",
+      "wsHelp": "On connect you receive selection.snapshot (all running cameras), then selection.changed whenever the selected object changes. Use a standard WebSocket client.",
+      "tcpTitle": "Send to TCP sockets",
+      "tcpHelp": "The server connects to the addresses below and sends each message as one JSON line (same content as the WebSocket), reconnecting automatically. Saved on the server.",
+      "address": "Address",
+      "status": "Status",
+      "enabled": "On",
+      "host": "IP or host name",
+      "port": "Port",
+      "add": "Add",
+      "remove": "Delete",
+      "empty": "No TCP target yet.",
+      "connected": "Connected · {{count}} messages",
+      "connecting": "Connecting…",
+      "error": "Connection error",
+      "off": "Off",
+      "invalidHost": "Invalid IP or host name (no tcp:// prefix).",
+      "duplicate": "This address already exists.",
+      "max": "At most 8 targets."
     }
-  },
-  "guide": {
-    "step1Title": "Turn on your camera",
-    "step1Text": "Press “Turn on my camera” and allow camera access. Everyone uses the camera on their own device; the server only receives frames to recognise.",
-    "step2Title": "Point at an object",
-    "step2Text": "Choose Finger or Laser above the camera. Put your fingertip or laser spot on an object and hold until the confirmation ring turns green.",
-    "step3Title": "Follow the results",
-    "step3Text": "The object name, confidence and history update by themselves. Take snapshots, export the history as CSV or turn on spoken names in Settings.",
-    "tipsTitle": "For better recognition",
-    "tipsText": "Keep the scene well lit, avoid covering objects and keep your fingertip clearly in view. The confidence shown belongs to the object detection, not to the accuracy of your pointing.",
-    "privacyText": "Frames are only used for recognition and then discarded — never saved as photos or video. Settings and history stay in your browser.",
-    "shortcutsTitle": "Keyboard shortcuts",
-    "shortcutSpace": "Pause / resume recognition",
-    "shortcutSnapshot": "Take a snapshot",
-    "shortcutFullscreen": "Toggle full screen"
   },
   "httpError": {
     "default": "Something went wrong, please try again",

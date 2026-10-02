@@ -1,21 +1,18 @@
-import { HAND_CONNECTIONS } from "@/common/constants";
-import type { FrameResult, Point, SelectedObject } from "@/common/types";
+import type { FrameResult, SelectedObject } from "@/common/types";
 import { BRAND } from "@/theme/antdTheme";
 
 export interface OverlayOptions {
-  showHand: boolean;
-  showTip: boolean;
+  /** Vẽ chấm laser + vòng tiến độ (lớp vẽ lại theo nhịp màn hình) */
+  showPointer: boolean;
   showOutline: boolean;
   showBoxes: boolean;
-  /** 0..1 — tiến độ giữ ngón tay để xác nhận lựa chọn */
+  /** 0..1 — tiến độ giữ chấm laser để xác nhận lựa chọn */
   progress: number;
   /** Tên hiển thị của lớp (đã dịch) */
   label: (name: string) => string;
 }
 
 const COLORS = {
-  hand: "#ffa45c",
-  joint: "#fff7f0",
   ring: "rgba(255, 255, 255, 0.35)",
   pending: "#ffd166",
   selected: BRAND.primary,
@@ -74,25 +71,6 @@ const drawSelected = (ctx: Ctx, selected: SelectedObject, scale: number, unit: n
   chip(ctx, `${opts.label(selected.name)} ${percent(selected.confidence)}`, topX * scale, topY * scale, unit, COLORS.selected);
 };
 
-const drawHand = (ctx: Ctx, landmarks: Point[], unit: number) => {
-  const { width, height } = ctx.canvas;
-  const points = landmarks.map((p) => [p.x * width, p.y * height] as const);
-  ctx.lineWidth = 2 * unit;
-  ctx.strokeStyle = COLORS.hand;
-  ctx.beginPath();
-  for (const [a, b] of HAND_CONNECTIONS) {
-    ctx.moveTo(points[a][0], points[a][1]);
-    ctx.lineTo(points[b][0], points[b][1]);
-  }
-  ctx.stroke();
-  ctx.fillStyle = COLORS.joint;
-  for (const [x, y] of points) {
-    ctx.beginPath();
-    ctx.arc(x, y, 3 * unit, 0, Math.PI * 2);
-    ctx.fill();
-  }
-};
-
 const drawTip = (ctx: Ctx, tip: [number, number], scale: number, unit: number, progress: number) => {
   const [x, y] = [tip[0] * scale, tip[1] * scale];
   const radius = 14 * unit;
@@ -136,9 +114,7 @@ export const drawResult = (
   ctx.lineCap = "round";
   if (opts.showBoxes) drawBoxes(ctx, result, scale, unit, opts);
   if (opts.showOutline && result.selected) drawSelected(ctx, result.selected, scale, unit, opts);
-  if (opts.showHand && result.landmarks.length === 21) drawHand(ctx, result.landmarks, unit);
-  if (opts.showTip && result.tip) drawTip(ctx, result.tip, scale, unit, opts.progress);
-  if (opts.showTip && result.laser) {
+  if (opts.showPointer && result.laser) {
     const [x, y] = result.laser.point.map((value) => value * scale);
     drawTip(ctx, result.laser.point, scale, unit, opts.progress);
     ctx.strokeStyle = "#ff6464";
