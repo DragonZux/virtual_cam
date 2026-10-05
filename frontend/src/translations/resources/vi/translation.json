@@ -196,23 +196,7 @@
     },
     "socket": {
       "title": "Kết nối socket",
-      "wsTitle": "WebSocket — app khác kết nối vào",
-      "tcpTitle": "Gửi tới TCP socket",
-      "address": "Địa chỉ",
-      "status": "Trạng thái",
-      "enabled": "Bật",
-      "host": "IP hoặc tên máy",
-      "port": "Cổng",
-      "add": "Thêm",
-      "remove": "Xoá",
-      "empty": "Chưa có máy đích TCP.",
-      "connected": "Đã kết nối · {{count}} bản tin",
-      "connecting": "Đang kết nối…",
-      "error": "Lỗi kết nối",
-      "off": "Đã tắt",
-      "invalidHost": "IP hoặc tên máy không hợp lệ (không kèm tcp://).",
-      "duplicate": "Địa chỉ này đã có.",
-      "max": "Tối đa 8 máy đích."
+      "wsTitle": "WebSocket — app khác kết nối vào"
     }
   },
   "httpError": {

@@ -113,25 +113,6 @@ export interface StreamLink {
   name?: string;
 }
 
-/** GET /sockets — WebSocket có sẵn và máy đích TCP máy chủ tự gửi vật thể đang chọn tới */
-export type TcpStatus = "off" | "connecting" | "connected" | "error";
-export interface TcpTarget {
-  host: string;
-  port: number;
-  enabled: boolean;
-}
-export interface TcpTargetState extends TcpTarget {
-  id: string;
-  status: TcpStatus;
-  error: string | null;
-  sent: number;
-  last_sent: number | null;
-}
-export interface SocketConfig {
-  websocket_path: string;
-  tcp: TcpTargetState[];
-}
-
 /** POST /camera/streams — phiên đọc luồng RTSP ở máy chủ */
 export interface StreamInfo {
   id: string;

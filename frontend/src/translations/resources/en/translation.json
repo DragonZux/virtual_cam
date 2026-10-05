@@ -196,23 +196,7 @@
     },
     "socket": {
       "title": "Socket connections",
-      "wsTitle": "WebSocket — other apps connect here",
-      "tcpTitle": "Send to TCP sockets",
-      "address": "Address",
-      "status": "Status",
-      "enabled": "On",
-      "host": "IP or host name",
-      "port": "Port",
-      "add": "Add",
-      "remove": "Delete",
-      "empty": "No TCP target yet.",
-      "connected": "Connected · {{count}} messages",
-      "connecting": "Connecting…",
-      "error": "Connection error",
-      "off": "Off",
-      "invalidHost": "Invalid IP or host name (no tcp:// prefix).",
-      "duplicate": "This address already exists.",
-      "max": "At most 8 targets."
+      "wsTitle": "WebSocket — other apps connect here"
     }
   },
   "httpError": {
