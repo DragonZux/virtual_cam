@@ -195,7 +195,8 @@ class Detector:
         self._canonical = canonical
         self.classes = list(canonical.values())
         defaults = [canonical[key] for key in map(class_key, self.cfg.default_targets) if key in canonical]
-        self.default_targets = list(dict.fromkeys(defaults)) or self.classes[:1]
+        # Mô hình tuỳ chỉnh không có lớp mặc định nào (DEFAULT_TARGETS): nhận diện mọi lớp của mô hình
+        self.default_targets = list(dict.fromkeys(defaults)) or list(self.classes)
 
     def status(self) -> dict[str, Any]:
         ready = self.ready.is_set()

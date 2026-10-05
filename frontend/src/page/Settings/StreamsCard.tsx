@@ -45,7 +45,6 @@ export const StreamsCard = () => {
           </Popconfirm>
         </Space> },
       ]} />
-    <p className={styles.help}>{t("settings.streams.note")}</p>
     {editing !== undefined && <StreamDialog initial={editing} onCancel={() => setEditing(undefined)} onSave={(link) => {
       dispatch(streamActions.saveLink({ link, previous: editing?.url }));
       setEditing(undefined);

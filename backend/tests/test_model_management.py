@@ -23,7 +23,7 @@ def catalog(detector, tmp_path, monkeypatch):
         calls.append((kind, path.name))
         if path.read_bytes() == b"invalid":
             raise ValueError("Invalid model")
-        return SimpleNamespace(names={0: "person", 1: "custom object"})
+        return SimpleNamespace(names={0: "person", 1: "custom object", 2: "other object"})
 
     monkeypatch.setattr(detector, "_prepare_model", prepare)
     return tmp_path, calls
@@ -43,8 +43,9 @@ def test_activate_updates_classes_and_persists(client, detector, catalog):
     assert response.status_code == 200
     state = response.json()
     assert state["model"] == "new.pt"
-    assert state["classes"] == ["custom object"]
-    assert state["defaults"]["targets"] == ["custom object"]
+    assert state["classes"] == ["custom object", "other object"]
+    # Không có lớp nào trong DEFAULT_TARGETS: mặc định nhận diện mọi lớp của mô hình mới
+    assert state["defaults"]["targets"] == ["custom object", "other object"]
     assert state["model_revision"] == 1 and state["model_busy"] is False
     assert ModelStore(detector.cfg).saved()["segmentation"] == "new.pt"
     assert client.post("/api/models/activate", json={"id": "new.pt"}).json()["model_busy"] is False

@@ -17,9 +17,7 @@
     "convertRunning": "{{name}}: building TensorRT FP16 on the GPU, this can take a few minutes. The new engine is selected when done.",
     "convertDone": "Converted {{name}} to TensorRT; the new engine is now running.",
     "convertFailed": "TensorRT conversion of {{name}} failed: {{error}}",
-    "update": "Update",
-    "updateHelp": "Choose a .pt, .torchscript or .engine file: used immediately, then converted to TensorRT FP16 by the server.",
-    "updateHelpNoConvert": "Choose a .pt, .torchscript or .engine file: it replaces the current model immediately."
+    "update": "Update"
   },
   "pointer": {
     "redModelLoading": "Checking the red laser model…",
@@ -134,7 +132,6 @@
     "rtsp": {
       "open": "Add RTSP camera",
       "title": "Add RTSP camera",
-      "help": "Paste the stream address you would open with ffplay, e.g. rtsp://<IP>:8554/camera. The server reads the stream and sends frames to the browser, so the address must be reachable from the server.",
       "cancel": "Cancel",
       "invalid": "No rtsp:// or rtsps:// address found.",
       "parsed": "Will connect to: {{url}}",
@@ -170,18 +167,14 @@
       "search": "Search objects…",
       "defaults": "Defaults",
       "all": "Select all",
-      "hint": "There is no “person” class: objects on a person would match the person holding the laser.",
       "minOne": "Keep at least one object type.",
       "noMatch": "No matching objects.",
-      "waiting": "The object list appears once the detector is ready.",
-      "fromModel": "Read from the running segmentation model ({{model}}): changing the model changes this list."
+      "waiting": "The object list appears once the detector is ready."
     },
     "detection": {
       "title": "Recognition",
       "confidence": "Minimum confidence",
-      "confidenceHelp": "Lower catches more objects but makes more mistakes.",
-      "dwell": "Hold time to confirm",
-      "dwellHelp": "Keep the laser dot on an object this long before it counts as selected; 0 = immediately."
+      "dwell": "Hold time to confirm"
     },
     "display": {
       "title": "Display",
@@ -199,15 +192,12 @@
       "edit": "Edit",
       "remove": "Delete",
       "removeConfirm": "Delete this camera?",
-      "empty": "No RTSP camera yet. Press “Add RTSP camera” to add a link, e.g. rtsp://<IP>:8554/camera.",
-      "note": "Saved in this browser. The server reads the stream, so the address must be reachable from the server."
+      "empty": "No RTSP camera yet."
     },
     "socket": {
       "title": "Socket connections",
       "wsTitle": "WebSocket — other apps connect here",
-      "wsHelp": "On connect you receive selection.snapshot (all running cameras), then selection.changed whenever the selected object changes. Use a standard WebSocket client.",
       "tcpTitle": "Send to TCP sockets",
-      "tcpHelp": "The server connects to the addresses below and sends each message as one JSON line (same content as the WebSocket), reconnecting automatically. Saved on the server.",
       "address": "Address",
       "status": "Status",
       "enabled": "On",

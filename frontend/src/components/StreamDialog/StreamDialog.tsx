@@ -31,7 +31,6 @@ export const StreamDialog = ({ initial, onCancel, onSave }: Props) => {
       onCancel={onCancel}
       destroyOnHidden
     >
-      <p className={styles.help}>{t("camera.rtsp.help")}</p>
       <label className={styles.field}>
         <span>{t("camera.rtsp.name")}</span>
         <Input value={name} maxLength={60} placeholder={t("camera.rtsp.namePlaceholder")}

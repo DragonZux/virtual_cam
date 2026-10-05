@@ -17,9 +17,7 @@
     "convertRunning": "{{name}}: đang build TensorRT FP16 trên GPU, có thể mất vài phút. Xong sẽ tự chọn engine mới.",
     "convertDone": "Đã chuyển {{name}} sang TensorRT và đang dùng engine mới.",
     "convertFailed": "Chuyển {{name}} sang TensorRT thất bại: {{error}}",
-    "update": "Cập nhật",
-    "updateHelp": "Chọn file .pt, .torchscript hoặc .engine: dùng ngay, rồi máy chủ tự chuyển sang TensorRT FP16.",
-    "updateHelpNoConvert": "Chọn file .pt, .torchscript hoặc .engine: dùng ngay thay mô hình hiện tại."
+    "update": "Cập nhật"
   },
   "pointer": {
     "redModelLoading": "Đang kiểm tra mô hình laser đỏ…",
@@ -134,7 +132,6 @@
     "rtsp": {
       "open": "Thêm camera RTSP",
       "title": "Thêm camera RTSP",
-      "help": "Dán địa chỉ luồng như khi xem bằng ffplay, ví dụ rtsp://<IP>:8554/camera. Máy chủ đọc luồng rồi gửi hình về trình duyệt, nên địa chỉ phải truy cập được từ máy chủ.",
       "cancel": "Huỷ",
       "invalid": "Chưa thấy địa chỉ rtsp:// hoặc rtsps://.",
       "parsed": "Sẽ kết nối: {{url}}",
@@ -170,18 +167,14 @@
       "search": "Tìm vật thể…",
       "defaults": "Mặc định",
       "all": "Chọn tất cả",
-      "hint": "Không có lớp “người”: chọn vật thể trên người dễ trúng chính người cầm laser.",
       "minOne": "Cần giữ ít nhất một vật thể.",
       "noMatch": "Không tìm thấy vật thể phù hợp.",
-      "waiting": "Danh sách vật thể sẽ hiện khi bộ nhận diện sẵn sàng.",
-      "fromModel": "Danh sách đọc từ mô hình segmentation đang chạy ({{model}}): đổi mô hình là danh sách đổi theo."
+      "waiting": "Danh sách vật thể sẽ hiện khi bộ nhận diện sẵn sàng."
     },
     "detection": {
       "title": "Nhận diện",
       "confidence": "Ngưỡng tin cậy tối thiểu",
-      "confidenceHelp": "Thấp hơn: bắt được nhiều vật thể hơn nhưng dễ nhầm.",
-      "dwell": "Thời gian giữ để xác nhận",
-      "dwellHelp": "Giữ chấm laser trên vật thể đủ lâu mới tính là đã chọn; 0 = chọn ngay."
+      "dwell": "Thời gian giữ để xác nhận"
     },
     "display": {
       "title": "Hiển thị",
@@ -199,15 +192,12 @@
       "edit": "Sửa",
       "remove": "Xoá",
       "removeConfirm": "Xoá camera này?",
-      "empty": "Chưa có camera RTSP. Bấm “Thêm camera RTSP” để thêm link, ví dụ rtsp://<IP>:8554/camera.",
-      "note": "Danh sách lưu trên trình duyệt này. Máy chủ đọc luồng nên địa chỉ phải truy cập được từ máy chủ."
+      "empty": "Chưa có camera RTSP."
     },
     "socket": {
       "title": "Kết nối socket",
       "wsTitle": "WebSocket — app khác kết nối vào",
-      "wsHelp": "Ngay khi kết nối nhận selection.snapshot (mọi camera đang chạy), sau đó selection.changed mỗi khi vật thể đang chọn thay đổi. Dùng client WebSocket chuẩn.",
       "tcpTitle": "Gửi tới TCP socket",
-      "tcpHelp": "Máy chủ tự kết nối tới các địa chỉ dưới đây và gửi mỗi bản tin một dòng JSON (cùng nội dung WebSocket); mất kết nối thì tự thử lại. Lưu trên máy chủ.",
       "address": "Địa chỉ",
       "status": "Trạng thái",
       "enabled": "Bật",

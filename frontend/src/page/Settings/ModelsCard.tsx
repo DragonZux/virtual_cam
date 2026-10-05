@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Space, Table, Tag, Tooltip, Upload } from "antd";
+import { Alert, Button, Card, Space, Table, Tag, Upload } from "antd";
 import { Boxes, RefreshCw, Upload as UploadIcon } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -76,12 +76,10 @@ export const ModelsCard = () => {
             upload(kind, file);
             return Upload.LIST_IGNORE;
           }}>
-          <Tooltip title={t(canConvert ? "models.updateHelp" : "models.updateHelpNoConvert")}>
-            <Button size="small" icon={<UploadIcon size={13} />} disabled={disabled}
-              loading={busy === "upload" && uploading === kind} aria-label={`${t("models.update")} ${t(`models.${kind}`)}`}>
-              {t("models.update")}
-            </Button>
-          </Tooltip>
+          <Button size="small" icon={<UploadIcon size={13} />} disabled={disabled}
+            loading={busy === "upload" && uploading === kind} aria-label={`${t("models.update")} ${t(`models.${kind}`)}`}>
+            {t("models.update")}
+          </Button>
         </Upload>
       ) },
     ]} />
