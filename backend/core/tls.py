@@ -62,7 +62,7 @@ def ensure_certificate(folder: Path, hosts: list[str]) -> tuple[Path, Path]:
         return cert_path, key_path
 
     key = ec.generate_private_key(ec.SECP256R1())
-    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Virtual Cam (self-signed)")])
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "HICAS (self-signed)")])
     now = dt.datetime.now(dt.timezone.utc)
     cert = (
         x509.CertificateBuilder()

@@ -1,29 +1,22 @@
 import { Button, Layout, Menu } from "antd";
-import { BookOpenText, FlaskConical, History, LayoutGrid, Settings, Target, type LucideIcon } from "lucide-react";
+import { LayoutGrid, Settings, Target, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { ROUTES, type RouteKey } from "@/common/constants";
 import type { LiveState } from "@/common/types";
-import { useNow } from "@/hooks";
 import { LivePage } from "@/page/Live";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { getConnection, getLiveState, getSessionStartedAt, getVisionStatus, visionActions } from "@/store/vision";
-import { formatDuration } from "@/utils/format";
+import { getLiveState, visionActions } from "@/store/vision";
 import styles from "./layout.module.less";
 
 const NAV_ITEMS: { key: RouteKey; icon: LucideIcon }[] = [
   { key: "live", icon: LayoutGrid },
-  { key: "test", icon: FlaskConical },
-  { key: "history", icon: History },
   { key: "settings", icon: Settings },
-  { key: "guide", icon: BookOpenText },
 ];
 
 const PILL_TONE: Record<LiveState, "live" | "error" | "neutral"> = {
-  analyzing: "neutral",
-  complete: "live",
   connecting: "neutral",
   offline: "error",
   error: "error",
@@ -40,14 +33,6 @@ const routeKeyOf = (pathname: string): RouteKey => {
   return (Object.keys(ROUTES) as RouteKey[]).find((key) => ROUTES[key] === path) ?? "live";
 };
 
-/** Tách riêng để đồng hồ chạy mỗi giây không render lại cả layout */
-const SessionClock = () => {
-  const { t } = useTranslation();
-  const startedAt = useAppSelector(getSessionStartedAt);
-  const now = useNow(1000);
-  return <span>{t("footer.session", { time: formatDuration(startedAt ? now - startedAt : 0) })}</span>;
-};
-
 export const MainLayout = () => {
   const { t, i18n } = useTranslation();
   const dispatch = useAppDispatch();
@@ -56,8 +41,6 @@ export const MainLayout = () => {
   const current = routeKeyOf(pathname);
   const isLive = current === "live";
   const liveState = useAppSelector(getLiveState);
-  const status = useAppSelector(getVisionStatus);
-  const connection = useAppSelector(getConnection);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -76,13 +59,6 @@ export const MainLayout = () => {
   const today = new Intl.DateTimeFormat(i18n.language, { day: "2-digit", month: "long", year: "numeric" }).format(
     new Date(),
   );
-  const device =
-    connection === "offline"
-      ? t("footer.offline")
-      : status?.device
-        ? t("footer.device", { device: status.device, model: status.model, size: status.image_size })
-        : t("footer.checking");
-
   return (
     <Layout className={styles.shell}>
       <Layout.Sider
@@ -101,7 +77,7 @@ export const MainLayout = () => {
           </span>
           {!collapsed && (
             <span className={styles.brandText}>
-              virtual<span>cam</span>
+              hicas<span>cam</span>
               <small>{t("app.tagline")}</small>
             </span>
           )}
@@ -160,18 +136,10 @@ export const MainLayout = () => {
             </span>
           </section>
 
-          {current !== "test" && <div className={isLive ? undefined : styles.hidden}>
+          <div className={isLive ? undefined : styles.hidden}>
             <LivePage visible={isLive} />
-          </div>}
+          </div>
           {!isLive && <Outlet />}
-
-          <footer className={styles.footer}>
-            <span className={styles.device}>
-              <span className={styles.dot} />
-              {device}
-            </span>
-            <SessionClock />
-          </footer>
         </Layout.Content>
       </Layout>
 

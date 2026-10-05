@@ -1,0 +1,7 @@
+node_modules
+dist
+test-results
+playwright-report
+tsconfig.tsbuildinfo
+# Chỉ dùng cho npm run dev / preview (proxy); bản build luôn gọi /api cùng origin
+.env

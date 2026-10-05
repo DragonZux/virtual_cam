@@ -15,7 +15,7 @@ const settingSlice = createSlice({
   name: "setting",
   initialState,
   reducers: {
-    /** Trường đặt undefined (targets / confidence / tolerance) = quay về mặc định máy chủ */
+    /** Trường đặt undefined (targets / confidence) = quay về mặc định máy chủ */
     updatePreferences: (state, action: PayloadAction<Partial<Preferences>>) => {
       state.prefs = { ...state.prefs, ...action.payload };
     },

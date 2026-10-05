@@ -24,11 +24,10 @@ export const getFrameOptions = createSelector(
   (prefs, status, targets): FrameOptions | null =>
     status?.phase === "ready"
       ? {
-          pointer_mode: prefs.pointerMode,
+          pointer_mode: "laser",
           model_revision: status.model_revision,
           targets,
           conf: prefs.confidence ?? status.defaults.confidence,
-          tolerance: prefs.tolerance ?? status.defaults.tolerance,
         }
       : null,
 );

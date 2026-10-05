@@ -3,47 +3,25 @@
     "title": "Quản lý mô hình AI",
     "segmentation": "Mô hình segmentation",
     "laser": "Mô hình laser",
-    "select": "Chọn mô hình",
-    "manage": "Thêm / quản lý mô hình",
-    "shared": "Chạy một mô hình segmentation và một mô hình laser khi dùng chế độ Laser. Lựa chọn áp dụng cho toàn bộ máy chủ và được lưu khi khởi động lại.",
     "refresh": "Làm mới",
-    "upload": "Tải mô hình mới",
-    "uploadBusy": "Đang tải và kiểm tra mô hình. Nhận diện sẽ tiếp tục khi hoàn tất…",
-    "activateBusy": "Đang nạp mô hình đã chọn. Vui lòng chờ…",
-    "uploadSuccess": "Đã thêm mô hình. Chọn Sử dụng hoặc chọn trong danh sách để chạy.",
-    "activateSuccess": "Đã chuyển mô hình. Danh sách vật thể đã cập nhật.",
-    "segmentHelp": "File .pt của Ultralytics YOLO segmentation. Mô hình phải có mask phân vùng vật thể.",
-    "laserHelp": "File .pt YOLO detect được huấn luyện với một lớp chấm laser, hoặc .torchscript ADVR xuất cho Virtual Cam.",
+    "uploadBusy": "Đang tải lên và nạp mô hình mới. Nhận diện sẽ tiếp tục khi hoàn tất…",
+    "uploadSuccess": "Đã cập nhật và đang dùng mô hình mới.",
     "tooLarge": "File vượt quá giới hạn {{size}} MB.",
-    "name": "Tên mô hình", "kind": "Loại", "size": "Dung lượng", "state": "Trạng thái",
-    "active": "Đang chọn", "missing": "Thiếu file", "activate": "Sử dụng", "empty": "Chưa tải được danh sách mô hình.",
-    "storage": "Mô hình mới được lưu trong models/custom; tải cùng tên sẽ tạo một bản riêng. Chỉ tải mô hình từ nguồn bạn tin cậy."
-  },
-  "test": {
-    "analyzeAgain": "Phân tích lại",
-    "clearImage": "Bỏ ảnh",
-    "imageProcessing": "Đang phân tích ảnh…",
-    "imageDone": "Đã phân tích ảnh · {{ms}} ms",
-    "imageFailed": "Chưa phân tích được ảnh",
-    "imageError": "Không phân tích được ảnh. Bấm Phân tích lại để thử lại.",
-    "open": "Thử ảnh / video",
-    "uploadTitle": "Kéo thả hoặc chọn ảnh / video để thử mô hình",
-    "uploadHelp": "JPG, PNG, WebP, BMP, GIF · MP4, WebM, MOV. Ảnh chỉ gửi nhận diện một lần; đổi ảnh hoặc thông số sẽ phân tích lại. Video nhận diện theo từng khung hình.",
-    "emptyTitle": "Sẵn sàng thử nghiệm",
-    "emptyText": "Chọn ảnh hoặc video ở phía trên, chọn mô hình và cách chỉ tay / laser để xem kết quả.",
-    "results": "Kết quả nhận diện",
-    "timing": "{{count}} vật thể · {{ms}} ms / khung",
-    "laserResult": "Laser ({{x}}, {{y}}) · {{score}}",
-    "waiting": "Kết quả xuất hiện sau khi chọn file.",
-    "noDetections": "Chưa thấy vật thể. Thử giảm ngưỡng tin cậy hoặc chọn thêm lớp vật thể."
+    "name": "Tên mô hình",
+    "kind": "Loại",
+    "size": "Dung lượng",
+    "missing": "Thiếu file",
+    "converting": "Đang chuyển…",
+    "engine": "TensorRT",
+    "convertQueued": "{{name}}: đang chờ chuyển sang TensorRT…",
+    "convertRunning": "{{name}}: đang build TensorRT FP16 trên GPU, có thể mất vài phút. Xong sẽ tự chọn engine mới.",
+    "convertDone": "Đã chuyển {{name}} sang TensorRT và đang dùng engine mới.",
+    "convertFailed": "Chuyển {{name}} sang TensorRT thất bại: {{error}}",
+    "update": "Cập nhật"
   },
   "pointer": {
-    "mode": "Cách chỉ vật thể",
-    "hand": "Chỉ tay",
-    "laser": "Laser",
-    "redModelReady": "Laser đỏ: mô hình AI đã sẵn sàng",
     "redModelLoading": "Đang kiểm tra mô hình laser đỏ…",
-    "modelUnavailable": "Mô hình laser đỏ chưa sẵn sàng. Kiểm tra model trên máy chủ; bạn vẫn có thể dùng chỉ tay.",
+    "modelUnavailable": "Mô hình laser đỏ chưa sẵn sàng. Kiểm tra hoặc tải mô hình laser trong Cài đặt.",
     "caption": "Chiếu chấm laser lên vật thể trong khung hình và giữ yên để chọn",
     "status": "Điểm laser",
     "idle": "Đang chờ",
@@ -51,54 +29,34 @@
     "missing": "Chưa thấy laser",
     "noteFound": "Đang tìm vật thể dưới chấm laser",
     "noteMissing": "Để camera nhìn rõ chấm laser trên vật thể",
-    "selected": "ĐÃ CHỌN BẰNG LASER",
-    "confirming": "GIỮ LASER ĐỂ XÁC NHẬN",
-    "hint": "Chiếu laser lên vật thể thuộc nhóm đã chọn, trong tầm nhìn camera.",
-    "selectedHint": "Vật thể tại vị trí chấm laser.",
-    "guideTitle": "Chọn bằng laser",
-    "guideText": "Chọn Laser phía trên camera rồi chiếu laser đỏ lên vật thể. Laser đỏ dùng mô hình AI. Camera phải thấy cả vật thể và chấm sáng. Giữ yên để xác nhận tên. Chỉ nhận diện các loại vật thể đã bật và được model đồ vật hỗ trợ. Nếu không thấy chấm, đưa vật thể gần camera hơn. Đèn LED và phản xạ vẫn có thể gây nhận nhầm."
+    "unavailableTitle": "Chưa dùng được laser"
   },
   "app": {
-    "title": "Virtual Cam",
+    "title": "HICAS Cam",
     "tagline": "VISION WORKSPACE",
-    "home": "Virtual Cam — trang chủ"
+    "home": "HICAS Cam — trang chủ"
   },
   "nav": {
     "section": "KHÔNG GIAN LÀM VIỆC",
     "main": "Điều hướng chính",
     "live": "Tổng quan",
-    "test": "Thử nghiệm",
-    "history": "Lịch sử lựa chọn",
-    "settings": "Cài đặt",
-    "guide": "Hướng dẫn"
+    "settings": "Cài đặt"
   },
   "page": {
     "eyebrow": "CAMERA INTELLIGENCE",
-    "test": {
-      "title": "Thử nghiệm mô hình",
-      "description": "Chọn ảnh hoặc video, đổi mô hình và xem kết quả nhận diện. Camera được tắt khi vào màn hình này."
-    },
     "live": {
       "title": "Không gian theo dõi",
-      "description": "Nhận diện vật thể bằng ngón trỏ hoặc chấm laser."
-    },
-    "history": {
-      "title": "Những lần chạm của bạn",
-      "description": "Mỗi lựa chọn là một khoảnh khắc. Xem lại ngay tại đây."
+      "description": "Nhận diện vật thể bằng chấm laser đỏ, từ webcam hoặc camera RTSP."
     },
     "settings": {
       "title": "Tùy chỉnh nhận diện",
       "description": "Quản lý mô hình AI, chọn vật thể, độ nhạy và cách hiển thị."
-    },
-    "guide": {
-      "title": "Chỉ tay hoặc dùng laser",
-      "description": "Ba bước đơn giản để khám phá không gian của bạn."
     }
   },
   "sidebar": {
     "cardTitle": "Camera của riêng bạn",
     "cardText": "Góc nhìn riêng. Nhận diện tức thì.",
-    "tag": "Virtual Cam / Web"
+    "tag": "HICAS Cam / Web"
   },
   "header": {
     "workspace": "Không gian làm việc",
@@ -107,8 +65,6 @@
     "viewer": "Người xem"
   },
   "status": {
-    "analyzing": "Đang phân tích ảnh",
-    "complete": "Đã phân tích ảnh",
     "connecting": "Đang kết nối",
     "offline": "Mất kết nối máy chủ",
     "error": "Lỗi bộ nhận diện",
@@ -119,39 +75,20 @@
     "paused": "Đã tạm dừng",
     "reconnecting": "Đang kết nối lại"
   },
-  "footer": {
-    "checking": "Đang kiểm tra thiết bị xử lý",
-    "offline": "Không kết nối được máy chủ nhận diện",
-    "device": "{{device}} · {{model}} · {{size}}px",
-    "session": "Phiên của bạn · {{time}}"
-  },
   "metrics": {
-    "fps": "Tốc độ xử lý",
-    "fpsNote": "Toàn bộ luồng nhận diện",
-    "hand": "Trạng thái bàn tay",
-    "handIdle": "Đang chờ",
-    "handFound": "Đã nhận diện",
-    "handMissing": "Chưa thấy tay",
-    "handNoteFound": "Đang theo dõi đầu ngón trỏ",
-    "handNoteMissing": "Đưa bàn tay vào khung hình",
     "objects": "Vật thể trong khung",
-    "objectsNote": "Thuộc nhóm cần nhận diện",
-    "selections": "Lượt lựa chọn",
-    "selectionsNote": "Trong phiên đang chạy"
+    "objectsNote": "Thuộc nhóm cần nhận diện"
   },
   "camera": {
-    "title": "Camera của bạn",
-    "select": "Chọn camera",
-    "deviceFallback": "Camera {{index}}",
-    "start": "Bật camera của tôi",
+    "title": "Camera",
+    "select": "Chọn camera RTSP",
     "stop": "Tắt camera",
     "pause": "Tạm dừng",
     "resume": "Tiếp tục",
     "snapshot": "Chụp ảnh",
     "fullscreen": "Toàn màn hình",
     "exitFullscreen": "Thoát toàn màn hình",
-    "caption": "Chỉ ngón trỏ vào vật thể để lựa chọn",
-    "canvasLabel": "Hình camera của bạn với đường nhận diện bàn tay và vật thể",
+    "canvasLabel": "Hình camera với chấm laser và vật thể nhận diện",
     "badge": {
       "idle": "ĐANG CHỜ",
       "off": "CAMERA ĐÃ TẮT",
@@ -162,7 +99,7 @@
       "file": "FILE THỬ"
     },
     "stream": {
-      "off": "Camera chưa bật",
+      "off": "Camera chưa kết nối",
       "waiting": "Đang chờ bộ nhận diện",
       "live": "Đang nhận diện · {{ms}} ms",
       "paused": "Không gửi khung hình",
@@ -170,105 +107,53 @@
       "retrying": "Đang thử kết nối lại…"
     },
     "overlay": {
-      "introTitle": "Góc nhìn của bạn, ngay tại đây",
-      "introText": "Bật camera để bắt đầu. Khung hình được gửi đến máy chủ nhận diện rồi bỏ đi, không lưu thành ảnh hay video.",
-      "startingTitle": "Đang mở camera của bạn",
-      "startingText": "Cho phép truy cập camera khi trình duyệt yêu cầu.",
-      "stoppedTitle": "Camera đã tắt",
-      "stoppedText": "Bật lại camera để tiếp tục phiên theo dõi của riêng bạn.",
-      "endedTitle": "Camera đã ngắt kết nối",
-      "endedText": "Kiểm tra thiết bị rồi bật lại camera.",
-      "errorTitle": "Cần kết nối camera",
+      "introTitle": "Kết nối camera RTSP",
+      "introText": "Bấm Kết nối camera để bắt đầu. Máy chủ đọc hình từ camera, nhận diện rồi bỏ đi, không lưu ảnh hay video.",
+      "stoppedTitle": "Camera đã ngắt",
+      "stoppedText": "Bấm Kết nối camera để xem lại.",
+      "errorTitle": "Không kết nối được camera",
       "pausedTitle": "Đã tạm dừng nhận diện",
-      "pausedText": "Camera vẫn bật. Nhấn Tiếp tục để nhận diện hoặc Tắt camera để ngắt thiết bị.",
+      "pausedText": "Camera vẫn kết nối. Nhấn Tiếp tục để nhận diện hoặc Tắt camera để ngắt.",
       "waitingTitle": "Đang chờ máy chủ",
       "slowText": "Máy chủ phản hồi chậm. Đang tự động thử lại…",
       "serverErrorTitle": "Bộ nhận diện chưa sẵn sàng",
       "offlineTitle": "Mất kết nối máy chủ",
-      "offlineText": "Giữ trang này mở. Hệ thống sẽ tự kết nối lại."
+      "offlineText": "Giữ trang này mở. Hệ thống sẽ tự kết nối lại.",
+      "noStreamTitle": "Chưa có camera RTSP",
+      "noStreamText": "Thêm link RTSP (ví dụ rtsp://<IP>:8554/camera) ngay tại đây hoặc trong Cài đặt › Camera RTSP."
     },
     "errors": {
-      "insecure": "Camera của trình duyệt chỉ mở được qua localhost hoặc HTTPS. Từ máy khác, hãy mở https://<IP máy chủ>:8033 (chứng chỉ tự ký: chọn Nâng cao › Tiếp tục).",
-      "NotAllowedError": "Quyền camera chưa được cấp. Cho phép camera trong cài đặt trang của trình duyệt rồi thử lại.",
-      "NotFoundError": "Không tìm thấy camera. Hãy kết nối webcam hoặc thử trên thiết bị có camera.",
-      "NotReadableError": "Không mở được camera. Hãy đóng ứng dụng khác đang dùng camera rồi thử lại.",
-      "OverconstrainedError": "Camera đã chọn không còn khả dụng. Hãy chọn camera khác.",
-      "AbortError": "Trình duyệt đã huỷ việc mở camera. Hãy thử lại.",
       "default": "Không thể mở camera. Hãy thử lại.",
-      "media": "Trình duyệt không mở được file này. Thử ảnh JPG/PNG hoặc video MP4 (H.264) / WEBM."
+      "stream": "Không lấy được hình từ luồng RTSP. Kiểm tra địa chỉ (ví dụ rtsp://<IP>:8554/camera), MediaMTX đang chạy và đã có nguồn phát, rồi bấm Kết nối RTSP để thử lại."
     },
     "snapshotSaved": "Đã lưu ảnh chụp khung hình",
     "snapshotEmpty": "Chưa có khung hình để chụp",
-    "fullscreenUnsupported": "Trình duyệt này chưa hỗ trợ chế độ toàn màn hình."
-  },
-  "media": {
-    "stageTitle": "Ảnh / video thử",
-    "open": "Dùng ảnh / video",
-    "stop": "Dừng phát",
-    "caption": "Đang thử: {{name}}",
-    "unsupported": "Chỉ nhận ảnh (JPG, PNG, WEBP, BMP, GIF) hoặc video (MP4, WEBM, MOV, M4V, OGV).",
-    "startingTitle": "Đang mở ảnh / video",
-    "startingText": "Khung hình sẽ được nhận diện như camera: chỉ tay hoặc chấm laser trong ảnh / video sẽ chọn vật thể.",
-    "stoppedTitle": "Đã dừng ảnh / video",
-    "stoppedText": "Chọn lại ảnh / video hoặc bật camera.",
-    "errorTitle": "Không phát được ảnh / video",
-    "pausedText": "Video đang dừng. Nhấn Tiếp tục để phát và nhận diện tiếp."
+    "fullscreenUnsupported": "Trình duyệt này chưa hỗ trợ chế độ toàn màn hình.",
+    "rtsp": {
+      "open": "Thêm camera RTSP",
+      "title": "Thêm camera RTSP",
+      "cancel": "Huỷ",
+      "invalid": "Chưa thấy địa chỉ rtsp:// hoặc rtsps://.",
+      "parsed": "Sẽ kết nối: {{url}}",
+      "caption": "RTSP · {{url}}",
+      "startingTitle": "Đang kết nối luồng RTSP",
+      "startingText": "Máy chủ đang mở {{url}}…",
+      "add": "+ Thêm camera RTSP…",
+      "editTitle": "Sửa camera RTSP",
+      "save": "Lưu",
+      "name": "Tên camera",
+      "namePlaceholder": "Ví dụ: Camera cửa",
+      "url": "Địa chỉ RTSP"
+    },
+    "connect": "Kết nối camera",
+    "reconnect": "Kết nối lại"
   },
   "selection": {
     "title": "Vật thể đang chọn",
-    "current": "HIỆN TẠI",
-    "ready": "SẴN SÀNG NHẬN DIỆN",
-    "confirming": "GIỮ NGÓN TAY ĐỂ XÁC NHẬN",
-    "selected": "ĐÃ CHỌN BẰNG NGÓN TRỎ",
     "none": "Chưa có lựa chọn",
-    "hint": "Đưa ngón trỏ vào vùng vật thể để xem kết quả tại đây.",
-    "selectedHint": "Vật thể tại vị trí đầu ngón trỏ của bạn.",
-    "confidence": "Độ tin cậy nhận diện"
-  },
-  "targets": {
-    "title": "Vật thể đang nhận diện",
-    "count": "{{count}} vật thể",
-    "edit": "Chỉnh trong Cài đặt"
-  },
-  "recent": {
-    "byLaser": "Được chọn bằng laser",
-    "title": "Lựa chọn gần đây",
-    "subtitle": "Trong phiên này",
-    "viewAll": "Xem tất cả",
-    "empty": "Chưa có lựa chọn nào. Hãy thử chỉ vào một vật thể.",
-    "byFinger": "Đã chọn bằng ngón trỏ"
-  },
-  "history": {
-    "total": "Tổng lượt chọn",
-    "totalNote": "Từ đầu phiên",
-    "top": "Chọn nhiều nhất",
-    "topCount": "{{count}} lượt",
-    "average": "Độ tin cậy trung bình",
-    "averageNote": "Của các lượt đã chọn",
-    "session": "Thời gian phiên",
-    "sessionNote": "Tính từ lần đầu bật camera",
-    "tableTitle": "Lịch sử phiên của bạn",
-    "tableSubtitle": "{{count}} lựa chọn gần nhất",
-    "columns": {
-      "id": "LƯỢT",
-      "object": "VẬT THỂ",
-      "time": "THỜI GIAN",
-      "confidence": "ĐỘ TIN CẬY"
-    },
-    "empty": "Lịch sử sẽ xuất hiện khi bạn chọn một vật thể.",
-    "export": "Xuất CSV",
-    "clear": "Xóa lịch sử",
-    "clearConfirm": "Xóa toàn bộ lịch sử của phiên này?",
-    "cleared": "Đã xóa lịch sử",
-    "footnote": "Lịch sử chỉ nằm trong tab của bạn và được xóa khi tải lại trang.",
-    "csv": {
-      "file": "lich-su-lua-chon",
-      "id": "Lượt",
-      "object": "Vật thể",
-      "className": "Lớp",
-      "time": "Thời gian",
-      "confidence": "Độ tin cậy (%)"
-    }
+    "confidenceValue": "Độ tin cậy {{value}}%",
+    "holding": "Đang giữ laser để xác nhận…",
+    "idleHint": "Chiếu laser lên vật thể và giữ yên để chọn"
   },
   "settings": {
     "saved": "Cài đặt được lưu tự động trên trình duyệt này.",
@@ -282,7 +167,6 @@
       "search": "Tìm vật thể…",
       "defaults": "Mặc định",
       "all": "Chọn tất cả",
-      "hint": "Không có lớp “người” vì đầu ngón tay luôn nằm trên chính người đang chỉ.",
       "minOne": "Cần giữ ít nhất một vật thể.",
       "noMatch": "Không tìm thấy vật thể phù hợp.",
       "waiting": "Danh sách vật thể sẽ hiện khi bộ nhận diện sẵn sàng."
@@ -290,46 +174,30 @@
     "detection": {
       "title": "Nhận diện",
       "confidence": "Ngưỡng tin cậy tối thiểu",
-      "confidenceHelp": "Thấp hơn: bắt được nhiều vật thể hơn nhưng dễ nhầm.",
-      "tolerance": "Vùng chấp nhận quanh đầu ngón trỏ",
-      "toleranceHelp": "Đầu ngón tay được phép nằm ngoài mép vật thể tối đa bấy nhiêu pixel.",
-      "dwell": "Thời gian giữ để xác nhận",
-      "dwellHelp": "Giữ ngón trỏ hoặc chấm laser trên vật thể đủ lâu mới tính là một lượt chọn; 0 = chọn ngay."
+      "dwell": "Thời gian giữ để xác nhận"
     },
     "display": {
       "title": "Hiển thị",
-      "hand": "Khung xương bàn tay",
-      "tip": "Điểm chỉ tay / laser và vòng xác nhận",
       "outline": "Viền vật thể đang chọn",
       "boxes": "Khung các vật thể khác",
-      "mirror": "Chế độ gương",
-      "mirrorAuto": "Tự động (camera trước)",
-      "mirrorOn": "Luôn lật ngang",
-      "mirrorOff": "Không lật"
+      "mirror": "Lật ngang hình camera (chế độ gương)"
     },
-    "voice": {
-      "title": "Âm thanh",
-      "enabled": "Đọc tên vật thể khi chọn",
-      "test": "Nghe thử",
-      "sample": "Máy tính xách tay",
-      "noVoice": "Máy chưa có giọng đọc tiếng Việt; trình duyệt sẽ dùng giọng mặc định.",
-      "unsupported": "Trình duyệt này không hỗ trợ đọc văn bản."
+    "streams": {
+      "title": "Camera RTSP",
+      "add": "Thêm camera RTSP",
+      "name": "Tên",
+      "url": "Địa chỉ",
+      "watching": "Đang xem",
+      "connect": "Kết nối",
+      "edit": "Sửa",
+      "remove": "Xoá",
+      "removeConfirm": "Xoá camera này?",
+      "empty": "Chưa có camera RTSP."
+    },
+    "socket": {
+      "title": "Kết nối socket",
+      "wsTitle": "WebSocket — app khác kết nối vào"
     }
-  },
-  "guide": {
-    "step1Title": "Bật camera của bạn",
-    "step1Text": "Nhấn “Bật camera của tôi” và cho phép trình duyệt truy cập camera. Mỗi người dùng camera trên thiết bị của chính mình; máy chủ chỉ nhận khung hình để nhận diện.",
-    "step2Title": "Chỉ vào vật thể",
-    "step2Text": "Chọn Chỉ tay hoặc Laser phía trên camera. Đặt đầu ngón trỏ hoặc chiếu chấm laser lên vật thể rồi giữ yên đến khi vòng xác nhận chuyển xanh.",
-    "step3Title": "Theo dõi kết quả",
-    "step3Text": "Tên vật thể, độ tin cậy và lịch sử tự cập nhật. Chụp ảnh khung hình, xuất lịch sử ra CSV hoặc bật đọc tên trong Cài đặt.",
-    "tipsTitle": "Để nhận diện tốt hơn",
-    "tipsText": "Giữ đủ ánh sáng, tránh che khuất vật thể và để đầu ngón tay nằm rõ trong khung hình. Độ tin cậy hiển thị là của nhận diện vật thể, không phải độ chính xác của thao tác chỉ tay.",
-    "privacyText": "Khung hình chỉ dùng để nhận diện rồi bỏ đi — không lưu thành ảnh hay video. Cài đặt và lịch sử nằm trong trình duyệt của bạn.",
-    "shortcutsTitle": "Phím tắt",
-    "shortcutSpace": "Tạm dừng / tiếp tục nhận diện",
-    "shortcutSnapshot": "Chụp ảnh khung hình",
-    "shortcutFullscreen": "Bật / tắt toàn màn hình"
   },
   "httpError": {
     "default": "Có lỗi xảy ra, vui lòng thử lại",
@@ -339,20 +207,6 @@
     "429": "Máy chủ đang bận, đang thử lại…",
     "500": "Lỗi máy chủ, vui lòng thử lại",
     "503": "Bộ nhận diện chưa sẵn sàng"
-  },
-  "classGroups": {
-    "electronic": "Thiết bị điện tử",
-    "indoor": "Đồ dùng trong nhà",
-    "kitchen": "Nhà bếp",
-    "furniture": "Nội thất",
-    "appliance": "Đồ gia dụng",
-    "accessory": "Phụ kiện",
-    "food": "Thực phẩm",
-    "sports": "Thể thao",
-    "vehicle": "Phương tiện",
-    "outdoor": "Ngoài trời",
-    "animal": "Động vật",
-    "other": "Khác"
   },
   "classes": {
     "person": "Người",

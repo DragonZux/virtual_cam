@@ -1,0 +1,12 @@
+# Jetson Orin / JetPack 6 only:
+# docker compose -f docker-compose.yml -f docker-compose.jetson.yml up -d --build
+# Or copy this file to docker-compose.override.yml on the Jetson once, then use
+# docker compose up -d --build as usual. Do not use the PC backend on Jetson.
+services:
+  backend:
+    build:
+      dockerfile: backend/Dockerfile.jetson
+      args:
+        JETSON_BASE_IMAGE: ${JETSON_BASE_IMAGE:-ultralytics/ultralytics:8.4.166-jetson-jetpack6}
+    image: hicas-cam-backend-jetson:latest
+    runtime: nvidia

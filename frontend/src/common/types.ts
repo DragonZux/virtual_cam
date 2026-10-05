@@ -62,13 +62,12 @@ export interface FrameResult {
   resolution: { width: number; height: number };
 }
 
-/** Cài đặt gửi kèm từng khung hình (query của POST /vision/frame) */
+/** Cài đặt gửi kèm từng khung hình (query của POST /vision/frame); giao diện web chỉ chọn bằng laser */
 export interface FrameOptions {
   model_revision?: number;
-  pointer_mode: PointerMode;
+  pointer_mode: "laser";
   targets: string[];
   conf: number;
-  tolerance: number;
 }
 
 export type ModelKind = "segmentation" | "laser";
@@ -79,47 +78,66 @@ export interface ModelInfo {
   size_bytes: number;
   active: boolean;
   available: boolean;
+  /** .pt / .torchscript: chuyển được sang TensorRT FP16 */
+  convertible?: boolean;
+}
+export type ConversionStatus = "queued" | "running" | "done" | "error";
+/** Một lượt chuyển sang TensorRT FP16; xong thì máy chủ tự chọn engine mới */
+export interface ConversionInfo {
+  id: string;
+  /** id mô hình gốc */
+  source: string;
+  name: string;
+  kind: ModelKind;
+  status: ConversionStatus;
+  error: string | null;
+  /** id engine đã tạo */
+  engine: string | null;
+  created_at: number;
+  finished_at: number | null;
 }
 export interface ModelList {
   items: ModelInfo[];
   max_bytes: number;
+  /** Mới nhất trước */
+  conversions?: ConversionInfo[];
+  convert_available?: boolean;
+  /** Lý do máy chủ chưa chuyển được sang TensorRT */
+  convert_reason?: string | null;
 }
 
-export type MediaKind = "image" | "video";
+/** Camera RTSP người dùng thêm (lưu trên trình duyệt) */
+export interface StreamLink {
+  url: string;
+  /** Tên tự đặt, vd. "Camera cửa" */
+  name?: string;
+}
+
+/** POST /camera/streams — phiên đọc luồng RTSP ở máy chủ */
+export interface StreamInfo {
+  id: string;
+  width: number;
+  height: number;
+}
 
 /* ===== Chỉ ở frontend ===== */
 
-export type MirrorMode = "auto" | "on" | "off";
-
-/** Cài đặt riêng của trình duyệt (localStorage). targets/confidence/tolerance trống = mặc định máy chủ */
+/** Cài đặt riêng của trình duyệt (localStorage). targets/confidence trống = mặc định máy chủ */
 export interface Preferences {
-  pointerMode: PointerMode;
   targets?: string[];
   confidence?: number;
-  tolerance?: number;
-  /** Giữ ngón tay trên vật thể bấy nhiêu ms mới tính là một lượt chọn */
+  /** Giữ chấm laser trên vật thể bấy nhiêu ms mới tính là đã chọn */
   dwellMs: number;
-  showHand: boolean;
-  showTip: boolean;
   showOutline: boolean;
   showBoxes: boolean;
-  mirror: MirrorMode;
-  voice: boolean;
-}
-
-export interface SelectionEvent {
-  pointerMode?: PointerMode;
-  id: number;
-  name: string;
-  confidence: number;
-  /** epoch ms */
-  time: number;
+  /** Lật ngang hình camera (chế độ gương) */
+  mirror: boolean;
 }
 
 export type CameraStatus = "off" | "starting" | "on" | "error";
 
-/** Nguồn hình của khung camera: camera của trình duyệt hoặc ảnh / video thử */
-export type FrameSource = "camera" | "media";
+/** Nguồn hình: camera của trình duyệt hoặc luồng RTSP máy chủ đọc hộ (cả hai báo "camera" cho WebSocket) */
+export type FrameSource = "camera";
 
 /** Confirmed selection shared over WebSocket; confidence matches the displayed percentage. */
 export interface SelectionUpdate {
@@ -128,22 +146,9 @@ export interface SelectionUpdate {
   source: FrameSource;
 }
 
-/** Ảnh / video đang phát trong khung camera — url là blob: của file vừa chọn trên máy */
-export interface MediaSource {
-  url: string;
-  name: string;
-  kind: MediaKind;
-}
-
-export interface CameraDevice {
-  deviceId: string;
-  label: string;
-}
 
 /** Trạng thái tổng hợp hiện ở nhãn trạng thái và trên khung camera */
 export type LiveState =
-  | "analyzing"
-  | "complete"
   | "connecting"
   | "offline"
   | "error"

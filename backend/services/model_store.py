@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from core.config import Settings
 from core.logging import logger
+from services.engine_metadata import engine_kind, torchscript_kind
 
 KINDS = ("segmentation", "laser")
 
@@ -25,14 +26,16 @@ class ModelStore:
             entries[self.identifier(path)] = (kind, path)
         if self.root.is_dir():
             for path in sorted(self.root.iterdir()):
-                if path.is_file() and path.suffix.lower() in (".pt", ".torchscript"):
-                    kind = "laser" if path.suffix.lower() == ".torchscript" else "segmentation"
-                    entries.setdefault(self.identifier(path), (kind, path))
+                if path.is_file() and path.suffix.lower() in (".pt", ".torchscript", ".engine"):
+                    kind = (engine_kind(path) if path.suffix.lower() == ".engine" else
+                            torchscript_kind(path) if path.suffix.lower() == ".torchscript" else "segmentation")
+                    if kind:
+                        entries.setdefault(self.identifier(path), (kind, path))
         for kind in KINDS:
             folder = self.folder / kind
             if folder.is_dir():
                 for path in sorted(folder.iterdir()):
-                    if path.is_file() and path.suffix.lower() in (".pt", ".torchscript"):
+                    if path.is_file() and path.suffix.lower() in (".pt", ".torchscript", ".engine"):
                         entries[self.identifier(path)] = (kind, path)
         return entries
 
@@ -64,11 +67,17 @@ class ModelStore:
         temporary.write_text(json.dumps(active, ensure_ascii=False, indent=2), encoding="utf-8")
         temporary.replace(self.state_file)
 
+    def engine_path(self, kind: str, source: Path) -> Path:
+        """Engine FP16 build từ `source`: cạnh các mô hình tải lên cùng loại, không ghi đè engine đã có."""
+        folder = self.folder / kind
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / f"{source.stem}-fp16.engine"
+        return target if not target.exists() else folder / f"{source.stem}-fp16-{uuid4().hex[:6]}.engine"
+
     def upload_path(self, kind: str, name: str) -> Path:
         suffix = Path(name).suffix.lower()
-        allowed = (".pt",) if kind == "segmentation" else (".pt", ".torchscript")
-        if suffix not in allowed:
-            raise ValueError("Segmentation cần file .pt; laser cần .pt (YOLO detect một lớp) hoặc .torchscript (ADVR).")
+        if suffix not in (".pt", ".torchscript", ".engine"):
+            raise ValueError("Mô hình cần file .pt, .torchscript hoặc .engine.")
         stem = re.sub(r"[^\w-]+", "_", Path(name.replace("\\", "/")).stem).strip("_")[:70] or "model"
         folder = self.folder / kind
         folder.mkdir(parents=True, exist_ok=True)

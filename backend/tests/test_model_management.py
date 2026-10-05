@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -22,7 +23,7 @@ def catalog(detector, tmp_path, monkeypatch):
         calls.append((kind, path.name))
         if path.read_bytes() == b"invalid":
             raise ValueError("Invalid model")
-        return SimpleNamespace(names={0: "person", 1: "custom object"})
+        return SimpleNamespace(names={0: "person", 1: "custom object", 2: "other object"})
 
     monkeypatch.setattr(detector, "_prepare_model", prepare)
     return tmp_path, calls
@@ -42,8 +43,9 @@ def test_activate_updates_classes_and_persists(client, detector, catalog):
     assert response.status_code == 200
     state = response.json()
     assert state["model"] == "new.pt"
-    assert state["classes"] == ["custom object"]
-    assert state["defaults"]["targets"] == ["custom object"]
+    assert state["classes"] == ["custom object", "other object"]
+    # Không có lớp nào trong DEFAULT_TARGETS: mặc định nhận diện mọi lớp của mô hình mới
+    assert state["defaults"]["targets"] == ["custom object", "other object"]
     assert state["model_revision"] == 1 and state["model_busy"] is False
     assert ModelStore(detector.cfg).saved()["segmentation"] == "new.pt"
     assert client.post("/api/models/activate", json={"id": "new.pt"}).json()["model_busy"] is False
@@ -70,21 +72,24 @@ def test_persistence_failure_keeps_previous_model(client, detector, catalog, mon
     assert detector.classes == old_classes
 
 
-@pytest.mark.parametrize("kind,name", [("segmentation", "my-seg.pt"), ("laser", "spot.pt"), ("laser", "spot.torchscript")])
-def test_upload_validates_without_activating_or_overwriting(client, detector, catalog, kind, name):
+@pytest.mark.parametrize("kind,name", [("segmentation", "my-seg.pt"), ("segmentation", "my-seg.torchscript"),
+                                     ("laser", "spot.pt"), ("laser", "spot.torchscript"),
+                                     ("segmentation", "objects.engine"), ("laser", "spot.engine")])
+def test_upload_replaces_running_model_without_overwriting(client, detector, catalog, kind, name):
     folder, calls = catalog
+    ids = []
     for _ in range(2):
         response = client.post("/api/models", params={"kind": kind, "name": name}, content=b"new model")
         assert response.status_code == 201
+        ids.append(next(m["id"] for m in response.json()["items"] if m["active"] and m["kind"] == kind))
     files = list((folder / "custom" / kind).iterdir())
     assert len(files) == 2 and all(path.is_file() for path in files)
     assert len(calls) == 2 and all(call[0] == kind for call in calls)
-    assert detector.status()["model"] == "initial.pt"
-    custom = [m for m in response.json()["items"] if m["id"].startswith("custom/")]
-    assert all(m["kind"] == kind and not m["active"] for m in custom)
-    if kind == "laser":
-        assert client.post("/api/models/activate", json={"id": custom[0]["id"]}).status_code == 200
-        assert detector.status()["laser_model"] == custom[0]["id"]
+    # Mỗi lần tải lên, mô hình mới thay mô hình cùng loại ngay và được nhớ khi khởi động lại
+    assert ids[0] != ids[1] and all(model_id.startswith(f"custom/{kind}/") for model_id in ids)
+    assert detector._active[kind] == ids[1] and ModelStore(detector.cfg).saved()[kind] == ids[1]
+    other = "laser" if kind == "segmentation" else "segmentation"
+    assert detector._active[other] == ("initial.torchscript" if kind == "segmentation" else "initial.pt")
 
 
 def test_upload_rejects_invalid_empty_large_and_wrong_format(client, catalog):
@@ -92,8 +97,10 @@ def test_upload_rejects_invalid_empty_large_and_wrong_format(client, catalog):
     for content, expected in ((b"invalid", 400), (b"", 400), (b"x" * (1024 * 1024 + 1), 413)):
         response = client.post("/api/models", params={"kind": "segmentation", "name": "bad.pt"}, content=content)
         assert response.status_code == expected
+    # Nạp lỗi: file bị bỏ, mô hình đang chạy giữ nguyên
     assert not list((folder / "custom" / "segmentation").iterdir())
-    assert client.post("/api/models?kind=segmentation&name=bad.torchscript", content=b"x").status_code == 415
+    assert client.get("/api/vision/status").json()["model"] == "initial.pt"
+    assert client.post("/api/models?kind=segmentation&name=bad.onnx", content=b"x").status_code == 415
     assert client.post("/api/models?kind=unknown&name=bad.pt", content=b"x").status_code == 422
 
 
@@ -125,3 +132,32 @@ def test_frames_from_previous_model_are_rejected(client, detector, catalog):
     assert client.post("/api/vision/frame?model_revision=0", content=jpeg(), headers={"Content-Type": "image/jpeg"}).status_code == 409
     with pytest.raises(ModelChanged):
         detector.analyze(jpeg(), options)
+
+
+def test_unloadable_saved_selection_falls_back_to_defaults(detector, catalog, monkeypatch):
+    """Engine của hệ điều hành khác (Windows ↔ Docker) không được làm hỏng cả bộ nhận diện."""
+    folder, _ = catalog
+    (folder / "windows.engine").write_bytes(b"plan")
+    (folder / "windows-laser.engine").write_bytes(b"plan")
+    detector.model_store.save({"segmentation": "windows.engine", "laser": "windows-laser.engine"})
+    monkeypatch.setattr(detector.model_store, "catalog", lambda: {
+        "initial.pt": ("segmentation", folder / "initial.pt"), "windows.engine": ("segmentation", folder / "windows.engine"),
+        "initial.torchscript": ("laser", folder / "initial.torchscript"),
+        "windows-laser.engine": ("laser", folder / "windows-laser.engine")})
+
+    def load(path):
+        if path.suffix == ".engine":
+            raise RuntimeError("engine plan not compatible with this platform")
+        return SimpleNamespace(names={0: "person", 1: "cup"}, close=lambda: None)
+
+    monkeypatch.setattr(detector, "_load_segmentation", load)
+    monkeypatch.setattr(detector, "_prepare_model", lambda kind, path: load(path))
+    monkeypatch.setattr(detector, "_predict", lambda *args: None)
+    detector.error = None
+    detector._load()
+    assert detector.error is None and detector.laser_error is None
+    assert detector._active == {"segmentation": "initial.pt", "laser": "initial.torchscript"}
+    assert detector.classes == ["cup"]
+    # Lựa chọn giữ nguyên cho máy build ra engine
+    assert json.loads(detector.model_store.state_file.read_text(encoding="utf-8")) == {
+        "segmentation": "windows.engine", "laser": "windows-laser.engine"}

@@ -1,15 +1,15 @@
 import { Button, Card, Select, Tooltip } from "antd";
-import { Aperture, Camera, Film, FlaskConical, Maximize, Minimize, Pause, Play, Power, RotateCcw } from "lucide-react";
-import { useEffect, useRef, type RefObject } from "react";
+import { Aperture, Camera, Cctv, Maximize, Minimize, Pause, Play, Power } from "lucide-react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
 
-import { DISPLAY_MAX_SIDE, ROUTES } from "@/common/constants";
-import { ModelControls } from "@/components/ModelControls/ModelControls";
-import { PointerControls } from "@/components/PointerControls/PointerControls";
-import { useDocumentVisible, useFrameLoop, useImageFrame, useFullscreen, useOverlay, useShortcuts, type useCamera } from "@/hooks";
+import { DISPLAY_MAX_SIDE } from "@/common/constants";
+import { useDocumentVisible, useFrameLoop, useFullscreen, useOverlay, useShortcuts, type useCamera } from "@/hooks";
+import { StreamDialog } from "@/components/StreamDialog/StreamDialog";
+import type { StreamLink } from "@/common/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getFrameOptions, getPreferences } from "@/store/setting";
+import { getConnectRequest, getStreamLinks, streamActions } from "@/store/stream";
 import {
   getCamera,
   getConnection,
@@ -20,22 +20,21 @@ import {
   getVisionStatus,
   isDetectorReady,
   isPaused,
-  selectMirror,
   visionActions,
 } from "@/store/vision";
 import { canvasToPng, captureFrame } from "@/utils/capture";
 import { downloadBlob } from "@/utils/download";
 import { fileStamp, objectLabel } from "@/utils/format";
 import { notify } from "@/utils/notify";
+import { displayStreamUrl, streamName } from "@/utils/stream";
 import styles from "./live.module.less";
 
 interface Props {
   /** Đang ở trang Tổng quan (trang được giữ mount khi chuyển trang) — chỉ bắt phím tắt lúc hiện */
   visible: boolean;
-  /** <video> dùng chung cho camera và ảnh / video chọn từ máy (LivePage giữ) */
+  /** <video> phát luồng RTSP (LivePage giữ) */
   videoRef: RefObject<HTMLVideoElement | null>;
   source: ReturnType<typeof useCamera>;
-  testMode?: boolean;
 }
 
 interface OverlayContent {
@@ -44,7 +43,10 @@ interface OverlayContent {
   action?: boolean;
 }
 
-export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Props) => {
+/** Mục cuối của ô chọn camera: mở hộp thoại thêm camera RTSP */
+const ADD_STREAM = "add";
+
+export const CameraPanel = ({ visible, videoRef, source }: Props) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const outputRef = useRef<HTMLCanvasElement>(null);
@@ -66,26 +68,19 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
   const options = useAppSelector(getFrameOptions);
   const sessionStarted = useAppSelector(getSessionStartedAt) !== null;
   const pageVisible = useDocumentVisible();
-  const { start, stop } = source;
+  const links = useAppSelector(getStreamLinks);
+  const connectRequest = useAppSelector(getConnectRequest);
+  const { stop, startStream } = source;
   const fullscreen = useFullscreen(stageRef);
+  const [streamDialog, setStreamDialog] = useState(false);
 
   const cameraOn = camera.status === "on";
-  const media = camera.source === "media";
-  const imageFile = media && camera.media?.kind === "image";
-  const mirror = selectMirror(prefs.mirror, camera);
-  const interrupted = !!frameError && (imageFile || frameError.status !== 429);
+  const mirror = prefs.mirror;
+  const interrupted = !!frameError && frameError.status !== 429;
   useFrameLoop({
     videoRef,
-    active: !imageFile && cameraOn && !paused && pageVisible && ready && options !== null && !modelBusy && !status?.model_busy,
+    active: cameraOn && !paused && pageVisible && ready && options !== null && !modelBusy && !status?.model_busy,
     mirror,
-    options,
-  });
-
-  const analyzeImage = useImageFrame({
-    videoRef,
-    // Changing browser tabs or a status poll must not resubmit a still image.
-    active: imageFile && cameraOn && status?.phase === "ready" && !modelBusy && !status?.model_busy,
-    source: camera.media,
     options,
   });
 
@@ -94,7 +89,6 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
     canvasRef: outputRef,
     objectsRef,
     active: cameraOn && !paused && pageVisible && visible && !interrupted,
-    staticImage: imageFile,
     result,
     receivedAt,
     capturedAt,
@@ -103,17 +97,31 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
     label: (name) => objectLabel(t, name),
   });
 
-  // Tạm dừng video thử cùng lúc với nhận diện để tiếp tục đúng khung đang xem
-  const videoFile = cameraOn && media && camera.media?.kind === "video";
+  // Cài đặt › Camera RTSP bấm "Kết nối": khung camera (luôn mount) mở luồng đó
   useEffect(() => {
-    const video = videoRef.current;
-    if (!videoFile || !video) return;
-    if (paused) video.pause();
-    else void video.play().catch(() => undefined);
-  }, [paused, videoFile, videoRef]);
+    if (!connectRequest) return;
+    dispatch(streamActions.connectHandled());
+    void startStream(connectRequest);
+  }, [connectRequest, dispatch, startStream]);
 
-  const startCamera = () => start(camera.status === "error" ? undefined : (camera.deviceId ?? undefined));
-  const togglePause = () => cameraOn && !imageFile && dispatch(visionActions.setPaused(!paused));
+  /** Luồng vừa dùng, không có thì camera đầu tiên trong Cài đặt */
+  const lastStream = camera.stream ?? links[0]?.url ?? null;
+  const connect = () => (lastStream ? void startStream(lastStream) : setStreamDialog(true));
+  const saveStream = (link: StreamLink) => {
+    setStreamDialog(false);
+    dispatch(streamActions.saveLink({ link }));
+    void startStream(link.url);
+  };
+  const togglePause = () => cameraOn && dispatch(visionActions.setPaused(!paused));
+
+  // Camera đang mở nhưng đã bị xoá khỏi Cài đặt vẫn hiện trong ô chọn
+  const sourceOptions = [
+    ...links.map((link) => ({ value: link.url, label: streamName(link) })),
+    ...(camera.stream && !links.some((link) => link.url === camera.stream)
+      ? [{ value: camera.stream, label: displayStreamUrl(camera.stream) }] : []),
+    { value: ADD_STREAM, label: t("camera.rtsp.add") },
+  ];
+  const chooseSource = (value: string) => (value === ADD_STREAM ? setStreamDialog(true) : void startStream(value));
 
   const snapshot = async () => {
     const overlayCanvas = outputRef.current;
@@ -132,7 +140,7 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
       notify.info(t("camera.snapshotEmpty"));
       return;
     }
-    downloadBlob(blob, `virtual-cam-${fileStamp()}.png`);
+    downloadBlob(blob, `hicascam-${fileStamp()}.png`);
     notify.success(t("camera.snapshotSaved"));
   };
 
@@ -146,26 +154,21 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
 
   const overlay = ((): OverlayContent | null => {
     if (camera.status === "starting") {
-      return media
-        ? { title: t("media.startingTitle"), text: t("media.startingText") }
-        : { title: t("camera.overlay.startingTitle"), text: t("camera.overlay.startingText") };
+      return { title: t("camera.rtsp.startingTitle"), text: t("camera.rtsp.startingText", { url: displayStreamUrl(camera.stream ?? "") }) };
     }
     if (camera.status === "error") {
       const text = t(`camera.errors.${camera.error ?? "default"}`, { defaultValue: t("camera.errors.default") });
-      return { title: t(camera.error === "media" ? "media.errorTitle" : "camera.overlay.errorTitle"), text, action: true };
+      return { title: t("camera.overlay.errorTitle"), text, action: true };
     }
     if (camera.status === "off") {
-      if (testMode) return { title: t("test.emptyTitle"), text: t("test.emptyText") };
-      if (media && sessionStarted) return { title: t("media.stoppedTitle"), text: t("media.stoppedText"), action: true };
-      if (camera.ended) return { title: t("camera.overlay.endedTitle"), text: t("camera.overlay.endedText"), action: true };
+      if (!lastStream) return { title: t("camera.overlay.noStreamTitle"), text: t("camera.overlay.noStreamText"), action: true };
       if (sessionStarted) return { title: t("camera.overlay.stoppedTitle"), text: t("camera.overlay.stoppedText"), action: true };
       return { title: t("camera.overlay.introTitle"), text: t("camera.overlay.introText"), action: true };
     }
-    if (paused) return { title: t("camera.overlay.pausedTitle"), text: t(media ? "media.pausedText" : "camera.overlay.pausedText") };
-    if (imageFile && frameError) return { title: t("test.imageFailed"), text: frameError.message || t("test.imageError") };
-    if (imageFile && result) return null;
+    if (paused) return { title: t("camera.overlay.pausedTitle"), text: t("camera.overlay.pausedText") };
     if (connection === "offline") return { title: t("camera.overlay.offlineTitle"), text: t("camera.overlay.offlineText") };
     if (status?.phase === "error") return { title: t("camera.overlay.serverErrorTitle"), text: status.error ?? "" };
+    if (status?.laser_error) return { title: t("pointer.unavailableTitle"), text: t("pointer.modelUnavailable") };
     if (interrupted) {
       return { title: t("camera.overlay.waitingTitle"), text: frameError.message || t("camera.overlay.slowText") };
     }
@@ -183,16 +186,12 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
       : interrupted
         ? "interrupted"
         : result
-          ? media
-            ? "file"
-            : "live"
+          ? "live"
           : "starting";
 
   const streamLabel = !cameraOn
     ? t("camera.stream.off")
-    : imageFile
-      ? t(frameError ? "test.imageFailed" : result ? "test.imageDone" : "test.imageProcessing", { ms: result?.processing_ms })
-      : paused
+    : paused
       ? t("camera.stream.paused")
       : !pageVisible
         ? t("camera.stream.hidden")
@@ -207,29 +206,24 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
       className={styles.cameraCard}
       title={
         <span className={styles.cardTitle}>
-          {testMode ? <Film size={17} /> : <Camera size={17} />}
-          {t(testMode ? "media.stageTitle" : "camera.title")}
+          <Camera size={17} />
+          {t("camera.title")}
         </span>
       }
       extra={
-        !testMode && <Select
+        <Select
           size="small"
           className={styles.cameraSelect}
           aria-label={t("camera.select")}
           placeholder={t("camera.select")}
-          value={camera.deviceId ?? undefined}
-          disabled={!cameraOn || media || camera.devices.length < 2}
+          value={camera.stream ?? undefined}
+          disabled={camera.status === "starting"}
           popupMatchSelectWidth={false}
-          options={camera.devices.map((device, index) => ({
-            value: device.deviceId,
-            label: device.label || t("camera.deviceFallback", { index: index + 1 }),
-          }))}
-          onChange={(deviceId: string) => start(deviceId)}
+          options={sourceOptions}
+          onChange={chooseSource}
         />
       }
     >
-      <ModelControls />
-      <PointerControls />
       <div ref={stageRef} className={styles.stage}>
         {/* Video chạy trực tiếp theo camera; canvas trong suốt đè lên vẽ kết quả (toạ độ đã theo chế độ gương) */}
         <video
@@ -257,18 +251,19 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
             </div>
             <strong>{overlay.title}</strong>
             <p>{overlay.text}</p>
-            {overlay.action && !testMode && (
+            {overlay.action && (
               <div className={styles.overlayActions}>
-                <Button type="primary" icon={<Camera size={16} />} onClick={startCamera}>
-                  {t("camera.start")}
-                </Button>
-                <Link to={ROUTES.test}><Button ghost icon={<FlaskConical size={16} />}>{t("test.open")}</Button></Link>
+                {lastStream && <Button type="primary" icon={<Camera size={16} />} onClick={connect}>
+                  {t(camera.status === "error" ? "camera.reconnect" : "camera.connect")}
+                </Button>}
+                <Button type={lastStream ? "default" : "primary"} ghost={!!lastStream} icon={<Cctv size={16} />}
+                  onClick={() => setStreamDialog(true)}>{t("camera.rtsp.open")}</Button>
               </div>
             )}
           </div>
         )}
         <div className={styles.badges}>
-          <span className={`${styles.liveBadge} ${badge === "live" || badge === "file" ? styles.isLive : ""}`}>
+          <span className={`${styles.liveBadge} ${badge === "live" ? styles.isLive : ""}`}>
             <span className={styles.badgeDot} />
             {t(`camera.badge.${badge}`)}
           </span>
@@ -278,22 +273,19 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
         </div>
         <div className={styles.caption}>
           <span className={styles.frameCorner} />
-          {media && camera.media
-            ? t("media.caption", { name: camera.media.name })
-            : t(prefs.pointerMode === "laser" ? "pointer.caption" : "camera.caption")}
+          {camera.stream && cameraOn
+            ? t("camera.rtsp.caption", { url: streamName(links.find((link) => link.url === camera.stream) ?? { url: camera.stream }) })
+            : t("pointer.caption")}
         </div>
       </div>
 
       <div className={styles.toolbar}>
         <div className={styles.streamInfo}>
-          <span className={`${styles.badgeDot} ${badge === "live" || badge === "file" ? styles.dotLive : ""}`} />
+          <span className={`${styles.badgeDot} ${badge === "live" ? styles.dotLive : ""}`} />
           {streamLabel}
         </div>
         <div className={styles.actions}>
-          {imageFile ? <Button size="small" type="text" icon={<RotateCcw size={14} />}
-            disabled={!cameraOn || !ready || !!modelBusy || status?.model_busy}
-            loading={cameraOn && ready && !result && !frameError && !modelBusy && !status?.model_busy}
-            onClick={analyzeImage}>{t("test.analyzeAgain")}</Button> : <Button
+          <Button
             size="small"
             type="text"
             icon={paused ? <Play size={14} /> : <Pause size={14} />}
@@ -301,12 +293,12 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
             onClick={togglePause}
           >
             {paused ? t("camera.resume") : t("camera.pause")}
-          </Button>}
+          </Button>
           <Button size="small" type="text" icon={<Aperture size={14} />} disabled={!result} onClick={snapshot}>
             {t("camera.snapshot")}
           </Button>
           <Button size="small" type="text" icon={<Power size={14} />} disabled={!cameraOn} onClick={() => stop()}>
-            {t(imageFile ? "test.clearImage" : media ? "media.stop" : "camera.stop")}
+            {t("camera.stop")}
           </Button>
           <Tooltip title={fullscreen.active ? t("camera.exitFullscreen") : t("camera.fullscreen")}>
             <Button
@@ -319,6 +311,7 @@ export const CameraPanel = ({ visible, videoRef, source, testMode = false }: Pro
           </Tooltip>
         </div>
       </div>
+      {streamDialog && <StreamDialog onCancel={() => setStreamDialog(false)} onSave={saveStream} />}
     </Card>
   );
 };

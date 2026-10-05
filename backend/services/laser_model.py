@@ -18,11 +18,12 @@ class LaserUnavailable(RuntimeError):
     """The trained laser detector is not available; never silently use colour rules."""
 
 
-def prepare_frame(frame: np.ndarray, size: int, stride: int = 64):
+def prepare_frame(frame: np.ndarray, size: int, stride: int = 64, *, target_shape: tuple[int, int] | None = None):
     """YOLOv5 AutoShape letterbox, RGB/CHW float32; preserve its half-pad mapping."""
     height, width = frame.shape[:2]
     gain = size / max(height, width)
-    target_h, target_w = (int(np.ceil(v * gain / stride) * stride) for v in (height, width))
+    target_h, target_w = (target_shape if target_shape is not None else
+                          tuple(int(np.ceil(v * gain / stride) * stride) for v in (height, width)))
     gain = min(target_h / height, target_w / width)
     resized_w, resized_h = round(width * gain), round(height * gain)
     pad_x, pad_y = (target_w - resized_w) / 2, (target_h - resized_h) / 2
@@ -66,6 +67,10 @@ def select_spot(prediction: np.ndarray, shape: tuple[int, int], gain: float,
                      score=round(float(scores[winner]), 4))
 
 
+# Định dạng docker/prepare_laser_model.py ghi vào config.json; file xuất trước khi đổi tên dự án ghi bản cũ
+LASER_FORMATS = {"hicas-laser-v1", "virtual-cam-laser-v1"}
+
+
 class LaserModel:
     def __init__(self, path: Path, device: str, size: int = 1280, confidence: float = 0.55,
                  crop_size: int = 384):
@@ -77,8 +82,8 @@ class LaserModel:
         extra = {"config.json": ""}
         self.model: Any = torch.jit.load(str(path), map_location=device, _extra_files=extra).eval()
         meta = json.loads(extra["config.json"])
-        if meta.get("format") != "virtual-cam-laser-v1" or meta.get("color") != "red" or meta.get("stride") != 64:
-            raise ValueError("Model laser không đúng định dạng ADVR đã xuất cho Virtual Cam.")
+        if meta.get("format") not in LASER_FORMATS or meta.get("color") != "red" or meta.get("stride") != 64:
+            raise ValueError("Model laser không đúng định dạng ADVR đã xuất cho HICAS.")
         self.torch = torch
         self.device = device
         self.dtype = torch.float16 if device.startswith("cuda") else torch.float32
@@ -138,7 +143,7 @@ class YoloLaserModel:
     def __init__(self, path: Path, device: str, size: int, confidence: float):
         from ultralytics import YOLO
 
-        self.model = YOLO(str(path))
+        self.model = YOLO(str(path), task="detect") if path.suffix.lower() == ".engine" else YOLO(str(path))
         if self.model.task != "detect" or len(self.model.names) != 1:
             raise ValueError("Model laser .pt phải là YOLO detect được huấn luyện với đúng một lớp chấm laser.")
         self.device, self.size, self.confidence = device, size, confidence

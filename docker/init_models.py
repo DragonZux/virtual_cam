@@ -44,9 +44,15 @@ def prepare() -> None:
         if target.is_dir():
             warn(f"{target} is a folder (Docker creates one when the file is missing): delete it on the host.")
         elif not target.is_file():
-            fetch(url, target)
+            if target.suffix.lower() == ".engine":
+                warn(f"Missing TensorRT engine {target.name}: copy an engine built for this GPU/platform into MODEL_DIR.")
+            else:
+                fetch(url, target)
     laser = MODEL_DIR / LASER_MODEL
     if not laser.is_file():
+        if laser.suffix.lower() != ".torchscript":
+            warn(f"Missing laser model {laser.name}: copy the model into MODEL_DIR; only .torchscript is auto-exported.")
+            return
         print("[init_models] Exporting the red laser model (first run only, a few minutes)...", flush=True)
         result = subprocess.run([sys.executable, "/app/scripts/prepare_laser_model.py", "--output", str(laser)])
         if result.returncode != 0:
