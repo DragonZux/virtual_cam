@@ -4,11 +4,11 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
 import { DISPLAY_MAX_SIDE } from "@/common/constants";
-import { useDocumentVisible, useFrameLoop, useFullscreen, useOverlay, useShortcuts, type useCamera } from "@/hooks";
+import { useDocumentVisible, useFullscreen, useOverlay, useShortcuts, type useCamera } from "@/hooks";
 import { StreamDialog } from "@/components/StreamDialog/StreamDialog";
 import type { StreamLink } from "@/common/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { getFrameOptions, getPreferences } from "@/store/setting";
+import { getPreferences } from "@/store/setting";
 import { getConnectRequest, getStreamLinks, streamActions } from "@/store/stream";
 import {
   getCamera,
@@ -18,9 +18,7 @@ import {
   getSessionStartedAt,
   getTracking,
   getVisionStatus,
-  isDetectorReady,
   isPaused,
-  visionActions,
 } from "@/store/vision";
 import { canvasToPng, captureFrame } from "@/utils/capture";
 import { downloadBlob } from "@/utils/download";
@@ -55,34 +53,25 @@ export const CameraPanel = ({ visible, videoRef, source }: Props) => {
 
   const camera = useAppSelector(getCamera);
   const paused = useAppSelector(isPaused);
-  const ready = useAppSelector(isDetectorReady);
   const connection = useAppSelector(getConnection);
   const status = useAppSelector(getVisionStatus);
-  const modelBusy = useAppSelector((state) => state.model.busy);
   const result = useAppSelector(getFrameResult);
   const receivedAt = useAppSelector((state) => state.vision.lastResultAt);
   const capturedAt = useAppSelector((state) => state.vision.lastCaptureAt);
   const frameError = useAppSelector(getFrameError);
   const tracking = useAppSelector(getTracking);
   const prefs = useAppSelector(getPreferences);
-  const options = useAppSelector(getFrameOptions);
   const sessionStarted = useAppSelector(getSessionStartedAt) !== null;
   const pageVisible = useDocumentVisible();
   const links = useAppSelector(getStreamLinks);
   const connectRequest = useAppSelector(getConnectRequest);
-  const { stop, startStream } = source;
+  const { stop, startStream, setPaused } = source;
   const fullscreen = useFullscreen(stageRef);
   const [streamDialog, setStreamDialog] = useState(false);
 
   const cameraOn = camera.status === "on";
   const mirror = prefs.mirror;
   const interrupted = !!frameError && frameError.status !== 429;
-  useFrameLoop({
-    videoRef,
-    active: cameraOn && !paused && pageVisible && ready && options !== null && !modelBusy && !status?.model_busy,
-    mirror,
-    options,
-  });
 
   useOverlay({
     videoRef,
@@ -112,16 +101,26 @@ export const CameraPanel = ({ visible, videoRef, source }: Props) => {
     dispatch(streamActions.saveLink({ link }));
     void startStream(link.url);
   };
-  const togglePause = () => cameraOn && dispatch(visionActions.setPaused(!paused));
+  const togglePause = () => cameraOn && setPaused(!paused);
 
-  // Camera đang mở nhưng đã bị xoá khỏi Cài đặt vẫn hiện trong ô chọn
+  /** Camera máy chủ đang chạy mà danh sách của trình duyệt này không có (trang khác chọn) */
+  const serverOnly = camera.server && !camera.stream ? `server:${camera.server.url}` : null;
+  /** Tên camera máy chủ đang nhận diện: tên trong danh sách → tên máy chủ lưu → địa chỉ */
+  const currentName = camera.server
+    ? streamName(links.find((link) => link.url === camera.stream) ?? { url: camera.server.url, name: camera.server.name ?? undefined })
+    : null;
+  // Camera đang chạy nhưng đã bị xoá khỏi Cài đặt / chưa có trong danh sách vẫn hiện trong ô chọn
   const sourceOptions = [
     ...links.map((link) => ({ value: link.url, label: streamName(link) })),
     ...(camera.stream && !links.some((link) => link.url === camera.stream)
-      ? [{ value: camera.stream, label: displayStreamUrl(camera.stream) }] : []),
+      ? [{ value: camera.stream, label: currentName ?? displayStreamUrl(camera.stream) }] : []),
+    ...(serverOnly ? [{ value: serverOnly, label: currentName ?? serverOnly }] : []),
     { value: ADD_STREAM, label: t("camera.rtsp.add") },
   ];
-  const chooseSource = (value: string) => (value === ADD_STREAM ? setStreamDialog(true) : void startStream(value));
+  const chooseSource = (value: string) => {
+    if (value === ADD_STREAM) setStreamDialog(true);
+    else if (value !== serverOnly) void startStream(value);
+  };
 
   const snapshot = async () => {
     const overlayCanvas = outputRef.current;
@@ -157,7 +156,7 @@ export const CameraPanel = ({ visible, videoRef, source }: Props) => {
       return { title: t("camera.rtsp.startingTitle"), text: t("camera.rtsp.startingText", { url: displayStreamUrl(camera.stream ?? "") }) };
     }
     if (camera.status === "error") {
-      const text = t(`camera.errors.${camera.error ?? "default"}`, { defaultValue: t("camera.errors.default") });
+      const text = camera.message ?? t(`camera.errors.${camera.error ?? "default"}`, { defaultValue: t("camera.errors.default") });
       return { title: t("camera.overlay.errorTitle"), text, action: true };
     }
     if (camera.status === "off") {
@@ -216,7 +215,7 @@ export const CameraPanel = ({ visible, videoRef, source }: Props) => {
           className={styles.cameraSelect}
           aria-label={t("camera.select")}
           placeholder={t("camera.select")}
-          value={camera.stream ?? undefined}
+          value={camera.stream ?? serverOnly ?? undefined}
           disabled={camera.status === "starting"}
           popupMatchSelectWidth={false}
           options={sourceOptions}
@@ -273,9 +272,7 @@ export const CameraPanel = ({ visible, videoRef, source }: Props) => {
         </div>
         <div className={styles.caption}>
           <span className={styles.frameCorner} />
-          {camera.stream && cameraOn
-            ? t("camera.rtsp.caption", { url: streamName(links.find((link) => link.url === camera.stream) ?? { url: camera.stream }) })
-            : t("pointer.caption")}
+          {currentName && cameraOn ? t("camera.rtsp.caption", { url: currentName }) : t("pointer.caption")}
         </div>
       </div>
 

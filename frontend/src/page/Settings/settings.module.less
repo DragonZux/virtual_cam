@@ -141,44 +141,22 @@
   }
 }
 
-/* ===== Kết nối socket ===== */
-.socketSection {
-  & + & {
-    margin-top: 20px;
-  }
-
-  h3 {
-    margin: 0 0 8px;
-    font-size: 13px;
-    font-weight: 650;
-    color: @text-2;
-  }
-}
-
-.socketUrl {
-  display: inline-block;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-.addRow {
+/* ===== Camera RTSP: camera máy chủ đang chạy; Kết nối socket ===== */
+.runningCamera {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  margin-top: 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.03);
+
+  button {
+    margin-left: auto;
+  }
 }
 
-.hostInput {
-  flex: 1 1 200px;
-  min-width: 0;
-}
-
-.portInput {
-  width: 110px;
-}
-
-.fieldError {
-  margin: 6px 0 0;
-  color: @danger;
-  font-size: 12px;
+.socketResult {
+  margin: 10px 0 0 !important;
 }

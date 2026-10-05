@@ -45,10 +45,8 @@ export const MainLayout = () => {
 
   useEffect(() => {
     dispatch(visionActions.startStatusPolling());
-    dispatch(visionActions.startSelectionStream());
     return () => {
       dispatch(visionActions.stopStatusPolling());
-      dispatch(visionActions.stopSelectionStream());
     };
   }, [dispatch]);
 

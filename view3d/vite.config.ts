@@ -40,6 +40,8 @@ export default defineConfig(({ mode }) => {
           target: backendUrl,
           changeOrigin: true,
           ws: true,
+          // Gửi IP máy thật cho backend (X-Forwarded-For) — dòng log "Test kết nối" ghi đúng máy gửi
+          xfwd: true,
           // Backend Docker / Jetson dùng HTTPS chứng chỉ tự ký
           secure: false,
         },

@@ -12,7 +12,6 @@ export const MODEL_MANIFEST_PATH = "models/manifest.json";
 export const RECENT_COUNT = 8;
 
 export const DEFAULT_PREFERENCES: ViewerPreferences = {
-  wsUrl: "",
   autoRotate: true,
   keepLast: true,
 };

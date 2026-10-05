@@ -102,34 +102,36 @@ Không ghi đè `docker-compose.override.yml` của máy này bằng `docker-com
 Web (giao diện **hicascam**) chỉ có hai trang, camera là **camera RTSP / MediaMTX** và chọn vật thể **bằng chấm laser đỏ** (không còn webcam, chế độ chỉ tay, trang thử nghiệm, lịch sử, hướng dẫn, đọc tên bằng giọng nói).
 
 - **Tổng quan** (`/`): hàng trên là **Vật thể đang chọn** (viền cam khi đã xác nhận, kèm độ tin cậy), **Điểm laser**, **Vật thể trong khung**; bên dưới là camera chiếm toàn chiều ngang (khung 16:10, tối đa 80% chiều cao màn hình) với vòng "giữ để xác nhận", viền vật thể đang chọn và khung các vật thể khác. Chụp ảnh, toàn màn hình, phím tắt (Space tạm dừng, S chụp ảnh, F toàn màn hình).
-- **Camera RTSP**: ô chọn trên khung camera liệt kê các camera đã thêm; chọn là kết nối ngay. **+ Thêm camera RTSP…** (hoặc nút **Thêm camera RTSP** trên khung camera) để nhập tên và địa chỉ như khi xem bằng `ffplay rtsp://10.0.9.41:8554/camera` (dán cả lệnh `ffplay …` cũng được). Trình duyệt không mở được `rtsp://` nên **máy chủ** đọc luồng (OpenCV/FFmpeg, RTSP qua TCP) và gửi khung JPEG mới nhất về trang. Địa chỉ phải truy cập được từ máy chủ (trong Docker: dùng IP LAN của máy chạy MediaMTX, không dùng `localhost`). Tài khoản / mật khẩu trong URL không hiện trên khung hình và không ghi log.
+- **Camera RTSP**: ô chọn trên khung camera liệt kê các camera đã thêm; chọn là **máy chủ chạy camera đó** (mỗi lúc một camera, thay camera đang chạy). Camera chạy trên máy chủ: đóng / tải lại trang vẫn nhận diện, chỉ **Tắt camera** mới dừng; máy chủ khởi động lại thì chạy tiếp camera đã chọn. **+ Thêm camera RTSP…** (hoặc nút **Thêm camera RTSP** trên khung camera) để nhập tên và địa chỉ như khi xem bằng `ffplay rtsp://10.0.9.41:8554/camera` (dán cả lệnh `ffplay …` cũng được). Trình duyệt không mở được `rtsp://` nên **máy chủ** đọc luồng (OpenCV/FFmpeg, RTSP qua TCP), **tự nhận diện khung mới nhất** và đẩy cả hình (JPEG) lẫn kết quả (bbox, viền, chấm laser) về trang qua một WebSocket (xem [Camera máy chủ](#camera-máy-chủ-apicamera)). Địa chỉ phải truy cập được từ máy chủ (trong Docker: dùng IP LAN của máy chạy MediaMTX, không dùng `localhost`). Tài khoản / mật khẩu trong URL không hiện trên khung hình và không ghi log.
 - **Cài đặt** (`/settings`):
   - **Quản lý mô hình AI**: mỗi loại (segmentation, laser) một dòng là mô hình đang chạy (mô hình cũ không hiện), nút **Cập nhật** để chọn file mới cho đúng loại đó. Cả hai loại nhận `.pt`, `.torchscript` hoặc `.engine` (segmentation: Ultralytics YOLO segmentation, `.torchscript` xuất bằng Ultralytics; laser: ADVR `.torchscript`, YOLO detect một lớp `.pt`). **Tải lên là dùng ngay** thay mô hình cùng loại; nạp lỗi thì bỏ file và giữ mô hình cũ. Máy có GPU NVIDIA + TensorRT thì sau đó **tự chuyển sang TensorRT FP16** và đổi sang engine khi xong (xem [Chuyển sang TensorRT ngay trên máy chủ](#chuyển-sang-tensorrt-ngay-trên-máy-chủ)). File lưu trong `models/custom`, giới hạn mặc định 1024 MB (`MAX_MODEL_MB`). Chỉ tải mô hình từ nguồn tin cậy (`.pt` là pickle).
-  - **Camera RTSP**: danh sách link (tên + địa chỉ) — thêm, sửa, xoá, **Kết nối** (chuyển sang Tổng quan và mở luồng đó). Danh sách **lưu trên từng trình duyệt** (`localStorage`).
-  - **Kết nối socket**: địa chỉ **WebSocket** có sẵn (nút sao chép) để app khác kết nối vào nhận vật thể đang chọn, và danh sách **máy đích TCP** (IP / tên máy + cổng, bật / tắt, xoá, trạng thái kết nối). Máy chủ tự kết nối tới từng máy đích và gửi **mỗi bản tin một dòng JSON** — cùng nội dung WebSocket: `selection.snapshot` mỗi lần (kết nối lại), sau đó `selection.changed` (xem [Nhận vật thể đang chọn qua WebSocket](#nhận-vật-thể-đang-chọn-qua-websocket)); máy đích chưa mở / mất kết nối thì tự thử lại mỗi 3 giây. Danh sách **lưu trên máy chủ** ở `backend/data/sockets.json` (Docker mount `./backend/data`), tối đa 8 máy đích.
+  - **Camera RTSP**: dòng đầu cho biết **máy chủ đang nhận diện camera nào** (kể cả camera do trình duyệt khác chọn) kèm nút **Tắt camera**; danh sách link (tên + địa chỉ) — thêm, sửa, xoá, **Kết nối** (máy chủ chạy camera đó, chuyển sang Tổng quan), nhãn **Đang nhận diện** / **Đã tạm dừng** ở camera đang chạy. Danh sách **lưu trên từng trình duyệt** (`localStorage`); camera đang chạy lưu trên máy chủ.
+  - **Kết nối socket**: nút **Test kết nối** — gửi `ping` trên WebSocket camera của trang; backend ghi một dòng log (`Test kết nối từ frontend — máy <IP> qua /api/camera/ws`) và trả địa chỉ backend thật để hiện trên trang. Màn hình 3D có nút tương tự (qua `/api/vision/ws`). App khác nhận vật thể đang chọn: xem [Nhận vật thể đang chọn qua WebSocket](#nhận-vật-thể-đang-chọn-qua-websocket).
   - **Vật thể cần nhận diện**: danh sách lớp **đọc từ mô hình segmentation đang chạy** (`classes` của `GET /api/vision/status`, bỏ "person"); đổi mô hình là danh sách đổi theo. Lớp COCO có tên tiếng Việt và nhóm sẵn, lớp của mô hình tự huấn luyện vào nhóm "Khác" với tên gốc. Lựa chọn lưu trên trình duyệt; lớp không còn trong mô hình mới bị bỏ, không còn lớp nào thì dùng mặc định máy chủ (`DEFAULT_TARGETS`).
   - Ngưỡng tin cậy, thời gian giữ để xác nhận, viền / khung hiển thị, lật ngang hình camera.
 - Giao diện **tiếng Việt / English**.
 
-Khung camera chỉ dùng để nhận diện rồi bỏ, không lưu. Cài đặt hiển thị / độ nhạy nằm trong `localStorage`. Mô hình đang chạy dùng chung toàn máy chủ; file tải thêm nằm trong `models/custom/{segmentation,laser}`, lựa chọn lưu ở `models/custom/active.json` và được khôi phục khi khởi động. Chuyển mô hình thất bại giữ nguyên mô hình trước; danh sách lớp tự cập nhật khi chuyển thành công.
+Khung camera chỉ dùng để nhận diện rồi bỏ, không lưu. Cài đặt hiển thị / độ nhạy nằm trong `localStorage` và được gửi cho máy chủ khi mở camera. Mô hình đang chạy dùng chung toàn máy chủ; file tải thêm nằm trong `models/custom/{segmentation,laser}`, lựa chọn lưu ở `models/custom/active.json` và được khôi phục khi khởi động. Chuyển mô hình thất bại giữ nguyên mô hình trước; danh sách lớp tự cập nhật khi chuyển thành công.
 
 ## API
 
 | Phương thức | Đường dẫn | Dùng cho |
 |---|---|---|
 | `GET` | `/api/vision/status` | Trạng thái (`starting` / `ready` / `error`), thiết bị, model, danh sách lớp, mặc định, tình trạng model laser |
-| `POST` | `/api/vision/frame` | Body là ảnh JPEG thô (`Content-Type: image/jpeg`), trả kết quả nhận diện |
-| `WebSocket` | `/api/vision/ws` | Nhận trạng thái vật thể đã xác nhận từ các phiên trình duyệt |
-| `WebSocket` | `/api/vision/ws/publish` | Frontend tự gửi lựa chọn sau bước giữ để xác nhận |
+| `GET` | `/api/camera` | Camera máy chủ đang chạy: `{status: off/connecting/live/reconnecting, url (không mật khẩu), name, detect, error, width, height}` |
+| `PUT` | `/api/camera` | JSON `{"url":"rtsp://…","name":"Cam cửa"}` — chạy camera này thay camera đang chạy, chờ khung đầu tiên (400 địa chỉ sai, 502 không có hình) |
+| `DELETE` | `/api/camera` | Tắt camera |
+| `PUT` | `/api/camera/detect` | JSON `{"detect":false}` — tạm dừng / tiếp tục nhận diện (hình vẫn chạy) |
+| `WebSocket` | `/api/camera/ws` | Xem camera: trạng thái, hình JPEG, kết quả nhận diện (xem bên dưới) |
+| `POST` | `/api/vision/frame` | Body là ảnh JPEG thô (`Content-Type: image/jpeg`), trả kết quả nhận diện một khung (cho client ngoài; giao diện web không dùng) |
+| `WebSocket` | `/api/vision/ws` | Nhận trạng thái vật thể đã xác nhận của các luồng camera |
+| `WebSocket` | `/api/vision/ws/publish` | Client ngoài tự gửi lựa chọn đã xác nhận (giao diện web không dùng) |
 | `GET` / `POST` | `/api/models` | Danh sách mô hình / tải lên mô hình mới |
 | `POST` | `/api/models/activate` | Chọn mô hình segmentation hoặc laser đang chạy |
 | `GET` | `/api/models` | Danh sách mô hình, loại, dung lượng, lựa chọn hiện tại và giới hạn tải |
 | `POST` | `/api/models?kind=segmentation&name=custom.pt` | Body là file nhị phân (`.pt`, `.torchscript`, `.engine`); `kind=laser` cho mô hình laser. Nạp và **dùng ngay** thay mô hình cùng loại; `convert=true` thì sau đó chuyển TensorRT FP16 |
 | `POST` | `/api/models/activate` | JSON `{"id":"<id từ danh sách>"}`; nạp, kiểm tra và lưu lựa chọn, trả trạng thái mới |
 | `POST` | `/api/models/convert` | JSON `{"id":"<id .pt / .torchscript>"}`; build TensorRT FP16 ở nền (202), xong tự chọn engine. Tiến độ ở `conversions` của `GET /api/models`; `POST /api/models?...&convert=true` tải lên rồi chuyển luôn |
-| `POST` | `/api/camera/streams` | JSON `{"url":"rtsp://…"}`; máy chủ mở luồng RTSP, trả `{id, width, height}` (502 nếu không kết nối được) |
-| `GET` | `/api/camera/streams/{id}/frame` | Khung JPEG mới hơn khung đã nhận của phiên (504 chưa có khung mới, 404 phiên đã đóng) |
-| `DELETE` | `/api/camera/streams/{id}` | Đóng phiên; không ai lấy khung trong 20 giây thì máy chủ tự đóng luồng |
 | `GET` | `/api/sockets` | `{websocket_path, tcp: [{id, host, port, enabled, status, error, sent, last_sent}]}` — WebSocket có sẵn và trạng thái các máy đích TCP |
 | `PUT` | `/api/sockets/tcp` | JSON `{"targets":[{"host":"192.168.1.20","port":5000,"enabled":true}]}` — thay toàn bộ danh sách máy đích TCP (tối đa 8), lưu trên máy chủ |
 
@@ -137,9 +139,23 @@ Query của `POST /api/vision/frame` (đều không bắt buộc): `targets` (t�
 
 Kết quả: `selected` (vật được chỉ: tên, độ tin cậy, viền `polygon`), `detections`, `tip` + `landmarks` (chế độ tay), `laser: {point, score}` (chế độ laser), `processing_ms`, `resolution`. Mã lỗi: 400 / 413 / 415 dữ liệu không hợp lệ, 429 đang xử lý khung khác, 503 đang khởi động hoặc thiếu model laser đỏ.
 
+### Camera máy chủ (`/api/camera`)
+
+```
+RTSP ─► máy chủ đọc luồng (chỉ giữ khung mới nhất) — một camera một lúc, chạy cả khi không ai mở trang
+          ├─► nhận diện: luôn lấy khung MỚI NHẤT, khung đến lúc GPU bận bị bỏ → bám laser + giữ để xác nhận
+          │     ├─► kết quả ─► các trang đang xem (vẽ bbox / viền / chấm laser)
+          │     └─► vật đã xác nhận ─► /api/vision/ws (view3d, app khác)
+          └─► hình JPEG ─► các trang đang xem (gửi xong khung trước mới lấy khung mới nhất: mạng chậm thì bỏ khung)
+```
+
+Chọn / tắt / tạm dừng bằng REST ở bảng trên; lựa chọn (địa chỉ, tên, tạm dừng, tuỳ chọn nhận diện) lưu ở `backend/data/camera.json` (có mật khẩu camera, không commit) để máy chủ khởi động lại chạy tiếp. Trang web chỉ xem: đóng tab không dừng nhận diện; mọi trang thấy cùng một camera, cùng trạng thái tạm dừng. Hình chạy theo nhịp camera, không chờ nhận diện; lớp vẽ dùng kết quả gần nhất (trễ hơn hình đúng bằng thời gian nhận diện). Tuỳ chọn nhận diện dùng chung, là của trang gửi gần nhất.
+
+WebSocket `/api/camera/ws` — trình duyệt → máy chủ (JSON): `{"type":"options","targets":[…]|null,"confidence":0.8|null,"dwell_ms":300}`, `{"type":"state","video":false}` (tab ẩn: ngừng gửi hình / kết quả cho trang này). Máy chủ → trình duyệt: bản tin binary là một khung JPEG (cạnh dài tối đa 1280); `{"type":"camera", …GET /api/camera}` ngay khi kết nối và mỗi khi camera đổi trạng thái; `{"type":"result","result":<như POST /api/vision/frame>,"tracking":{"held":…,"pending":{"name","elapsed_ms"}|null},"latency_ms"}`.
+
 ### Nhận vật thể đang chọn qua WebSocket
 
-Ứng dụng khác kết nối **`wss://<IP máy chủ>:8033/api/vision/ws`** để nhận vật thể **đã xác nhận** trên thẻ “Vật thể đang chọn”. Khi phát triển bằng HTTP, dùng `ws://localhost:8030/api/vision/ws`. Đây là WebSocket chuẩn, dùng client WebSocket (không dùng giao thức Socket.IO). Trình duyệt camera tự gửi trạng thái từ `tracking.held`, sau bước giữ / ổn định chấm laser; không cần thay đổi luồng gửi ảnh JPEG. Địa chỉ này hiện ở **Cài đặt › Kết nối socket** (có nút sao chép).
+Ứng dụng khác kết nối **`wss://<IP máy chủ>:8033/api/vision/ws`** để nhận vật thể **đã xác nhận** trên thẻ “Vật thể đang chọn”. Khi phát triển bằng HTTP, dùng `ws://localhost:8030/api/vision/ws`. Đây là WebSocket chuẩn, dùng client WebSocket (không dùng giao thức Socket.IO). Máy chủ tự phát vật thể đã xác nhận (sau bước giữ / ổn định chấm laser) của camera đang chạy, kể cả khi không ai mở trang camera; mỗi lần chạy một camera là một `session_id`. Gửi `{"type":"ping","source":"<tên app>"}` trên socket này thì backend ghi log và trả `{"type":"pong","backend","client","server"}` (dùng để test kết nối); các bản tin khác bị bỏ qua.
 
 Ngay khi kết nối, server gửi trạng thái của tất cả phiên đang phát:
 
@@ -166,7 +182,7 @@ Ngay khi kết nối, server gửi trạng thái của tất cả phiên đang p
 - `session_id`: riêng cho mỗi kết nối phát của trình duyệt; thay đổi khi kết nối lại. Theo dõi theo mã này để nhiều camera không ghi đè nhau.
 - `connected: false` kèm `selected: null`: server đã phát hiện phiên trình duyệt ngắt kết nối; bên nhận xóa phiên đó. `timestamp` là thời gian server, Unix milliseconds.
 - Khi nhận `selection.snapshot`, **thay toàn bộ trạng thái đang giữ** bằng `sessions`. Snapshot cũng có thể xuất hiện để đồng bộ lại nếu bên nhận xử lý chậm.
-- **TCP socket**: thêm máy đích ở **Cài đặt › Kết nối socket** (hoặc `PUT /api/sockets/tcp`); máy chủ là bên kết nối tới và gửi đúng các bản tin trên, **mỗi bản tin một dòng JSON** (UTF-8, kết thúc `
+- **TCP socket**: thêm máy đích bằng `PUT /api/sockets/tcp` (giao diện không còn phần này; lưu ở `backend/data/sockets.json`, tối đa 8); máy chủ là bên kết nối tới và gửi đúng các bản tin trên, **mỗi bản tin một dòng JSON** (UTF-8, kết thúc `
 `), bắt đầu bằng `selection.snapshot` mỗi lần kết nối (lại). Thử nhanh bằng `nc -lk 5000` (Linux / macOS) hoặc một server TCP bất kỳ đọc theo dòng.
 
 Ví dụ chạy trong console của trang HICAS (kết nối cùng máy chủ và cổng):
@@ -193,13 +209,13 @@ socket.onmessage = ({ data }) => {
 socket.onclose = () => { sessions.clear(); console.log("Đã ngắt kết nối WebSocket"); };
 ```
 
-Frontend tự kết nối lại (đợi 0,5 giây, tăng dần tối đa 10 giây) và gửi trạng thái mới nhất. Ứng dụng nhận bên ngoài cần tự kết nối lại khi socket đóng, xóa trạng thái cũ và nhận snapshot mới. Với chứng chỉ tự ký, trình duyệt cần chấp nhận chứng chỉ ở trang HTTPS trước; client Python / thiết bị cần tin cậy chứng chỉ máy chủ.
+Tạm dừng nhận diện thì báo `selected: null`; tắt / đổi camera thì phiên cũ báo `connected: false`. Ứng dụng nhận bên ngoài cần tự kết nối lại khi socket đóng, xóa trạng thái cũ và nhận snapshot mới. Với chứng chỉ tự ký, trình duyệt cần chấp nhận chứng chỉ ở trang HTTPS trước; client Python / thiết bị cần tin cậy chứng chỉ máy chủ.
 
-WebSocket dùng chung cổng và phạm vi mạng với API hiện tại, không có đăng nhập. Trạng thái chỉ lưu trong bộ nhớ của **một tiến trình server**, đúng với `serve.py` / Docker hiện tại; nếu chạy nhiều worker hoặc nhiều máy chủ thì cần thêm cơ chế chia sẻ trạng thái và phát sự kiện giữa các tiến trình. Gọi riêng `POST /api/vision/frame` không phát sự kiện lựa chọn đã xác nhận vì bước xác nhận hiện nằm ở trình duyệt.
+WebSocket dùng chung cổng và phạm vi mạng với API hiện tại, không có đăng nhập. Trạng thái chỉ lưu trong bộ nhớ của **một tiến trình server**, đúng với `serve.py` / Docker hiện tại; nếu chạy nhiều worker hoặc nhiều máy chủ thì cần thêm cơ chế chia sẻ trạng thái và phát sự kiện giữa các tiến trình. Gọi riêng `POST /api/vision/frame` không phát sự kiện lựa chọn đã xác nhận vì bước xác nhận chỉ chạy trong luồng camera (`services/live_tracking.py`).
 
 ### Màn hình 3D (`view3d/`)
 
-App frontend riêng, không chung với giao diện camera: nghe `/api/vision/ws` và hiện **mô hình 3D** của vật thể vừa được xác nhận (dựng sẵn cho cả 79 lớp COCO, thay được bằng file GLB riêng). Bản Docker mở ở `https://<IP máy>:8033/view3d/` (cùng cổng 8033); khi phát triển chạy `npm install && npm run dev` trong `view3d/` → `http://localhost:5183` (proxy `/api` → backend như `frontend/`). Nối tới máy chủ khác bằng `?ws=<IP:cổng>` hoặc Cài đặt của màn hình 3D. Chi tiết: [view3d/README.md](view3d/README.md).
+App frontend riêng, không chung với giao diện camera: nghe `/api/vision/ws` và hiện **mô hình 3D** của vật thể vừa được xác nhận (dựng sẵn cho cả 79 lớp COCO, thay được bằng file GLB riêng). Bản Docker mở ở `https://<IP máy>:8033/view3d/` (cùng cổng 8033); khi phát triển chạy `npm install && npm run dev` trong `view3d/` → `http://localhost:5183` (proxy `/api` → backend như `frontend/`). Nối tới máy chủ khác bằng `?ws=<IP:cổng>`. Chi tiết: [view3d/README.md](view3d/README.md).
 
 ## Model laser đỏ
 
@@ -243,7 +259,7 @@ Mở `http://localhost:8030`, chọn hai engine trong Cài đặt rồi thử ca
 
 ```
 virtual_cam/
-├── backend/            FastAPI: nhận khung JPEG → chấm laser đỏ + vật thể được chỉ; khi chạy không Docker phục vụ luôn frontend/dist
+├── backend/            FastAPI: đọc camera RTSP, nhận diện chấm laser đỏ + vật thể được chỉ; khi chạy không Docker phục vụ luôn frontend/dist
 │                       Dockerfile (+ Dockerfile.dockerignore) — image backend, build từ thư mục gốc
 ├── frontend/           Giao diện hicascam: React 19 + TypeScript + Vite + Ant Design + Redux Toolkit / redux-observable
 │                       Dockerfile (kèm cấu hình nginx), docker/40-hicas-cert.sh — image nginx HTTPS
@@ -254,9 +270,9 @@ virtual_cam/
 └── requirements.txt    mọi thư viện Python (web, test)
 ```
 
-Backend: `main.py` → `routers/vision.py` → `services/detector.py` (khoá một khung một lúc; laser đỏ chạy GPU lần lượt với YOLO; bàn tay chỉ khi API gọi `pointer_mode=hand`) → `services/pointing.py` (ngón tay: bỏ vật mà đầu ngón nằm ngoài mép quá `tolerance`, còn lại chọn vật đầu ngón nằm sâu nhất, bằng nhau thì vật nhỏ hơn; laser: mask nhỏ nhất chứa chấm). `core/spa.py` phục vụ `frontend/dist`; `serve.py` chạy web + API trên một cổng HTTP.
+Backend: `routers/camera.py` (REST + WebSocket `/api/camera`) → `services/live_stream.py` (`LiveHub`: camera đang chạy, lưu `data/camera.json`; `RtspStream` của `services/rtsp_stream.py` + vòng nhận diện khung mới nhất + gửi hình cho từng trang đang xem) → `services/live_tracking.py` (bám chấm laser, giữ để xác nhận) → `services/selection_stream.py` (`/api/vision/ws`). Nhận diện: `routers/vision.py` → `services/detector.py` (khoá một khung một lúc; laser đỏ chạy GPU lần lượt với YOLO; bàn tay chỉ khi API gọi `pointer_mode=hand`) → `services/pointing.py` (ngón tay: bỏ vật mà đầu ngón nằm ngoài mép quá `tolerance`, còn lại chọn vật đầu ngón nằm sâu nhất, bằng nhau thì vật nhỏ hơn; laser: mask nhỏ nhất chứa chấm). `core/spa.py` phục vụ `frontend/dist`; `serve.py` chạy web + API trên một cổng HTTP.
 
-Frontend: `Services/VisionService.ts` → `store/{vision,setting,model}` → `page/{Live,Settings}`. Luồng khung: `useFrameLoop` chụp và nén JPEG 1280px → `visionEpics` gọi API → `utils/laserTrack.ts` (bám chấm laser, gửi `laser_hint`) → `utils/tracking.ts` (giữ để xác nhận). Nguồn hình: `useCamera` (camera RTSP qua `Services/CameraService.ts`). `useOverlay` vẽ kết quả, nội suy mượt bằng `utils/smoothing.ts`.
+Frontend: `Services/VisionService.ts` → `store/{vision,setting,model}` → `page/{Live,Settings}`. Camera: `useCamera` xem qua `Services/LiveService.ts` (WebSocket `/api/camera/ws`, tự nối lại), vẽ khung JPEG mới nhất vào `<video>` (giải mã chậm thì bỏ khung giữa) và đưa trạng thái camera + kết quả vào `store/vision`; Kết nối / Tắt / Tạm dừng gọi `Services/CameraService.ts` (REST). `useOverlay` vẽ kết quả (chế độ gương lật toạ độ bằng `mirrorResult`), nội suy mượt bằng `utils/smoothing.ts`.
 
 ## Phát triển & kiểm thử
 

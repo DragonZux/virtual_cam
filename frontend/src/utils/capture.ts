@@ -1,4 +1,4 @@
-import { JPEG_QUALITY, UPLOAD_MAX_SIDE } from "@/common/constants";
+import { DISPLAY_MAX_SIDE } from "@/common/constants";
 
 const fitCanvas = (canvas: HTMLCanvasElement, width: number, height: number) => {
   // Gán width/height luôn xoá canvas → chỉ gán khi kích thước đổi
@@ -15,7 +15,7 @@ export const captureFrame = (
   video: HTMLVideoElement,
   canvas: HTMLCanvasElement,
   mirror: boolean,
-  maxSide = UPLOAD_MAX_SIDE,
+  maxSide = DISPLAY_MAX_SIDE,
 ): boolean => {
   const { videoWidth: width, videoHeight: height } = video;
   if (!width || !height) return false;
@@ -32,9 +32,6 @@ export const captureFrame = (
   ctx.restore();
   return true;
 };
-
-export const canvasToJpeg = (canvas: HTMLCanvasElement, quality = JPEG_QUALITY): Promise<Blob | null> =>
-  new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
 
 export const canvasToPng = (canvas: HTMLCanvasElement): Promise<Blob | null> =>
   new Promise((resolve) => canvas.toBlob(resolve, "image/png"));

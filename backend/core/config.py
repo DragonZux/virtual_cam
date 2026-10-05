@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # Cổng HTTPS tự ký cho máy khác trong mạng (camera cần HTTPS khi không phải localhost); 0 = tắt
     HTTPS_PORT: int = Field(0, ge=0, le=65535)
     CERT_DIR: Path = BACKEND_DIR / "data" / "certs"
-    # Cấu hình máy chủ (máy đích TCP socket…); Docker mount ./backend/data vào đây
+    # Cấu hình máy chủ (camera đang chạy, máy đích TCP socket…); Docker mount ./backend/data vào đây
     DATA_DIR: Path = BACKEND_DIR / "data"
     # IP / tên máy thêm vào chứng chỉ, cách nhau dấu phẩy (không bắt buộc: chứng chỉ tự ký vẫn phải bấm "Tiếp tục")
     CERT_HOSTS: str = ""
@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # Model: YOLO segmentation (GPU nếu có CUDA) + MediaPipe Hand Landmarker (CPU)
     MODEL_DIR: Path = PROJECT_ROOT / "models"
-    YOLO_MODEL: str = "yolo26m-seg.pt"  # cân bằng tốc độ / độ chính xác; n nhanh hơn, l chính xác hơn
+    YOLO_MODEL: str = "yolo26n-seg.pt"  # nhanh nhất; m cân bằng, l chính xác nhất
     HAND_MODEL: str = "hand_landmarker.task"
     IMAGE_SIZE: int = Field(640, ge=32)
     DEVICE: str = "auto"  # auto = GPU 0 nếu có CUDA, ngược lại CPU; "cpu" để ép chạy CPU

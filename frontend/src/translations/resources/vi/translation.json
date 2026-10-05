@@ -102,8 +102,8 @@
       "off": "Camera chưa kết nối",
       "waiting": "Đang chờ bộ nhận diện",
       "live": "Đang nhận diện · {{ms}} ms",
-      "paused": "Không gửi khung hình",
-      "hidden": "Tab đang ẩn — tạm ngừng gửi khung hình",
+      "paused": "Đã tạm dừng nhận diện",
+      "hidden": "Tab đang ẩn — tạm ngừng nhận hình",
       "retrying": "Đang thử kết nối lại…"
     },
     "overlay": {
@@ -187,32 +187,23 @@
       "add": "Thêm camera RTSP",
       "name": "Tên",
       "url": "Địa chỉ",
-      "watching": "Đang xem",
       "connect": "Kết nối",
       "edit": "Sửa",
       "remove": "Xoá",
       "removeConfirm": "Xoá camera này?",
-      "empty": "Chưa có camera RTSP."
+      "empty": "Chưa có camera RTSP.",
+      "running": "Máy chủ đang nhận diện:",
+      "idle": "Máy chủ chưa chạy camera nào — bấm Kết nối ở một camera bên dưới.",
+      "active": "Đang nhận diện",
+      "paused": "Đã tạm dừng",
+      "connecting": "Đang kết nối",
+      "stop": "Tắt camera"
     },
     "socket": {
       "title": "Kết nối socket",
-      "wsTitle": "WebSocket — app khác kết nối vào",
-      "tcpTitle": "Gửi tới TCP socket",
-      "address": "Địa chỉ",
-      "status": "Trạng thái",
-      "enabled": "Bật",
-      "host": "IP hoặc tên máy",
-      "port": "Cổng",
-      "add": "Thêm",
-      "remove": "Xoá",
-      "empty": "Chưa có máy đích TCP.",
-      "connected": "Đã kết nối · {{count}} bản tin",
-      "connecting": "Đang kết nối…",
-      "error": "Lỗi kết nối",
-      "off": "Đã tắt",
-      "invalidHost": "IP hoặc tên máy không hợp lệ (không kèm tcp://).",
-      "duplicate": "Địa chỉ này đã có.",
-      "max": "Tối đa 8 máy đích."
+      "test": "Test kết nối",
+      "testOk": "Kết nối thành công.",
+      "testFail": "Không kết nối được máy chủ."
     }
   },
   "httpError": {

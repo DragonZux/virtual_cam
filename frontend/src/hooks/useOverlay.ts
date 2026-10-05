@@ -2,7 +2,7 @@ import { useEffect, useRef, type RefObject } from "react";
 
 import { DISPLAY_MAX_SIDE } from "@/common/constants";
 import type { FrameResult, Preferences } from "@/common/types";
-import { drawResult } from "@/utils/overlay";
+import { drawResult, mirrorResult } from "@/utils/overlay";
 import { smoothPointer } from "@/utils/smoothing";
 import { dwellProgress, type Tracking } from "@/utils/tracking";
 
@@ -45,9 +45,19 @@ export const useOverlay = ({ videoRef, canvasRef, objectsRef, active, ...state }
     let cachedResult: FrameResult | null = null;
     let cachedPrefs: Preferences | null = null;
     let cachedLabel: Params["label"] | null = null;
+    let mirrorSource: FrameResult | null = null;
+    let mirrored: FrameResult | null = null;
     let pointerWasVisible = false;
     const paint = (now: number) => {
-      const { result, receivedAt, capturedAt, tracking, prefs, label } = latest.current;
+      const { receivedAt, capturedAt, tracking, prefs, label } = latest.current;
+      let result = latest.current.result;
+      if (result && prefs.mirror) {
+        if (mirrorSource !== result) {
+          mirrorSource = result;
+          mirrored = mirrorResult(result);
+        }
+        result = mirrored;
+      }
       const age = receivedAt === null ? Infinity : Date.now() - receivedAt;
       const latency = receivedAt !== null && capturedAt !== null ? receivedAt - capturedAt : 0;
       const staleAfter = Math.min(1500, Math.max(500, latency * 2));

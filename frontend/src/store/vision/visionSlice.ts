@@ -1,7 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-import type { CameraStatus, FrameOptions, FrameResult, VisionStatus } from "@/common/types";
-import { EMPTY_LASER_TRACK, type LaserPoint, type LaserTrack } from "@/utils/laserTrack";
+import type { CameraInfo, CameraStatus, FrameResult, VisionStatus } from "@/common/types";
 import { EMPTY_TRACKING, type Tracking } from "@/utils/tracking";
 
 export type Connection = "connecting" | "online" | "offline";
@@ -10,12 +9,16 @@ export interface CameraState {
   status: CameraStatus;
   /** Mã lỗi → camera.errors.<code> */
   error: string | null;
-  /** Camera RTSP đang mở / vừa dùng (giữ khi lỗi hoặc tắt để kết nối lại) */
+  /** Thông báo của máy chủ (không lấy được hình…) — hiện thay cho câu theo `error` */
+  message: string | null;
+  /** Địa chỉ đầy đủ (danh sách của trình duyệt này) của camera đang chạy / vừa dùng — để kết nối lại */
   stream: string | null;
+  /** Camera máy chủ đang chạy (địa chỉ không mật khẩu, tên); null = máy chủ không chạy camera nào */
+  server: { url: string; name: string | null } | null;
 }
 
 export interface FrameError {
-  /** 0 = mất mạng / hết thời gian chờ */
+  /** 0 = máy chủ báo qua WebSocket camera (mất tín hiệu RTSP, lỗi nhận diện) */
   status: number;
   message: string;
 }
@@ -26,20 +29,14 @@ interface VisionState {
   connection: Connection;
   camera: CameraState;
   paused: boolean;
-  /** Kết quả khung gần nhất (toạ độ theo khung đã gửi) */
+  /** Kết quả gần nhất máy chủ đẩy về (toạ độ theo khung máy chủ nhận diện) */
   result: FrameResult | null;
-  /** Số phản hồi khung đã nhận (thành công / lỗi / bỏ qua vì cũ) — useFrameLoop so với số khung đã gửi */
-  frameSeq: number;
-  /** id của khung mới nhất đã hiển thị — kết quả của khung cũ hơn về sau thì bỏ (gửi gối đầu có thể về lệch thứ tự) */
-  lastFrameId: number;
-  /** Request IDs persist across camera restarts and component remounts. */
-  lastRequestId: number;
+  /** Ước lượng lúc máy chủ đọc được khung của `result` (giờ trình duyệt) */
   lastCaptureAt: number | null;
   frameError: FrameError | null;
   lastResultAt: number | null;
+  /** Giữ để xác nhận — máy chủ tính, trang chỉ hiển thị */
   tracking: Tracking;
-  /** Chấm laser đang bám qua các khung (chế độ laser) */
-  laserTrack: LaserTrack;
   /** Lần đầu bật camera trong phiên (đếm thời gian phiên) */
   sessionStartedAt: number | null;
 }
@@ -47,17 +44,13 @@ interface VisionState {
 const initialState: VisionState = {
   status: null,
   connection: "connecting",
-  camera: { status: "off", error: null, stream: null },
+  camera: { status: "off", error: null, message: null, stream: null, server: null },
   paused: false,
   result: null,
-  frameSeq: 0,
-  lastFrameId: 0,
-  lastRequestId: 0,
   lastCaptureAt: null,
   frameError: null,
   lastResultAt: null,
   tracking: EMPTY_TRACKING,
-  laserTrack: EMPTY_LASER_TRACK,
   sessionStartedAt: null,
 };
 
@@ -67,7 +60,6 @@ const resetLive = (state: VisionState) => {
   state.lastResultAt = null;
   state.lastCaptureAt = null;
   state.tracking = EMPTY_TRACKING;
-  state.laserTrack = EMPTY_LASER_TRACK;
 };
 
 const visionSlice = createSlice({
@@ -77,13 +69,8 @@ const visionSlice = createSlice({
     /** Hỏi GET /vision/status định kỳ (MainLayout) */
     startStatusPolling: () => {},
     stopStatusPolling: () => {},
-    startSelectionStream: () => {},
-    stopSelectionStream: () => {},
     getStatusSuccess: (state, action: PayloadAction<VisionStatus>) => {
-      if (state.status && state.status.model_revision !== action.payload.model_revision) {
-        state.lastFrameId = state.lastRequestId;
-        resetLive(state);
-      }
+      if (state.status && state.status.model_revision !== action.payload.model_revision) resetLive(state);
       state.status = action.payload;
       state.connection = "online";
     },
@@ -91,74 +78,74 @@ const visionSlice = createSlice({
       state.connection = "offline";
     },
 
-    /** Bắt đầu mở camera RTSP qua máy chủ (giữ địa chỉ khi lỗi để thử lại) */
+    /** Đã yêu cầu máy chủ chạy camera này (giữ địa chỉ khi lỗi để thử lại) */
     streamStarting: (state, action: PayloadAction<string>) => {
-      state.camera = { status: "starting", stream: action.payload, error: null };
+      state.camera = { ...state.camera, status: "starting", stream: action.payload, error: null, message: null };
     },
-    cameraStarted: (state, action: PayloadAction<{ stream: string; startedAt: number }>) => {
-      const { startedAt, stream } = action.payload;
-      state.camera = { status: "on", error: null, stream };
-      state.paused = false;
-      state.sessionStartedAt ??= startedAt;
-      resetLive(state);
-    },
+    /** Đã yêu cầu máy chủ tắt camera (máy chủ xác nhận qua bản tin "camera") */
     cameraStopped: (state) => {
       state.camera.status = "off";
-      state.paused = false;
+      state.camera.server = null;
       resetLive(state);
     },
-    cameraFailed: (state, action: PayloadAction<string>) => {
-      state.camera.status = "error";
-      state.camera.error = action.payload;
-      state.paused = false;
+    /** Máy chủ không chạy được camera; payload = thông báo của máy chủ */
+    cameraFailed: (state, action: PayloadAction<string | null>) => {
+      state.camera = { ...state.camera, status: "error", error: "stream", message: action.payload };
       resetLive(state);
     },
+    /** Bản tin "camera" của /api/camera/ws; `stream` = địa chỉ đầy đủ trong danh sách trình duyệt này nếu có */
+    cameraInfo: (state, action: PayloadAction<{ info: CameraInfo; stream: string | null; at: number }>) => {
+      const { info, stream, at } = action.payload;
+      const camera = state.camera;
+      const server = info.status === "off" || !info.url ? null : { url: info.url, name: info.name };
+      const switched = server?.url !== camera.server?.url;
+      camera.server = server;
+      if (stream) camera.stream = stream;
+      if (state.paused !== !info.detect) {
+        state.paused = !info.detect;
+        resetLive(state);
+      }
+      if (info.status === "off") {
+        // Giữ lỗi của lần kết nối vừa hỏng / trạng thái đang mở do chính trang này yêu cầu
+        if (camera.status === "on") {
+          camera.status = "off";
+          resetLive(state);
+        }
+        return;
+      }
+      if (info.status === "connecting") {
+        Object.assign(camera, info.error
+          ? { status: "error", error: "stream", message: info.error }
+          : { status: "starting", error: null, message: null });
+        return;
+      }
+      if (camera.status !== "on" || switched) {
+        camera.status = "on";
+        state.sessionStartedAt ??= at;
+        resetLive(state);
+      }
+      camera.error = camera.message = null;
+      // Mất tín hiệu RTSP / lỗi nhận diện: hiện trên khung camera, máy chủ tự thử lại
+      state.frameError = info.error ? { status: 0, message: info.error } : null;
+      if (info.error) state.lastResultAt = null;
+    },
+    /** Tạm dừng nhận diện (chung cho máy chủ; hình vẫn chạy) — máy chủ xác nhận qua bản tin "camera" */
     setPaused: (state, action: PayloadAction<boolean>) => {
       state.paused = action.payload;
-      state.frameError = null;
-          state.lastResultAt = null;
+      resetLive(state);
     },
 
-    /** Khung đã chụp (id tăng dần) → epic gửi lên máy chủ; tạm dừng / tắt camera huỷ các request đang chờ */
-    analyzeFrameRequest: (
-      state,
-      action: PayloadAction<{ id: number; image: Blob; options: FrameOptions; capturedAt: number; laserHint?: LaserPoint | null }>,
-    ) => {
-      state.lastRequestId = action.payload.id;
-    },
-    analyzeFrameSuccess: (
-      state,
-      action: PayloadAction<{
-        id: number;
-        result: FrameResult;
-        tracking: Tracking;
-        laserTrack?: LaserTrack;
-        at: number;
-        capturedAt: number;
-      }>,
-    ) => {
-      const { id, result, tracking, laserTrack, at, capturedAt } = action.payload;
-      state.lastFrameId = id;
-      state.lastCaptureAt = capturedAt;
-      state.lastResultAt = at;
+    /** Kết quả máy chủ đẩy về qua /api/camera/ws */
+    liveResult: (state, action: PayloadAction<{ result: FrameResult; tracking: Tracking; at: number; capturedAt: number }>) => {
+      const { result, tracking, at, capturedAt } = action.payload;
       state.result = result;
       state.tracking = tracking;
-      state.laserTrack = laserTrack ?? EMPTY_LASER_TRACK;
+      state.lastResultAt = at;
+      state.lastCaptureAt = capturedAt;
       state.frameError = null;
-      state.frameSeq += 1;
     },
-    analyzeFrameFailure: (state, action: PayloadAction<FrameError>) => {
-      state.frameError = action.payload;
-          state.lastResultAt = null;
-      state.frameSeq += 1;
-    },
-    /** Kết quả của khung cũ hơn khung đang hiển thị — chỉ đếm để vòng gửi tiếp tục */
-    analyzeFrameSkipped: (state) => {
-      state.frameSeq += 1;
-    },
-    /** Tab bị ẩn: huỷ khung đang gửi */
-    cancelFrames: (state) => {
-      state.lastFrameId = state.lastRequestId;
+    /** Tab bị ẩn / đang nạp mô hình: bỏ kết quả đang hiển thị */
+    clearResult: (state) => {
       resetLive(state);
     },
   },

@@ -10,23 +10,8 @@ export type RouteKey = keyof typeof ROUTES;
 /** Mỗi loại chạy một mô hình (Cài đặt › Quản lý mô hình AI) */
 export const MODEL_KINDS: ModelKind[] = ["segmentation", "laser"];
 
-/** Cạnh dài mặc định khi chụp khung (capture.ts) — YOLO chạy imgsz 640 */
-export const UPLOAD_MAX_SIDE = 640;
-/** Preserve small laser spots before YOLO resizes its own input. */
-export const LASER_UPLOAD_MAX_SIDE = 1280;
-/** Chất lượng JPEG ở chế độ laser đỏ: mô hình AI vẫn bắt đúng chấm ở 0.8 mà khung nhẹ đi khoảng một nửa so với 0.94 */
-export const LASER_JPEG_QUALITY = 0.8;
-/** Cạnh dài khung hiển thị / ảnh chụp (nét hơn khung gửi đi) */
+/** Cạnh dài khung hiển thị / ảnh chụp (bằng khung máy chủ gửi về) */
 export const DISPLAY_MAX_SIDE = 1280;
-export const JPEG_QUALITY = 0.82;
-/** Khoảng tối thiểu giữa hai khung gửi đi (≈ tối đa 30 khung/giây, bằng camera) */
-export const MIN_FRAME_INTERVAL_MS = 33;
-/**
- * Giới hạn cứng số request đang chờ; nhịp gửi còn được điều tiết theo thời gian xử lý của máy chủ.
- */
-export const MAX_FRAMES_IN_FLIGHT = 2;
-/** Giữ tên vật thể thêm một chút sau khi chấm laser rời đi để không nhấp nháy */
-export const HOLD_MS = 500;
 export const STATUS_POLL_MS = 3000;
 
 export const DEFAULT_PREFERENCES: Preferences = {

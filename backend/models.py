@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -127,14 +127,48 @@ class FrameResult(BaseModel):
     resolution: FrameSize
 
 
-class StreamOpen(BaseModel):
+class CameraIn(BaseModel):
+    """Camera máy chủ chạy và nhận diện (thay camera đang chạy)."""
     url: str = Field(min_length=8, max_length=1000, description="rtsp://máy:cổng/đường_dẫn (MediaMTX, camera IP)")
+    name: str | None = Field(None, max_length=100, description="Tên hiển thị, ví dụ Cam cửa")
 
 
-class StreamOut(BaseModel):
-    id: str = Field(description="Phiên đọc luồng; lấy khung ở GET /camera/streams/{id}/frame")
-    width: int
-    height: int
+class DetectIn(BaseModel):
+    detect: bool = Field(description="false = tạm dừng nhận diện (hình vẫn chạy)")
+
+
+class CameraOut(BaseModel):
+    """Camera máy chủ đang chạy (tối đa một)."""
+    status: Literal["off", "connecting", "live", "reconnecting"]
+    url: str | None = Field(None, description="Địa chỉ đã bỏ tài khoản / mật khẩu")
+    name: str | None = None
+    detect: bool
+    error: str | None = Field(None, description="Lỗi kết nối RTSP hoặc lỗi nhận diện hiện tại")
+    width: int | None = None
+    height: int | None = None
+
+
+class LiveOptionsIn(BaseModel):
+    """Tuỳ chọn nhận diện của camera; trống = mặc định máy chủ. Dùng chung cho mọi trang đang xem."""
+    type: Literal["options"]
+    targets: list[Annotated[str, Field(min_length=1, max_length=200)]] | None = Field(None, max_length=500)
+    confidence: float | None = Field(None, ge=0.05, le=0.95)
+    dwell_ms: int = Field(300, ge=0, le=5000, description="Giữ chấm laser trên vật bấy nhiêu ms mới xác nhận")
+
+
+class LiveStateIn(BaseModel):
+    """Trang này có cần nhận hình + kết quả không (tab ẩn = false); không ảnh hưởng nhận diện."""
+    type: Literal["state"]
+    video: bool = True
+
+
+class PingIn(BaseModel):
+    """Nút "Test kết nối": máy chủ ghi log trang nào gửi và trả "pong"."""
+    type: Literal["ping"]
+    source: str = Field(min_length=1, max_length=40)
+
+
+LiveMessageIn = Annotated[LiveOptionsIn | LiveStateIn | PingIn, Field(discriminator="type")]
 
 
 class TcpTargetIn(BaseModel):
