@@ -1,42 +1,42 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { connectCamera, mockRtspCamera } from "./helpers";
+import { connectCamera, frameResult, mockRtspCamera } from "./helpers";
 
 async function mockLaser(page: Page, laserError: string | null = null) {
-  await mockRtspCamera(page);
-  const requests: URLSearchParams[] = [];
+  const camera = await mockRtspCamera(page);
   const state = { withSpot: true };
   await page.route("**/api/vision/status", (route) => route.fulfill({ json: {
     phase: "ready", error: null, device: "Test", model: "test", image_size: 640,
     laser_model: laserError ? null : "laser-advr-yolov5l6.torchscript", laser_error: laserError,
     classes: ["mouse"], defaults: { targets: ["mouse"], confidence: 0.8, tolerance: 30 },
   } }));
-  await page.route("**/api/vision/frame?*", async (route) => {
-    requests.push(new URL(route.request().url()).searchParams);
-    await new Promise((resolve) => setTimeout(resolve, 80));
-    await route.fulfill({ json: {
-      pointer_mode: "laser", hand_detected: false, landmarks: [], tip: null,
-      laser: state.withSpot ? { point: [320, 240], score: 0.9 } : null,
-      selected: state.withSpot ? { index: 0, name: "mouse", confidence: 0.91, polygon: [[300, 220], [340, 220], [340, 260], [300, 260]] } : null,
-      detections: [{ name: "mouse", confidence: 0.91, box: [300, 220, 340, 260] }], resolution: { width: 640, height: 480 }, processing_ms: 40,
-    } }).catch(() => undefined);
-  });
-  return { requests, state };
+  camera.result = () => {
+    const selected = state.withSpot ? { index: 0, name: "mouse", confidence: 0.91, polygon: [[300, 220], [340, 220], [340, 260], [300, 260]] } : null;
+    return {
+      result: frameResult({
+        laser: state.withSpot ? { point: [320, 240], score: 0.9 } : null, selected,
+        detections: [{ name: "mouse", confidence: 0.91, box: [300, 220, 340, 260] }], processing_ms: 40,
+      }),
+      // Máy chủ đã xác nhận (giữ để xác nhận chạy ở máy chủ)
+      tracking: { held: selected, pending: null },
+    };
+  };
+  return { camera, state };
 }
 
 test("laser is the only pointer: frames, selection, status cards and settings without hand options", async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  const { requests, state } = await mockLaser(page);
+  const { camera, state } = await mockLaser(page);
   await page.goto("/");
   // Chỉ còn Tổng quan và Cài đặt; không còn chọn chỉ tay / lịch sử
   await expect(page.getByRole("menuitem")).toHaveText(["Tổng quan", "Cài đặt"]);
   await expect(page.getByText("Chỉ tay", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Lựa chọn gần đây")).toHaveCount(0);
   await connectCamera(page);
-  await expect.poll(() => requests.length).toBeGreaterThan(3);
-  expect(requests.at(-1)?.get("pointer_mode")).toBe("laser");
-  expect(requests.at(-1)?.has("tolerance")).toBe(false);
+  await expect.poll(() => camera.results).toBeGreaterThan(3);
+  // Không còn tuỳ chọn chỉ tay (tolerance) gửi cho máy chủ
+  expect(Object.keys(camera.options.at(-1) ?? {}).sort()).toEqual(["confidence", "dwell_ms", "targets"]);
   // Hàng trên: Vật thể đang chọn (thay Tốc độ xử lý) · Điểm laser · Vật thể trong khung; không còn cột bên phải
   await expect(page.getByText("Vật thể đang chọn", { exact: true })).toBeVisible();
   await expect(page.getByText("Chuột máy tính", { exact: true })).toBeVisible();
@@ -64,13 +64,13 @@ test("laser is the only pointer: frames, selection, status cards and settings wi
   for (const removed of ["Âm thanh", "Khung xương bàn tay", "Vùng chấp nhận quanh đầu ngón trỏ", "Cách chỉ vật thể"]) {
     await expect(page.getByText(removed)).toHaveCount(0);
   }
-  await expect(page.getByText(/Danh sách đọc từ mô hình segmentation đang chạy \(test\)/)).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("settings-desktop.png"), fullPage: true });
-  // Camera vẫn chạy nền khi ở Cài đặt; khôi phục mặc định không làm dừng luồng khung
-  const beforeReset = requests.length;
+  // Camera vẫn chạy nền khi ở Cài đặt; khôi phục mặc định không làm dừng luồng
+  const beforeReset = camera.results;
   await page.getByRole("button", { name: "Khôi phục mặc định", exact: true }).click();
   await page.getByRole("button", { name: "Đồng ý", exact: true }).click();
-  await expect.poll(() => requests.length).toBeGreaterThan(beforeReset + 2);
+  await expect.poll(() => camera.results).toBeGreaterThan(beforeReset + 2);
+  expect(camera.opened).toHaveLength(1);
   expect(errors).toEqual([]);
 });
 

@@ -133,3 +133,14 @@ def test_slow_listener_gets_bounded_snapshot_including_removals():
 def test_frontend_csp_allows_its_websocket_origin(stream_client, origin, expected):
     response = stream_client.get(origin + "/")
     assert f"connect-src 'self' {expected};" in response.headers["content-security-policy"]
+
+
+def test_connection_test_ping_is_logged_with_sender_and_answered(stream_client, caplog):
+    with caplog.at_level("INFO", logger="hicas"):
+        with stream_client.websocket_connect("/api/vision/ws", headers={"x-forwarded-for": "10.0.9.81, 10.0.0.1"}) as watcher:
+            assert watcher.receive_json()["type"] == "selection.snapshot"
+            watcher.send_json({"type": "ping", "source": "view3d"})
+            answer = watcher.receive_json()
+    assert answer["type"] == "pong" and answer["source"] == "view3d" and answer["client"] == "10.0.9.81"
+    assert answer["server"].startswith("HICAS API")
+    assert any("Test kết nối từ view3d" in r.getMessage() and "10.0.9.81" in r.getMessage() for r in caplog.records)

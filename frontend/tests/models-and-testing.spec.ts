@@ -21,7 +21,6 @@ async function mockModels(page: Page) {
     defaults: { targets: selected === "initial.pt" ? ["mouse"] : ["custom object"], confidence: 0.8, tolerance: 30 },
   });
   await page.route("**/api/vision/status", (route) => route.fulfill({ json: status() }));
-  await page.route("**/api/sockets", (route) => route.fulfill({ json: { websocket_path: "/api/vision/ws", tcp: [] } }));
   await page.route(/\/api\/models(?:\?|$)/, (route) => {
     if (route.request().method() === "POST") {
       const params = new URL(route.request().url()).searchParams;
@@ -88,20 +87,9 @@ test("settings shows only the running model of each type; an upload replaces it"
   expect(errors).toEqual([]);
 });
 
-test("the overview has no model block; frames carry the new model revision", async ({ page }) => {
+test("the overview has no model block; the camera uses the new model's classes", async ({ page }) => {
   await mockModels(page);
-  await mockRtspCamera(page);
-  const requests: URLSearchParams[] = [];
-  await page.route("**/api/vision/frame?*", async (route) => {
-    const params = new URL(route.request().url()).searchParams;
-    requests.push(params);
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    await route.fulfill({ json: {
-      pointer_mode: "laser", hand_detected: false, landmarks: [], tip: null, laser: null,
-      selected: null, detections: [{ name: "custom object", confidence: 0.95, box: [10, 10, 60, 60] }],
-      processing_ms: 35, resolution: { width: 640, height: 480 },
-    } }).catch(() => undefined);
-  });
+  const camera = await mockRtspCamera(page);
   await page.goto("/");
   await expect(page.locator('input[type="file"]')).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Kết nối camera", exact: true })).toBeVisible();
@@ -116,9 +104,7 @@ test("the overview has no model block; frames carry the new model revision", asy
   await page.getByRole("menuitem", { name: "Tổng quan", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await connectCamera(page);
-  await expect.poll(() => requests.length).toBeGreaterThan(1);
-  expect(requests.at(-1)?.get("model_revision")).toBe("1");
-  expect(requests.at(-1)?.get("targets")).toBe("custom object");
+  await expect.poll(() => camera.options.at(-1)?.targets).toEqual(["custom object"]);
   await page.goto("/test");
   await expect(page).toHaveURL(/\/$/);
 });

@@ -3,6 +3,10 @@
 # Chu thich khong dau: pip tren Windows doc file nay theo cp1252.
 # torch: ultralytics tu keo ve; Dockerfile cai ban CUDA (TORCH_INDEX) truoc khi cai file nay.
 
+--extra-index-url https://download.pytorch.org/whl/cu130
+torch
+torchvision
+
 # --- Nhan dien ---
 numpy
 opencv-contrib-python
@@ -37,3 +41,5 @@ cryptography>=42                       # chung chi tu ky cho cong HTTPS (camera 
 # --- Test (pytest trong backend/) ---
 pytest
 httpx2                 # TestClient cua Starlette 1.x
+
+tqdm

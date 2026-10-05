@@ -1,74 +1,71 @@
-import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
 import { firstValueFrom } from "rxjs";
 import type { AjaxError } from "rxjs/ajax";
 
 import { CameraService } from "@/Services/CameraService";
-import { useAppDispatch } from "@/store/hooks";
+import { extractApiErrorMessage } from "@/Services/HttpClient";
+import { LiveService, type LiveConnection, type LiveOptions } from "@/Services/LiveService";
+import { useAppDispatch, useAppSelector, useAppStore } from "@/store/hooks";
+import { getFrameOptions, getPreferences } from "@/store/setting";
 import { visionActions } from "@/store/vision";
-
-/** Số lần liên tiếp không lấy được khung (mỗi lần máy chủ chờ ~3 giây) trước khi báo mất kết nối */
-const STREAM_MAX_FAILURES = 5;
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+import { displayStreamUrl } from "@/utils/stream";
+import { useDocumentVisible } from "./useDocumentVisible";
 
 /**
- * Camera RTSP (MediaMTX, camera IP): máy chủ đọc luồng, trang lấy lần lượt từng khung JPEG mới nhất và vẽ vào
- * canvas → <video>, nên vòng gửi khung, lớp vẽ và "giữ để xác nhận" dùng <video> như camera thường.
- * Stream giữ trong ref (không đưa vào store), trạng thái đẩy vào store để header, bảng số liệu… cùng đọc.
- * Mỗi lần bật/tắt tăng `run` để bỏ qua kết quả của lần bật cũ.
+ * Camera do máy chủ giữ (tối đa một, chạy cả khi đóng trang). Trang mở một WebSocket chỉ để xem
+ * (Services/LiveService.ts, tự nối lại): máy chủ đẩy trạng thái camera, hình JPEG và kết quả nhận diện.
+ * Kết nối / Tắt / Tạm dừng gọi REST (Services/CameraService.ts) — mọi trang đang xem cùng thấy thay đổi.
+ * Hình vẽ vào canvas → <video> nên lớp vẽ, ảnh chụp và toàn màn hình dùng <video> như camera thường;
+ * giải mã chậm hơn tốc độ nhận thì chỉ giữ khung mới nhất. Tab ẩn: báo máy chủ ngừng gửi hình cho trang này.
  */
 export const useCamera = (videoRef: RefObject<HTMLVideoElement | null>) => {
   const dispatch = useAppDispatch();
-  const streamRef = useRef<MediaStream | null>(null);
-  const runRef = useRef(0);
-  /** Đóng phiên đọc luồng ở máy chủ */
-  const cleanupRef = useRef<(() => void) | null>(null);
+  const store = useAppStore();
+  const options = useAppSelector(getFrameOptions);
+  const dwellMs = useAppSelector(getPreferences).dwellMs;
+  const pageVisible = useDocumentVisible();
+  const connectionRef = useRef<LiveConnection | null>(null);
 
-  const release = useCallback(() => {
-    runRef.current += 1;
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    cleanupRef.current?.();
-    cleanupRef.current = null;
+  // Trạng thái hỏi định kỳ tạo mảng targets mới mỗi lần: so theo nội dung để không gửi lại tuỳ chọn không đổi
+  const optionsKey = JSON.stringify([options?.targets ?? null, options?.conf ?? null, dwellMs]);
+  const liveOptions = useMemo((): LiveOptions => {
+    const [targets, confidence, dwell] = JSON.parse(optionsKey) as [string[] | null, number | null, number];
+    return { targets, confidence, dwell_ms: dwell };
+  }, [optionsKey]);
+  const latest = useRef({ options: liveOptions, visible: pageVisible });
+
+  useEffect(() => {
+    latest.current.options = liveOptions;
+    connectionRef.current?.sendOptions(liveOptions);
+  }, [liveOptions]);
+
+  useEffect(() => {
+    latest.current.visible = pageVisible;
+    connectionRef.current?.sendVideo(pageVisible);
+    if (!pageVisible) dispatch(visionActions.clearResult());
+  }, [dispatch, pageVisible]);
+
+  useEffect(() => {
     const video = videoRef.current;
-    if (video) video.srcObject = null;
-  }, [videoRef]);
+    const ctx = document.createElement("canvas").getContext("2d", { alpha: false });
+    if (!video || !ctx) return;
+    const { canvas } = ctx;
+    const stream = canvas.captureStream(0);
+    const track = stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
+    let closed = false;
+    let decoding = false;
+    /** Khung đến trong lúc đang giải mã: chỉ giữ cái mới nhất */
+    let waiting: Blob | null = null;
 
-  const stop = useCallback(() => {
-    release();
-    dispatch(visionActions.cameraStopped());
-  }, [dispatch, release]);
-
-  const startStream = useCallback(
-    async (url: string) => {
-      release();
-      const run = runRef.current;
-      const video = videoRef.current;
-      const ctx = document.createElement("canvas").getContext("2d", { alpha: false });
-      if (!video || !ctx) return;
-      dispatch(visionActions.streamStarting(url));
-      let id: string;
+    const draw = async (first: Blob) => {
+      decoding = true;
+      let next: Blob | null = first;
       try {
-        id = (await firstValueFrom(CameraService.openStream(url))).id;
-      } catch {
-        if (run === runRef.current) dispatch(visionActions.cameraFailed("stream"));
-        return;
-      }
-      const close = () => void firstValueFrom(CameraService.closeStream(id)).catch(() => undefined);
-      if (run !== runRef.current) {
-        close();
-        return;
-      }
-      cleanupRef.current = close;
-      const { canvas } = ctx;
-      const stream = canvas.captureStream(0);
-      const track = stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
-      streamRef.current = stream;
-      let started = false;
-      let failures = 0;
-      while (run === runRef.current) {
-        try {
-          const bitmap = await createImageBitmap(await firstValueFrom(CameraService.frame(id)));
-          if (run !== runRef.current) {
+        while (next && !closed) {
+          const bitmap = await createImageBitmap(next);
+          next = waiting;
+          waiting = null;
+          if (closed) {
             bitmap.close();
             break;
           }
@@ -77,36 +74,87 @@ export const useCamera = (videoRef: RefObject<HTMLVideoElement | null>) => {
           ctx.drawImage(bitmap, 0, 0);
           bitmap.close();
           track.requestFrame();
-          failures = 0;
-          if (!started) {
-            started = true;
+          if (video.srcObject !== stream) {
             video.srcObject = stream;
             await video.play().catch(() => undefined);
-            dispatch(visionActions.cameraStarted({ stream: url, startedAt: Date.now() }));
           }
-        } catch (error) {
-          if (run !== runRef.current) break;
-          // 404: máy chủ đã đóng phiên (khởi động lại…); 504: luồng chưa có khung mới, máy chủ đang kết nối lại
-          if ((error as AjaxError)?.status === 404 || ++failures >= STREAM_MAX_FAILURES) {
-            release();
-            dispatch(visionActions.cameraFailed("stream"));
-            break;
-          }
-          await wait(500);
         }
+      } catch {
+        // Khung hỏng: bỏ, khung sau vẽ tiếp
+      } finally {
+        decoding = false;
       }
-    },
-    [dispatch, release, videoRef],
-  );
-
-  // Rời trang / đóng tab: đóng luồng ngay
-  useEffect(() => {
-    window.addEventListener("pagehide", release);
-    return () => {
-      window.removeEventListener("pagehide", release);
-      stop();
     };
-  }, [release, stop]);
 
-  return { stop, startStream };
+    const connection = LiveService.watch({
+      onOpen: () => {
+        connection.sendOptions(latest.current.options);
+        connection.sendVideo(latest.current.visible);
+      },
+      onFrame: (jpeg) => {
+        if (decoding) waiting = jpeg;
+        else void draw(jpeg);
+      },
+      onMessage: (message) => {
+        if (message.type === "camera") {
+          const { type: _type, ...info } = message;
+          // Máy chủ chỉ gửi địa chỉ không mật khẩu: tìm lại link đầy đủ trong danh sách của trình duyệt này
+          const link = info.url ? store.getState().stream.links.find((item) => displayStreamUrl(item.url) === info.url) : undefined;
+          dispatch(visionActions.cameraInfo({ info, stream: link?.url ?? null, at: Date.now() }));
+          if (info.status === "off") {
+            waiting = null;
+            video.srcObject = null;
+          }
+          return;
+        }
+        // Kết quả gửi trước lúc máy chủ nhận "tab ẩn" / "tạm dừng"
+        const { vision } = store.getState();
+        if (!latest.current.visible || vision.paused || vision.camera.status !== "on") return;
+        const at = Date.now();
+        const { held, pending } = message.tracking;
+        dispatch(visionActions.liveResult({
+          result: message.result,
+          tracking: {
+            held,
+            heldAt: held ? at : 0,
+            pending: pending ? { name: pending.name, since: at - pending.elapsed_ms } : null,
+          },
+          at,
+          capturedAt: at - message.latency_ms,
+        }));
+      },
+    });
+    connectionRef.current = connection;
+    return () => {
+      closed = true;
+      connection.close();
+      connectionRef.current = null;
+      stream.getTracks().forEach((item) => item.stop());
+      video.srcObject = null;
+    };
+  }, [dispatch, store, videoRef]);
+
+  /** Máy chủ chạy camera này thay camera đang chạy */
+  const startStream = useCallback(async (url: string) => {
+    const name = store.getState().stream.links.find((link) => link.url === url)?.name;
+    dispatch(visionActions.streamStarting(url));
+    try {
+      await firstValueFrom(CameraService.start(url, name));
+    } catch (error) {
+      dispatch(visionActions.cameraFailed(extractApiErrorMessage(error as AjaxError) ?? null));
+    }
+  }, [dispatch, store]);
+
+  /** Tắt camera trên máy chủ (đóng trang thì camera vẫn chạy) */
+  const stop = useCallback(() => {
+    dispatch(visionActions.cameraStopped());
+    void firstValueFrom(CameraService.stop()).catch(() => undefined);
+  }, [dispatch]);
+
+  const setPaused = useCallback((paused: boolean) => {
+    dispatch(visionActions.setPaused(paused));
+    void firstValueFrom(CameraService.setDetect(!paused)).catch(() => dispatch(visionActions.setPaused(!paused)));
+  }, [dispatch]);
+
+  return { stop, startStream, setPaused };
 };

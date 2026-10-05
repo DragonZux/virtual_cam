@@ -1,4 +1,5 @@
-"""WebSocket publisher for the UI and a read-only stream for external clients."""
+"""WebSocket publisher for external clients and a read-only stream (view3d, other apps)."""
+import json
 from uuid import uuid4
 
 import anyio
@@ -6,6 +7,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
 from models import SelectionUpdate
+from services.connection_test import ping_source, pong
 from services.selection_stream import SelectionHub
 
 router = APIRouter(prefix="/vision", tags=["Vision"])
@@ -56,10 +58,20 @@ async def watch_selections(socket: WebSocket):
             group.cancel_scope.cancel()
 
     async def watch_disconnect():
-        # Read-only: incoming messages do not change the published state.
+        # Read-only: incoming messages do not change the published state; only "Test kết nối" pings are answered.
         while True:
-            if (await socket.receive())["type"] == "websocket.disconnect":
+            packet = await socket.receive()
+            if packet["type"] == "websocket.disconnect":
                 return
+            text = packet.get("text")
+            if not text or len(text) > 1024:
+                continue
+            try:
+                source = ping_source(json.loads(text))
+            except ValueError:
+                continue
+            if source and not queue.full():
+                queue.put_nowait(pong(socket, source, "/api/vision/ws"))
 
     try:
         async with anyio.create_task_group() as group:

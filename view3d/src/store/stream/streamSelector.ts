@@ -11,9 +11,8 @@ export const getRecent = (state: RootState) => state.stream.recent;
 export const getRevision = (state: RootState) => state.stream.revision;
 const getSessionMap = (state: RootState) => state.stream.sessions;
 
-/** Ô nhập địa chỉ đang có hiệu lực: ?ws= > Cài đặt > VITE_WS_URL > cùng máy chủ */
-export const getWsInput = (state: RootState): string =>
-  state.viewer.wsOverride ?? (state.setting.prefs.wsUrl || ENV_WS_URL);
+/** Địa chỉ đang có hiệu lực: ?ws= > VITE_WS_URL > cùng máy chủ đã mở trang (proxy /api → backend) */
+export const getWsInput = (state: RootState): string => state.viewer.wsOverride ?? ENV_WS_URL;
 
 /** Địa chỉ WebSocket đầy đủ; null nếu địa chỉ đã đặt không hợp lệ */
 export const getWsUrl = (state: RootState): string | null => resolveWsUrl(getWsInput(state), window.location);

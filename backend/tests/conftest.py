@@ -15,6 +15,12 @@ from services.detector import Detector  # noqa: E402
 from tests.helpers import FAKE_NAMES, FakeModels  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def isolated_data_dir(tmp_path, monkeypatch):
+    """Không đọc / ghi backend/data thật (camera.json của máy dev sẽ làm máy chủ test mở camera thật)."""
+    monkeypatch.setattr(settings, "DATA_DIR", tmp_path / "data")
+
+
 @pytest.fixture
 def fake_models() -> FakeModels:
     return FakeModels()

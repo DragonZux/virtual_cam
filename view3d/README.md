@@ -27,9 +27,10 @@ Proxy chấp nhận chứng chỉ tự ký nên trình duyệt không phải xá
 Không qua proxy thì đặt địa chỉ WebSocket theo thứ tự ưu tiên:
 
 1. `?ws=` trên địa chỉ trang (không lưu), vd. `http://localhost:5184/?ws=10.0.10.62:8033`;
-2. **Cài đặt › Địa chỉ WebSocket** (lưu trên trình duyệt này);
-3. `VITE_WS_URL` lúc build;
-4. mặc định: `/api/vision/ws` cùng máy chủ đã mở trang.
+2. `VITE_WS_URL` lúc build;
+3. mặc định: `/api/vision/ws` cùng máy chủ đã mở trang (vite dev / nginx chuyển `/api` tới backend).
+
+**Cài đặt › Test kết nối** gửi `ping` trên chính WebSocket đang nghe: backend ghi một dòng log (`Test kết nối từ view3d — máy <IP> qua /api/vision/ws`) và trả địa chỉ backend thật để hiện trên màn hình.
 
 Nhận `IP:cổng` (mặc định `wss://` vì máy chủ Docker chỉ mở HTTPS), `https://…`, `http://…` hoặc `ws(s)://…/api/vision/ws`. Với `wss://` chứng chỉ tự ký, mở `https://<IP>:8033` một lần và chọn **Nâng cao › Tiếp tục** — màn hình 3D tự hiện gợi ý này khi chưa nối được. Trang mở bằng HTTPS không nối được `ws://` (trình duyệt chặn); trang `/view3d/` do backend phục vụ chỉ nối được chính máy chủ đó (CSP).
 

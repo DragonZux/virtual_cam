@@ -244,7 +244,10 @@ class Detector:
 
     def analyze(self, payload: bytes, options: FrameOptions) -> FrameResult:
         """Một khung JPEG → bàn tay / chấm laser và vật thể được chỉ (toạ độ pixel của chính khung đó)."""
-        frame = decode_jpeg(payload, self.cfg.MAX_FRAME_SIDE)
+        return self.analyze_image(decode_jpeg(payload, self.cfg.MAX_FRAME_SIDE), options)
+
+    def analyze_image(self, frame: np.ndarray, options: FrameOptions) -> FrameResult:
+        """Khung BGR đã giải mã (luồng RTSP máy chủ tự đọc: không nén / giải nén JPEG lần nữa)."""
         if not self.lock.acquire(timeout=self.cfg.BUSY_WAIT_SECONDS):
             raise DetectorBusy
         try:

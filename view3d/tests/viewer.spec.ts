@@ -13,14 +13,23 @@ type Session = {
 async function mockServer(page: Page, pattern = "**/api/vision/ws") {
   const sockets: WebSocketRoute[] = [];
   const sessions = new Map<string, Session>();
+  const pings: string[] = [];
   let clock = 1_790_816_400_000;
   await page.routeWebSocket(pattern, (ws) => {
     sockets.push(ws);
     ws.send(JSON.stringify({ type: "selection.snapshot", sessions: [...sessions.values()] }));
+    // Nút "Test kết nối": backend ghi log rồi trả pong kèm địa chỉ thật
+    ws.onMessage((raw) => {
+      const message = JSON.parse(raw.toString());
+      if (message.type !== "ping") return;
+      pings.push(message.source);
+      ws.send(JSON.stringify({ type: "pong", source: message.source, client: "10.0.9.81", backend: "127.0.0.1:8030", server: "HICAS API 1.0.0" }));
+    });
   });
   const broadcast = (event: object) => sockets.at(-1)?.send(JSON.stringify(event));
   return {
     connections: () => sockets.length,
+    pings,
     select(id: string, name: string | null, confidence = 0.94, extra: Partial<Session> = {}) {
       const session: Session = {
         session_id: id,
@@ -163,8 +172,12 @@ test("?ws= connects to another server address; invalid addresses are reported", 
   await expect(page.getByRole("status")).toHaveText("Đã kết nối");
   server.select("cam-a", "dog");
   await expect(viewer(page)).toHaveAttribute("data-model", "dog");
+  // Cài đặt chỉ còn nút Test kết nối: ping qua chính socket đang nghe, hiện địa chỉ backend thật
   await page.getByRole("button", { name: "Cài đặt" }).click();
-  await expect(page.getByText("Đang dùng: ws://127.0.0.1:5185/custom/ws")).toBeVisible();
+  await expect(page.getByText("Địa chỉ WebSocket", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Test kết nối" }).click();
+  await expect(page.getByText("Kết nối thành công.", { exact: true })).toBeVisible();
+  expect(server.pings).toEqual(["view3d"]);
 
   await page.goto(`/?ws=${encodeURIComponent("ftp://example.com")}`);
   await expect(page.getByRole("status")).toHaveText("Địa chỉ WebSocket không hợp lệ");

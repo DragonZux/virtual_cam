@@ -46,7 +46,7 @@ export interface SelectedObject {
   polygon: [number, number][];
 }
 
-/** POST /vision/frame */
+/** Kết quả nhận diện một khung (WebSocket /api/camera/ws, cũng là phản hồi của POST /vision/frame) */
 export interface FrameResult {
   /** Optional for compatibility with older hand-only servers. */
   pointer_mode?: PointerMode;
@@ -62,10 +62,8 @@ export interface FrameResult {
   resolution: { width: number; height: number };
 }
 
-/** Cài đặt gửi kèm từng khung hình (query của POST /vision/frame); giao diện web chỉ chọn bằng laser */
+/** Vật thể cần nhận diện + ngưỡng tin cậy gửi cho luồng camera (giao diện web chỉ chọn bằng laser) */
 export interface FrameOptions {
-  model_revision?: number;
-  pointer_mode: "laser";
   targets: string[];
   conf: number;
 }
@@ -113,11 +111,18 @@ export interface StreamLink {
   name?: string;
 }
 
-/** POST /camera/streams — phiên đọc luồng RTSP ở máy chủ */
-export interface StreamInfo {
-  id: string;
-  width: number;
-  height: number;
+/** GET /camera và bản tin "camera" của /api/camera/ws — camera máy chủ đang chạy (tối đa một) */
+export interface CameraInfo {
+  /** connecting = chưa có hình; reconnecting = đang chạy thì mất tín hiệu */
+  status: "off" | "connecting" | "live" | "reconnecting";
+  /** Địa chỉ đã bỏ tài khoản / mật khẩu */
+  url: string | null;
+  name: string | null;
+  /** false = đang tạm dừng nhận diện */
+  detect: boolean;
+  error: string | null;
+  width: number | null;
+  height: number | null;
 }
 
 /* ===== Chỉ ở frontend ===== */
@@ -135,16 +140,6 @@ export interface Preferences {
 }
 
 export type CameraStatus = "off" | "starting" | "on" | "error";
-
-/** Nguồn hình: camera của trình duyệt hoặc luồng RTSP máy chủ đọc hộ (cả hai báo "camera" cho WebSocket) */
-export type FrameSource = "camera";
-
-/** Confirmed selection shared over WebSocket; confidence matches the displayed percentage. */
-export interface SelectionUpdate {
-  selected: Pick<SelectedObject, "name" | "confidence"> | null;
-  pointer_mode: PointerMode;
-  source: FrameSource;
-}
 
 
 /** Trạng thái tổng hợp hiện ở nhãn trạng thái và trên khung camera */
