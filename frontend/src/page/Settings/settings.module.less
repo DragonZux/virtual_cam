@@ -141,16 +141,22 @@
   }
 }
 
-/* ===== Kết nối socket ===== */
-.socketTitle {
-  margin: 0 0 8px;
-  font-size: 13px;
-  font-weight: 650;
-  color: @text-2;
+/* ===== Camera RTSP: camera máy chủ đang chạy; Kết nối socket ===== */
+.runningCamera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.03);
+
+  button {
+    margin-left: auto;
+  }
 }
 
-.socketUrl {
-  display: inline-block;
-  max-width: 100%;
-  overflow-wrap: anywhere;
+.socketResult {
+  margin: 10px 0 0 !important;
 }

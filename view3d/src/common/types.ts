@@ -76,8 +76,6 @@ export interface RecentObject {
 
 /** Cài đặt riêng của trình duyệt này (localStorage) */
 export interface ViewerPreferences {
-  /** Địa chỉ WebSocket người xem tự đặt; "" = mặc định */
-  wsUrl: string;
   autoRotate: boolean;
   /** Giữ vật thể vừa chọn trên màn hình khi phiên camera bỏ chọn */
   keepLast: boolean;

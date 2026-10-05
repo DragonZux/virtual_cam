@@ -38,10 +38,6 @@ const viewerSlice = createSlice({
     setPreview: (state, action: PayloadAction<string | null>) => {
       state.preview = action.payload ? { name: action.payload, sticky: false } : null;
     },
-    /** Bỏ ?ws= của địa chỉ trang để dùng địa chỉ trong Cài đặt */
-    clearWsOverride: (state) => {
-      state.wsOverride = null;
-    },
   },
   extraReducers: (builder) => {
     // Phiên được ghim đã ngắt (camera nối lại sẽ có session_id mới) → quay về tự động

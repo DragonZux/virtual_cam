@@ -14,14 +14,14 @@ const refresh$: RootEpic = (action$) => action$.pipe(
   filter(visionActions.getStatusSuccess.match),
   mergeMap(() => of(modelActions.listRequest())),
 );
-// Tải lên = máy chủ dùng ngay mô hình mới: dừng gửi khung trong lúc nạp, xong thì hỏi lại trạng thái (model_revision mới)
+// Tải lên = máy chủ dùng ngay mô hình mới: bỏ kết quả đang hiển thị trong lúc nạp, xong thì hỏi lại trạng thái (model_revision mới)
 const upload$: RootEpic = (action$) => action$.pipe(
   filter(modelActions.uploadRequest.match),
   exhaustMap((action) => {
     const operation: Observable<Action> = ModelService.upload(action.payload.kind, action.payload.file, action.payload.convert)
       .pipe(mergeMap((list) => of(modelActions.listSuccess(list), modelActions.mutationSuccess("upload"))));
     return concat(
-      of(visionActions.stopStatusPolling(), visionActions.cancelFrames()),
+      of(visionActions.stopStatusPolling(), visionActions.clearResult()),
       operation.pipe(catchError((err) => of(modelActions.mutationFailure(errorMessage(err))))),
       of(visionActions.startStatusPolling()),
     );

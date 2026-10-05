@@ -1,16 +1,15 @@
-import { Alert, Button, Divider, Drawer, Input, Select, Space, Switch, Typography } from "antd";
-import { useEffect, useMemo, useState } from "react";
+import { Button, Divider, Drawer, Select, Switch, Typography } from "antd";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CLASS_GROUPS } from "@/common/constants";
 import { BUILTIN_KEYS } from "@/models3d";
+import { SelectionStreamService } from "@/Services/SelectionStreamService";
 import { getCustomModels } from "@/store/library";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getPreferences, settingActions } from "@/store/setting";
-import { getWsUrl } from "@/store/stream";
-import { getPreview, getWsOverride, viewerActions } from "@/store/viewer";
+import { getPreview, viewerActions } from "@/store/viewer";
 import { objectLabel } from "@/utils/format";
-import { resolveWsUrl, sameOriginWsUrl } from "@/utils/wsUrl";
 import styles from "./viewer.module.less";
 
 interface Props {
@@ -18,25 +17,27 @@ interface Props {
   onClose: () => void;
 }
 
-/** Cài đặt của màn hình 3D (lưu trên trình duyệt này): địa chỉ WebSocket, hiển thị, xem thử mô hình */
+/** Cài đặt của màn hình 3D (lưu trên trình duyệt này): test kết nối backend, hiển thị, xem thử mô hình */
 export const SettingsDrawer = ({ open, onClose }: Props) => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const prefs = useAppSelector(getPreferences);
-  const wsOverride = useAppSelector(getWsOverride);
-  const currentUrl = useAppSelector(getWsUrl);
   const preview = useAppSelector(getPreview);
   const customCount = Object.keys(useAppSelector(getCustomModels)).length;
-  const [draft, setDraft] = useState(prefs.wsUrl);
+  const [testing, setTesting] = useState(false);
+  const [testOk, setTestOk] = useState<boolean | null>(null);
 
-  // Mở lại ngăn cài đặt thì ô nhập lấy lại địa chỉ đã lưu
-  useEffect(() => {
-    if (open) setDraft(prefs.wsUrl);
-  }, [open, prefs.wsUrl]);
-
-  const draftInvalid = draft.trim() !== "" && resolveWsUrl(draft, window.location) === null;
-  const apply = () => {
-    if (!draftInvalid) dispatch(settingActions.updatePreferences({ wsUrl: draft.trim() }));
+  // Ping trên chính WebSocket đang nghe; chi tiết (trang, máy gửi) chỉ ghi ở log backend
+  const testConnection = async () => {
+    setTesting(true);
+    try {
+      await SelectionStreamService.ping();
+      setTestOk(true);
+    } catch {
+      setTestOk(false);
+    } finally {
+      setTesting(false);
+    }
   };
 
   // Lớp COCO theo nhóm như trang camera; lớp có mô hình mà không thuộc nhóm nào vào "Khác"
@@ -56,42 +57,14 @@ export const SettingsDrawer = ({ open, onClose }: Props) => {
   return (
     <Drawer title={t("settings.title")} open={open} onClose={onClose} width="min(420px, 100vw)">
       <Typography.Title level={5}>{t("settings.connection")}</Typography.Title>
-      {wsOverride && (
-        <Alert
-          className={styles.drawerAlert}
-          type="info"
-          showIcon
-          message={t("settings.wsOverride", { url: wsOverride })}
-          action={
-            <Button size="small" onClick={() => dispatch(viewerActions.clearWsOverride())}>
-              {t("settings.useSettings")}
-            </Button>
-          }
-        />
+      <Button type="primary" loading={testing} onClick={testConnection}>
+        {t("settings.test")}
+      </Button>
+      {testOk !== null && (
+        <Typography.Paragraph type={testOk ? "success" : "danger"} className={styles.fieldHelp} role="status">
+          {t(testOk ? "settings.testOk" : "settings.testFail")}
+        </Typography.Paragraph>
       )}
-      <label className={styles.fieldLabel} htmlFor="ws-url">
-        {t("settings.ws")}
-      </label>
-      <Space.Compact block>
-        <Input
-          id="ws-url"
-          value={draft}
-          status={draftInvalid ? "error" : undefined}
-          placeholder={t("settings.wsPlaceholder", { url: sameOriginWsUrl(window.location) })}
-          allowClear
-          onChange={(event) => setDraft(event.target.value)}
-          onPressEnter={apply}
-        />
-        <Button type="primary" onClick={apply} disabled={draftInvalid || draft.trim() === prefs.wsUrl}>
-          {t("settings.apply")}
-        </Button>
-      </Space.Compact>
-      <Typography.Paragraph type={draftInvalid ? "danger" : "secondary"} className={styles.fieldHelp}>
-        {draftInvalid ? t("settings.wsInvalid") : t("settings.wsHelp")}
-      </Typography.Paragraph>
-      <Typography.Paragraph className={styles.fieldHelp} copyable={currentUrl ? { text: currentUrl } : false}>
-        {t("settings.wsCurrent", { url: currentUrl ?? "—" })}
-      </Typography.Paragraph>
 
       <Divider />
       <Typography.Title level={5}>{t("settings.display")}</Typography.Title>

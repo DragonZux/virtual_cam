@@ -13,7 +13,6 @@ export const sanitizePreferences = (raw: unknown): ViewerPreferences => {
   if (!raw || typeof raw !== "object") return { ...d };
   const r = raw as Record<string, unknown>;
   return {
-    wsUrl: typeof r.wsUrl === "string" ? r.wsUrl.trim().slice(0, 500) : d.wsUrl,
     autoRotate: boolOr(r.autoRotate, d.autoRotate),
     keepLast: boolOr(r.keepLast, d.keepLast),
   };

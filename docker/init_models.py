@@ -12,7 +12,7 @@ import urllib.request
 
 MODEL_DIR = Path(os.environ.get("MODEL_DIR", "/models"))
 HAND_MODEL = os.environ.get("HAND_MODEL", "hand_landmarker.task")
-YOLO_MODEL = os.environ.get("YOLO_MODEL", "yolo26m-seg.pt")
+YOLO_MODEL = os.environ.get("YOLO_MODEL", "yolo26n-seg.pt")
 LASER_MODEL = os.environ.get("LASER_MODEL", "laser-advr-yolov5l6.torchscript")
 HAND_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
 YOLO_URL = "https://github.com/ultralytics/assets/releases/download/v8.4.0/"

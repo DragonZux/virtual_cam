@@ -102,8 +102,8 @@
       "off": "Camera not connected",
       "waiting": "Waiting for the detector",
       "live": "Recognising · {{ms}} ms",
-      "paused": "Not sending frames",
-      "hidden": "Tab hidden — frames paused",
+      "paused": "Recognition paused",
+      "hidden": "Tab hidden — video paused",
       "retrying": "Trying to reconnect…"
     },
     "overlay": {
@@ -187,16 +187,23 @@
       "add": "Add RTSP camera",
       "name": "Name",
       "url": "Address",
-      "watching": "Watching",
       "connect": "Connect",
       "edit": "Edit",
       "remove": "Delete",
       "removeConfirm": "Delete this camera?",
-      "empty": "No RTSP camera yet."
+      "empty": "No RTSP camera yet.",
+      "running": "Server is detecting on:",
+      "idle": "The server is not running any camera — press Connect on a camera below.",
+      "active": "Detecting",
+      "paused": "Paused",
+      "connecting": "Connecting",
+      "stop": "Stop camera"
     },
     "socket": {
       "title": "Socket connections",
-      "wsTitle": "WebSocket — other apps connect here"
+      "test": "Test connection",
+      "testOk": "Connected.",
+      "testFail": "Cannot reach the server."
     }
   },
   "httpError": {

@@ -92,6 +92,22 @@ const drawTip = (ctx: Ctx, tip: [number, number], scale: number, unit: number, p
 };
 
 /**
+ * Chế độ gương: video lật bằng CSS còn máy chủ nhận diện khung gốc → lật toạ độ kết quả cho khớp hình đang thấy
+ * (không lật cả canvas để chữ trên nhãn không bị ngược).
+ */
+export const mirrorResult = (result: FrameResult): FrameResult => {
+  const width = result.resolution.width;
+  const flip = ([x, y]: [number, number]): [number, number] => [width - x, y];
+  return {
+    ...result,
+    laser: result.laser ? { ...result.laser, point: flip(result.laser.point) } : result.laser,
+    tip: result.tip ? flip(result.tip) : result.tip,
+    detections: result.detections.map((d) => ({ ...d, box: [width - d.box[2], d.box[1], width - d.box[0], d.box[3]] })),
+    selected: result.selected ? { ...result.selected, polygon: result.selected.polygon.map(flip) } : result.selected,
+  };
+};
+
+/**
  * Vẽ kết quả nhận diện lên lớp canvas trong suốt đè trên video trực tiếp (video chạy mượt theo camera,
  * lớp này có thể nội suy theo nhịp màn hình). Canvas cùng tỉ lệ với video nên letterbox khớp video;
  * toạ độ máy chủ theo khung gửi đi → nhân `scale`.

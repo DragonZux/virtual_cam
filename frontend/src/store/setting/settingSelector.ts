@@ -18,14 +18,12 @@ export const getActiveTargets = createSelector([getPreferences, getVisionStatus]
   return chosen.size ? [...chosen] : status.defaults.targets;
 });
 
-/** Tham số gửi kèm từng khung; null khi chưa biết mặc định của máy chủ */
+/** Tuỳ chọn gửi cho luồng camera; null khi chưa biết mặc định của máy chủ */
 export const getFrameOptions = createSelector(
   [getPreferences, getVisionStatus, getActiveTargets],
   (prefs, status, targets): FrameOptions | null =>
     status?.phase === "ready"
       ? {
-          pointer_mode: "laser",
-          model_revision: status.model_revision,
           targets,
           conf: prefs.confidence ?? status.defaults.confidence,
         }

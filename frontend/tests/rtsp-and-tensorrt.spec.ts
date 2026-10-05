@@ -9,18 +9,8 @@ const status = {
 };
 
 async function mockServer(page: Page) {
-  const api = { analyzed: 0 };
   await page.route("**/api/vision/status", (route) => route.fulfill({ json: status }));
   await page.route("**/api/models", (route) => route.fulfill({ json: { items: [], max_bytes: 1 } }));
-  await page.route("**/api/sockets", (route) => route.fulfill({ json: { websocket_path: "/api/vision/ws", tcp: [] } }));
-  await page.route("**/api/vision/frame?*", (route) => {
-    api.analyzed += 1;
-    return route.fulfill({ json: {
-      pointer_mode: "laser", hand_detected: false, landmarks: [], tip: null, laser: null, selected: null, detections: [],
-      processing_ms: 20, resolution: { width: 640, height: 480 },
-    } }).catch(() => undefined);
-  });
-  return api;
 }
 
 /** Thẻ trong trang Cài đặt theo tiêu đề */
@@ -57,7 +47,7 @@ test("camera is RTSP only: add from the camera, switch between saved cameras, st
       return original(constraints);
     };
   });
-  const server = await mockServer(page);
+  await mockServer(page);
   const camera = await mockRtspCamera(page, { saved: null });
   await page.goto("/");
   await expect(page.getByText("Chưa có camera RTSP", { exact: true })).toBeVisible();
@@ -70,20 +60,23 @@ test("camera is RTSP only: add from the camera, switch between saved cameras, st
   expect(camera.opened).toEqual(["rtsp://admin:secret@10.0.9.41:8554/camera"]);
   await expect.poll(() => page.locator("video").evaluate((video: HTMLVideoElement) => video.videoWidth)).toBe(640);
   await expect.poll(() => camera.frames).toBeGreaterThan(5);
-  await expect.poll(() => server.analyzed).toBeGreaterThan(2);
+  await expect.poll(() => camera.options.length).toBeGreaterThan(0);
   await expect(page.locator("video")).not.toHaveClass(/mirrored/);
 
   // Thêm camera thứ hai ngay trong ô chọn; camera không đặt tên hiện địa chỉ
   await chooseCamera(page, "+ Thêm camera RTSP…");
   await fillCamera(page, "rtsp://10.0.9.42:8554/cam2");
   await expect(page.getByText("RTSP · rtsp://10.0.9.42:8554/cam2", { exact: true })).toBeVisible();
-  await expect.poll(() => camera.closed).toBe(1);
+  // Đổi camera: máy chủ chạy camera mới thay camera cũ (một camera một lúc), không cần tắt trước
+  expect(camera.opened).toHaveLength(2);
+  expect(camera.closed).toBe(0);
   await chooseCamera(page, "Cửa");
   await expect.poll(() => camera.opened.length).toBe(3);
   expect(camera.opened[2]).toBe("rtsp://admin:secret@10.0.9.41:8554/camera");
+  await expect(page.getByText("RTSP · Cửa", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Tắt camera" }).click();
-  await expect.poll(() => camera.closed).toBe(3);
+  await expect.poll(() => camera.closed).toBe(1);
   await expect(page.getByText("Camera đã ngắt", { exact: true })).toBeVisible();
   await connectCamera(page);
   expect(camera.opened.at(-1)).toBe("rtsp://admin:secret@10.0.9.41:8554/camera");
@@ -102,7 +95,7 @@ test("RTSP camera: a stream the server cannot open shows the reason", async ({ p
   await mockRtspCamera(page, { fail: true });
   await page.goto("/");
   await page.getByRole("button", { name: "Kết nối camera", exact: true }).click();
-  await expect(page.getByText("Không kết nối được luồng RTSP. Kiểm tra địa chỉ, cổng và MediaMTX.")).toBeVisible();
+  await expect(page.getByText(/Máy chủ không mở được cổng RTSP 10\.0\.9\.41:8554/).first()).toBeVisible();
   await expect(page.getByText("Không kết nối được camera", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Kết nối lại", exact: true })).toBeVisible();
 });
@@ -132,46 +125,19 @@ test("Settings › RTSP cameras: add, edit, delete and connect a camera", async 
   await expect(page.getByText("RTSP · Kho hàng", { exact: true })).toBeVisible();
   expect(camera.opened).toEqual(["rtsp://10.0.9.41:8554/camera"]);
   await page.getByRole("menuitem", { name: "Cài đặt", exact: true }).click();
-  await expect(card.getByText("Đang xem", { exact: true })).toBeVisible();
+  await expect(card.locator(".ant-table-row").nth(0).getByText("Đang nhận diện", { exact: true })).toBeVisible();
+  await expect(card.getByRole("status")).toContainText("Kho hàng");
 });
 
-test("Settings › socket: WebSocket address and TCP targets saved on the server", async ({ page }) => {
+test("Settings › socket: only a Test connection button, answered by the backend over the camera socket", async ({ page }) => {
   await mockServer(page);
-  let tcp: Record<string, unknown>[] = [];
-  const saved: unknown[] = [];
-  await page.route("**/api/sockets", (route) => route.fulfill({ json: { websocket_path: "/api/vision/ws", tcp } }));
-  await page.route("**/api/sockets/tcp", (route) => {
-    const body = route.request().postDataJSON() as { targets: { host: string; port: number; enabled: boolean }[] };
-    saved.push(body.targets);
-    tcp = body.targets.map((target) => ({ ...target, id: target.host + ":" + target.port,
-      status: target.enabled ? "connecting" : "off", error: null, sent: 0, last_sent: null }));
-    return route.fulfill({ json: { websocket_path: "/api/vision/ws", tcp } });
-  });
+  const camera = await mockRtspCamera(page);
   await page.goto("/settings");
   const card = settingsCard(page, "Kết nối socket");
-  await expect(card.getByText("ws://127.0.0.1:5181/api/vision/ws", { exact: true })).toBeVisible();
-  await expect(card.getByText("Chưa có máy đích TCP.")).toBeVisible();
-  // Địa chỉ sai không thêm được
-  await card.getByRole("textbox", { name: "IP hoặc tên máy" }).fill("tcp://192.168.1.20");
-  await card.getByRole("spinbutton", { name: "Cổng" }).fill("5000");
-  await expect(card.getByText(/IP hoặc tên máy không hợp lệ/)).toBeVisible();
-  await expect(card.getByRole("button", { name: "Thêm" })).toBeDisabled();
-  await card.getByRole("textbox", { name: "IP hoặc tên máy" }).fill("192.168.1.20");
-  await card.getByRole("button", { name: "Thêm" }).click();
-  await expect.poll(() => saved.length).toBe(1);
-  expect(saved[0]).toEqual([{ host: "192.168.1.20", port: 5000, enabled: true }]);
-  await expect(card.getByText("192.168.1.20:5000", { exact: true })).toBeVisible();
-  await expect(card.getByText("Đang kết nối…", { exact: true })).toBeVisible();
-  // Trạng thái kết nối tự cập nhật
-  tcp = tcp.map((target) => ({ ...target, status: "connected", sent: 3 }));
-  await expect(card.getByText("Đã kết nối · 3 bản tin", { exact: true })).toBeVisible({ timeout: 8000 });
-  await card.getByRole("switch", { name: "Bật 192.168.1.20:5000" }).click();
-  await expect.poll(() => saved.length).toBe(2);
-  expect(saved[1]).toEqual([{ host: "192.168.1.20", port: 5000, enabled: false }]);
-  await expect(card.getByText("Đã tắt", { exact: true })).toBeVisible();
-  await card.getByRole("button", { name: "Xoá 192.168.1.20:5000" }).click();
-  await expect.poll(() => saved.length).toBe(3);
-  expect(saved[2]).toEqual([]);
+  await expect(card.getByText(/ws:\/\//)).toHaveCount(0);
+  await card.getByRole("button", { name: "Test kết nối" }).click();
+  await expect(card.getByRole("status")).toHaveText("Kết nối thành công.");
+  expect(camera.pings).toEqual(["frontend"]);
 });
 
 test("TensorRT: Update on a row uploads that model type and converts it automatically", async ({ page }) => {
@@ -184,7 +150,6 @@ test("TensorRT: Update on a row uploads that model type and converts it automati
   const catalog = () => ({ max_bytes: 1024 * 1024, convert_available: true, convert_reason: null, conversions: jobs,
     items: items.map((item) => ({ ...item, size_bytes: 1000, available: true })) });
   await page.route("**/api/vision/status", (route) => route.fulfill({ json: status }));
-  await page.route("**/api/sockets", (route) => route.fulfill({ json: { websocket_path: "/api/vision/ws", tcp: [] } }));
   await page.route(/\/api\/models(?:\?|$)/, (route) => {
     if (route.request().method() === "POST") {
       const url = new URL(route.request().url());

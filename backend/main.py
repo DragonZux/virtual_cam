@@ -8,9 +8,9 @@ from core.logging import logger
 from core.spa import mount_frontend, mount_view3d
 from routers import camera, vision, models, selection, sockets
 from services.detector import Detector
-from services.rtsp_stream import StreamHub
 from services.socket_forward import SocketForwarder
 from services.selection_stream import SelectionHub
+from services.live_stream import LiveHub
 
 # CSP cho trang React (không áp cho /api, /docs): antd chèn <style> lúc chạy nên style cần 'unsafe-inline'
 SPA_CSP = (
@@ -29,13 +29,16 @@ async def lifespan(app: FastAPI):
     # Gửi vật thể đang chọn tới các TCP socket cấu hình trong Cài đặt
     app.state.socket_forwarder = SocketForwarder(app.state.selection_hub, settings.DATA_DIR / "sockets.json")
     await app.state.socket_forwarder.start()
-    app.state.stream_hub = StreamHub()
+    # Camera RTSP máy chủ giữ: đọc luồng, tự nhận diện khung mới nhất (kể cả khi không ai xem), gửi hình + kết quả
+    # qua /api/camera/ws; chạy tiếp camera đã chọn lần trước
+    app.state.live_hub = LiveHub(detector, app.state.selection_hub, settings.DATA_DIR / "camera.json")
+    app.state.live_hub.restore()
     # Nạp model ở luồng nền: web mở được ngay, giao diện hiện "Đang khởi động" tới khi sẵn sàng
     detector.start()
     logger.info("=" * 60)
     yield
     logger.info("Shutting down")
-    app.state.stream_hub.shutdown()
+    await app.state.live_hub.shutdown()
     await app.state.socket_forwarder.stop()
     detector.close()
 
@@ -43,7 +46,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.API_TITLE,
     version=settings.API_VERSION,
-    description="Nhận diện vật thể bằng ngón trỏ hoặc laser đỏ: trình duyệt gửi khung camera, máy chủ trả vị trí chỉ và vật thể được chọn.",
+    description="Nhận diện vật thể bằng laser đỏ: máy chủ đọc camera RTSP, tự nhận diện và gửi hình + vật thể được chọn qua WebSocket.",
     lifespan=lifespan,
 )
 
