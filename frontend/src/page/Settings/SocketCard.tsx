@@ -53,12 +53,10 @@ export const SocketCard = () => {
     <section className={styles.socketSection}>
       <h3>{t("settings.socket.wsTitle")}</h3>
       <Typography.Text code copyable className={styles.socketUrl}>{wsUrl}</Typography.Text>
-      <p className={styles.help}>{t("settings.socket.wsHelp")}</p>
     </section>
 
     <section className={styles.socketSection}>
       <h3>{t("settings.socket.tcpTitle")}</h3>
-      <p className={styles.help}>{t("settings.socket.tcpHelp")}</p>
       <Table<TcpTargetState> size="small" rowKey="id" pagination={false} dataSource={targets} scroll={{ x: 520 }}
         locale={{ emptyText: t("settings.socket.empty") }} columns={[
           { title: t("settings.socket.address"), render: (_, target) => <strong className={styles.modelName}>{target.id}</strong> },

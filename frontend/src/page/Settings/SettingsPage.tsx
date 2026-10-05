@@ -19,22 +19,18 @@ import styles from "./settings.module.less";
 interface FieldProps {
   label: string;
   value: string;
-  help: string;
   extra?: string | false;
   children: ReactNode;
 }
 
-const RangeField = ({ label, value, help, extra, children }: FieldProps) => (
+const RangeField = ({ label, value, extra, children }: FieldProps) => (
   <div className={styles.field}>
     <div className={styles.fieldHead}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
     {children}
-    <div className={styles.help}>
-      {help}
-      {extra && <span className={styles.serverDefault}>{extra}</span>}
-    </div>
+    {extra && <div className={styles.serverDefault}>{extra}</div>}
   </div>
 );
 
@@ -79,7 +75,6 @@ export const SettingsPage = () => {
             <RangeField
               label={t("settings.detection.confidence")}
               value={formatPercent(confidence)}
-              help={t("settings.detection.confidenceHelp")}
               extra={!!defaults && t("settings.serverDefault", { value: formatPercent(defaults.confidence) })}
             >
               <Slider
@@ -92,7 +87,6 @@ export const SettingsPage = () => {
             <RangeField
               label={t("settings.detection.dwell")}
               value={`${prefs.dwellMs} ms`}
-              help={t("settings.detection.dwellHelp")}
             >
               <Slider
                 {...DWELL_RANGE}
