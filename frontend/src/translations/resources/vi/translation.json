@@ -224,20 +224,6 @@
     "500": "Lỗi máy chủ, vui lòng thử lại",
     "503": "Bộ nhận diện chưa sẵn sàng"
   },
-  "classGroups": {
-    "electronic": "Thiết bị điện tử",
-    "indoor": "Đồ dùng trong nhà",
-    "kitchen": "Nhà bếp",
-    "furniture": "Nội thất",
-    "appliance": "Đồ gia dụng",
-    "accessory": "Phụ kiện",
-    "food": "Thực phẩm",
-    "sports": "Thể thao",
-    "vehicle": "Phương tiện",
-    "outdoor": "Ngoài trời",
-    "animal": "Động vật",
-    "other": "Khác"
-  },
   "classes": {
     "person": "Người",
     "bicycle": "Xe đạp",

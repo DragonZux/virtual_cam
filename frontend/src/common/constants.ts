@@ -40,34 +40,3 @@ export const DEFAULT_PREFERENCES: Preferences = {
 export const CONFIDENCE_RANGE = { min: 0.05, max: 0.9, step: 0.05 };
 export const DWELL_RANGE = { min: 0, max: 1500, step: 50 };
 
-/** Nhóm lớp COCO để chọn vật thể; lớp không có ở đây vào nhóm "other" */
-export const CLASS_GROUPS: { key: string; classes: string[] }[] = [
-  { key: "electronic", classes: ["laptop", "mouse", "keyboard", "cell phone", "remote", "tv"] },
-  { key: "indoor", classes: ["book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"] },
-  { key: "kitchen", classes: ["bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl"] },
-  { key: "furniture", classes: ["chair", "couch", "potted plant", "bed", "dining table", "toilet"] },
-  { key: "appliance", classes: ["microwave", "oven", "toaster", "sink", "refrigerator"] },
-  { key: "accessory", classes: ["backpack", "umbrella", "handbag", "tie", "suitcase"] },
-  {
-    key: "food",
-    classes: ["banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake"],
-  },
-  {
-    key: "sports",
-    classes: [
-      "frisbee",
-      "skis",
-      "snowboard",
-      "sports ball",
-      "kite",
-      "baseball bat",
-      "baseball glove",
-      "skateboard",
-      "surfboard",
-      "tennis racket",
-    ],
-  },
-  { key: "vehicle", classes: ["bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat"] },
-  { key: "outdoor", classes: ["traffic light", "fire hydrant", "stop sign", "parking meter", "bench"] },
-  { key: "animal", classes: ["bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe"] },
-];

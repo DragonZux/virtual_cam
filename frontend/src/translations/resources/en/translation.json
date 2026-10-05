@@ -224,20 +224,6 @@
     "500": "Server error, please try again",
     "503": "Detector not ready"
   },
-  "classGroups": {
-    "electronic": "Electronics",
-    "indoor": "Household items",
-    "kitchen": "Kitchen",
-    "furniture": "Furniture",
-    "appliance": "Appliances",
-    "accessory": "Accessories",
-    "food": "Food",
-    "sports": "Sports",
-    "vehicle": "Vehicles",
-    "outdoor": "Outdoor",
-    "animal": "Animals",
-    "other": "Other"
-  },
   "classes": {
     "person": "Person",
     "bicycle": "Bicycle",
