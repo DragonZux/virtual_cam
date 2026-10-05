@@ -8,11 +8,11 @@ import { ObjectIcon } from "@/components";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { getActiveTargets, settingActions } from "@/store/setting";
 import { getVisionStatus } from "@/store/vision";
-import { classKey, objectLabel } from "@/utils/format";
+import { classKey } from "@/utils/format";
 import { notify } from "@/utils/notify";
 import styles from "./settings.module.less";
 
-/** "Bàn phím" → "ban phim": tìm không cần gõ dấu */
+/** Tìm theo tên lớp của mô hình, không phân biệt hoa / thường, bỏ dấu */
 const normalize = (text: string) =>
   text
     .normalize("NFD")
@@ -44,8 +44,7 @@ export const TargetPicker = () => {
   const groups = useMemo(() => groupClasses(classes), [classes]);
   const activeSet = new Set(active);
   const needle = normalize(query);
-  const matches = (name: string) =>
-    !needle || normalize(objectLabel(t, name)).includes(needle) || normalize(name).includes(needle);
+  const matches = (name: string) => !needle || normalize(name).includes(needle);
 
   const setTargets = (targets: string[] | undefined) => dispatch(settingActions.updatePreferences({ targets }));
   const toggle = (name: string, checked: boolean) => {
@@ -115,7 +114,8 @@ export const TargetPicker = () => {
                       onChange={(checked) => toggle(name, checked)}
                     >
                       <ObjectIcon name={name} size={14} />
-                      {objectLabel(t, name)}
+                      {/* Giữ nguyên tên lớp của mô hình, không dịch */}
+                      {name}
                     </Tag.CheckableTag>
                   ))}
                 </div>
